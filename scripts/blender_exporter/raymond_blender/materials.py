@@ -2,19 +2,6 @@ import bpy
 from warnings import warn
 
 
-def _export_tex_image(result, node: bpy.types.ShaderNodeTexImage):
-    result["filepath"] = node.image.filepath
-
-
-def _export_val_to_rgb(result, node: bpy.types.ShaderNodeValToRGB):
-    result["elements"] = []
-    for element in node.color_ramp.elements.values():
-        result["elements"].append({
-            "position": element.position,
-            "color": list(element.color)
-        })
-
-
 def export_material(material: bpy.types.Material):
     result = {}
     
@@ -28,10 +15,74 @@ def export_material(material: bpy.types.Material):
             "inputs": {}
         }
         
+        result_node["parameters"] = {}
         if isinstance(node, bpy.types.ShaderNodeTexImage):
-            _export_tex_image(result_node, node)
+            result_node["parameters"] = {
+                "filepath": node.image.filepath,
+                "interpolation": node.interpolation,
+                "projection": node.projection,
+                "extension": node.extension,
+                "source": node.image.source,
+                "colorspace": node.image.colorspace_settings.name,
+                "alpha": node.image.alpha_mode
+            }
         elif isinstance(node, bpy.types.ShaderNodeValToRGB):
-            _export_val_to_rgb(result_node, node)
+            result_node["parameters"] = {
+                "color_mode": node.color_ramp.color_mode,
+                "interpolation": node.color_ramp.interpolation,
+                "hue_interpolation": node.color_ramp.hue_interpolation,
+                "elements": [{
+                    "position": element.position,
+                    "color": list(element.color)
+                } for element in node.color_ramp.elements.values()]
+            }
+        elif isinstance(node, bpy.types.ShaderNodeMixRGB):
+            result_node["parameters"] = {
+                "blend_type": node.blend_type,
+                "use_clamp": node.use_clamp
+            }
+        elif isinstance(node, bpy.types.ShaderNodeBsdfPrincipled):
+            result_node["parameters"] = {
+                "distribution": node.distribution,
+                "subsurface_method": node.subsurface_method
+            }
+        elif isinstance(node, bpy.types.ShaderNodeMapping):
+            result_node["parameters"] = {
+                "type": node.type
+            }
+        elif isinstance(node, bpy.types.ShaderNodeNormalMap):
+            result_node["parameters"] = {
+                "space": node.space,
+                "uv_map": node.uv_map
+            }
+        elif isinstance(node, bpy.types.ShaderNodeBsdfGlass):
+            result_node["parameters"] = {
+                "distribution": node.distribution
+            }
+        elif isinstance(node, bpy.types.ShaderNodeBump):
+            result_node["parameters"] = {
+                "invert": node.invert
+            }
+        elif isinstance(node, bpy.types.ShaderNodeSeparateColor):
+            result_node["parameters"] = {
+                "mode": node.mode
+            }
+        elif isinstance(node, (
+            bpy.types.ShaderNodeOutputMaterial,
+            bpy.types.ShaderNodeTexCoord,
+            bpy.types.ShaderNodeInvert,
+            bpy.types.ShaderNodeBsdfTransparent,
+            bpy.types.ShaderNodeMixShader,
+            bpy.types.ShaderNodeSeparateColor,
+            bpy.types.ShaderNodeHueSaturation,
+            bpy.types.ShaderNodeLightPath,
+            bpy.types.ShaderNodeEmission,
+            bpy.types.ShaderNodeNewGeometry
+        )):
+            # no parameters
+            pass
+        else:
+            warn(f"Node type not supported: {node}")
         
         for input in node.inputs.values():
             result_node["inputs"][input.identifier] = result_input = {
