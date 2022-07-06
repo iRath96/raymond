@@ -22,12 +22,12 @@ class ExportRaymond(bpy.types.Operator, ExportHelper):
     bl_idname = "export_scene.raymond"
     bl_label = "Export raymond Scene"
     bl_description = "Export scene to raymond"
-    bl_options = {'PRESET'}
+    bl_options = {"PRESET"}
 
     filename_ext = ".json"
     filter_glob: StringProperty(
         default="*.json",
-        options={'HIDDEN'}
+        options={"HIDDEN"}
     )
 
     use_selection: BoolProperty(
@@ -57,7 +57,7 @@ class ExportRaymond(bpy.types.Operator, ExportHelper):
         with ProgressReport(context.window_manager) as progress:
             # Exit edit mode before exporting, so current object states are exported properly.
             if bpy.ops.object.mode_set.poll():
-                bpy.ops.object.mode_set(mode='OBJECT')
+                bpy.ops.object.mode_set(mode="OBJECT")
 
             if self.animations is True:
                 scene_frames = range(
@@ -67,19 +67,19 @@ class ExportRaymond(bpy.types.Operator, ExportHelper):
                     context.scene.frame_set(frame)
                     progress.enter_substeps(1)
                     export_scene(self.filepath.replace(
-                        '.json', f'{frame:04}.json'), context, **keywords)
+                        ".json", f"{frame:04}.json"), context, **keywords)
                 progress.leave_substeps()
             else:
                 export_scene(self.filepath, context, **keywords)
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def draw(self, context):
         pass
 
 
 class RAYMOND_PT_export_include(bpy.types.Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOL_PROPS'
+    bl_space_type = "FILE_BROWSER"
+    bl_region_type = "TOOL_PROPS"
     bl_label = "Include"
     bl_parent_id = "FILE_PT_operator"
 
@@ -88,7 +88,7 @@ class RAYMOND_PT_export_include(bpy.types.Panel):
         sfile = context.space_data
         operator = sfile.active_operator
 
-        return operator.bl_idname == "EXPORT_SCENE_OT_RAYMOND"
+        return operator.bl_idname == "EXPORT_SCENE_OT_raymond"
 
     def draw(self, context):
         layout = self.layout
@@ -99,11 +99,12 @@ class RAYMOND_PT_export_include(bpy.types.Panel):
         operator = sfile.active_operator
 
         col = layout.column(heading="Limit to")
-        col.prop(operator, 'use_selection')
+        col.prop(operator, "use_selection")
 
         layout.separator()
         
-        layout.prop(operator, 'animations')
+        col = layout.column(heading="Export")
+        col.prop(operator, "animations", text="Animations")
 
 
 def menu_func_export(self, context):
