@@ -58,7 +58,7 @@ def ply_save(filepath, bm: bmesh.types.BMesh):
                 normal = f.normal
 
             if uv_lay is None:
-                uv = [0,0]
+                uv = (0, 0)
             else:
                 uv = loop[uv_lay].uv[:]
             
