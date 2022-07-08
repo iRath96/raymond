@@ -3,6 +3,7 @@
 #include "context.hpp"
 #include "nodes.hpp"
 #include "ShaderTypes.h"
+#include "random.hpp"
 
 #include <metal_stdlib>
 using namespace metal;
@@ -65,6 +66,7 @@ kernel void handleIntersections(
     int shaderIndex;
     
     ThreadContext tctx;
+    tctx.rnd = sample3d(ray.prng);
     tctx.wo = -ray.direction;
     
     {
@@ -96,12 +98,44 @@ kernel void handleIntersections(
     
     shaders[shaderIndex](ctx, tctx);
     
+    float3x3 worldToShadingFrame;
+    if (all(tctx.material.normal == 0)) {
+        worldToShadingFrame = buildOrthonormalBasis(tctx.normal);
+    } else {
+        float3 normal = ensure_valid_reflection(tctx.normal, tctx.wo, tctx.material.normal);
+        worldToShadingFrame = buildOrthonormalBasis(normal);
+    }
+    
+    do {
+        const float3 transformedWo = tctx.wo * worldToShadingFrame;
+        const float woDotGeoN = dot(tctx.wo, tctx.normal);
+        const float woDotShN = transformedWo.z;
+        if (woDotShN * woDotGeoN < 0) {
+            ray.weight = 0;
+            break;
+        }
+        
+        auto sample = tctx.material.sample(tctx.rnd, transformedWo);
+        ray.weight *= sample.weight;
+        ray.direction = sample.wi * transpose(worldToShadingFrame);
+        
+        const float wiDotGeoN = dot(ray.direction, tctx.normal);
+        const float wiDotShN = sample.wi.z;
+        if (wiDotShN * wiDotGeoN < 0) {
+            ray.weight = 0;
+            break;
+        }
+    } while (false);
+    
+    float envmapCos = dot(ray.direction, normalize(float3(1.192f, -1, 0.42f)));
+    envmapCos = select(1, 0, envmapCos < 0.8);
+    float3 envmap = 10 * float3(1.538, 1.351, 1.257) * envmapCos + 0.05f;
+        
     uint2 coordinates = uint2(ray.x, ray.y);
     image.write(
         //image.read(coordinates) + float4(isect.distance, 0, 0, 1),
         image.read(coordinates) + float4(
-            //tctx.normal,
-            tctx.material.diffuse.diffuseWeight,
+            envmap * ray.weight,
             1),
         coordinates
     );

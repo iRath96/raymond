@@ -360,7 +360,7 @@ struct Emission {
 
 struct kBsdfGlass {
     enum Distribution {
-        GGX
+        DISTRIBUTION_GGX
     };
 };
 

@@ -99,8 +99,17 @@ class Renderer: NSObject, MTKViewDelegate {
             let scene = try SceneLoader().makeScene(fromURL: path)
             
             var instanceLoader = InstanceLoader()
-            try instanceLoader.addEntity(scene.entities["Am185_12_obj_170"]!)
-            try instanceLoader.addEntity(scene.entities["AI55_008_Metal_Frame_002"]!)
+            for entityName in [
+                "AI55_008_floor_001",
+                "Am185_12_obj_169",
+                "AI55_008_sit_pillows_021",
+                "Am185_12_obj_131",
+                "Am185_12_obj_127",
+                "Am185_12_obj_126"
+            ] {
+                try instanceLoader.addEntity(scene.entities[entityName]!)
+            }
+            
             let instancing = try instanceLoader.build(withDevice: device)
             
             var meshLoader = MeshLoader()

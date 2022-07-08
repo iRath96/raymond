@@ -218,8 +218,12 @@ struct Codegen {
                 .enum("SPACE", kernel.space)
             ])
         case let kernel as BsdfGlassKernel:
+            if kernel.distribution != "GGX" {
+                warn("BsdfGlass: only GGX distribution supported!");
+            }
+            
             return .init(kernel: "BsdfGlass", parameters: [
-                .enum("DISTRIBUTION", kernel.distribution)
+                .enum("DISTRIBUTION", "GGX")
             ])
         case is BumpKernel:
             warn("Bump: bump mapping not supported")

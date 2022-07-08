@@ -10,33 +10,6 @@
 
 using namespace metal;
 
-float sample1d(device PRNGState &prng) {
-    return sample_tea_float32(prng.seed, prng.index++);
-}
-
-float2 sample2d(device PRNGState &prng) {
-    return float2(
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++)
-    );
-}
-
-float3 sample3d(device PRNGState &prng) {
-    return float3(
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++)
-    );
-}
-
-float3 sample3d(thread PRNGState &prng) {
-    return float3(
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++)
-    );
-}
-
 // MARK: - ray tracing
 
 kernel void background(
