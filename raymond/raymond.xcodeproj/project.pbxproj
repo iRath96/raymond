@@ -10,6 +10,11 @@
 		FA100A832877685100884319 /* meshes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA100A822877685100884319 /* meshes.swift */; };
 		FA100A8A287809B600884319 /* tinyexr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA100A88287809B600884319 /* tinyexr.cpp */; };
 		FA100A8D28780BA900884319 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = FA100A8C28780BA300884319 /* libz.tbd */; };
+		FA100A8F28781C7000884319 /* nodes.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A8E28781AD400884319 /* nodes.hpp */; };
+		FA100A91287830A300884319 /* bsdf.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A902878308200884319 /* bsdf.hpp */; };
+		FA100A932878317F00884319 /* context.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A922878314400884319 /* context.hpp */; };
+		FA100A9528786FBE00884319 /* shading.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A9428786F9A00884319 /* shading.hpp */; };
+		FA100A962878701A00884319 /* ShaderTypes.h in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFA2875D4D800C0B0D0 /* ShaderTypes.h */; };
 		FAC3AAF32875D4D800C0B0D0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF22875D4D800C0B0D0 /* AppDelegate.swift */; };
 		FAC3AAF52875D4D800C0B0D0 /* GameViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF42875D4D800C0B0D0 /* GameViewController.swift */; };
 		FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */; };
@@ -28,6 +33,10 @@
 		FA100A88287809B600884319 /* tinyexr.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tinyexr.cpp; sourceTree = "<group>"; };
 		FA100A89287809B600884319 /* BridgingHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
 		FA100A8C28780BA300884319 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
+		FA100A8E28781AD400884319 /* nodes.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = nodes.hpp; sourceTree = "<group>"; };
+		FA100A902878308200884319 /* bsdf.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = bsdf.hpp; sourceTree = "<group>"; };
+		FA100A922878314400884319 /* context.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = context.hpp; sourceTree = "<group>"; };
+		FA100A9428786F9A00884319 /* shading.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = shading.hpp; sourceTree = "<group>"; };
 		FAC3AAEF2875D4D800C0B0D0 /* raymond.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = raymond.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3AAF22875D4D800C0B0D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		FAC3AAF42875D4D800C0B0D0 /* GameViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewController.swift; sourceTree = "<group>"; };
@@ -57,7 +66,12 @@
 		FA100A84287790CD00884319 /* gpu */ = {
 			isa = PBXGroup;
 			children = (
+				FAC3AAFA2875D4D800C0B0D0 /* ShaderTypes.h */,
 				FA100A85287790ED00884319 /* random.hpp */,
+				FA100A8E28781AD400884319 /* nodes.hpp */,
+				FA100A902878308200884319 /* bsdf.hpp */,
+				FA100A922878314400884319 /* context.hpp */,
+				FA100A9428786F9A00884319 /* shading.hpp */,
 			);
 			path = gpu;
 			sourceTree = "<group>";
@@ -106,7 +120,6 @@
 				FAC3AAF42875D4D800C0B0D0 /* GameViewController.swift */,
 				FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */,
 				FAC3AAF82875D4D800C0B0D0 /* Shaders.metal */,
-				FAC3AAFA2875D4D800C0B0D0 /* ShaderTypes.h */,
 				FA100A89287809B600884319 /* BridgingHeader.h */,
 				FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */,
 				FAC3AAFD2875D4D900C0B0D0 /* Main.storyboard */,
@@ -186,6 +199,11 @@
 			files = (
 				FAC3AAFC2875D4D900C0B0D0 /* Assets.xcassets in Resources */,
 				FAC3AAFF2875D4D900C0B0D0 /* Main.storyboard in Resources */,
+				FA100A91287830A300884319 /* bsdf.hpp in Resources */,
+				FA100A8F28781C7000884319 /* nodes.hpp in Resources */,
+				FA100A932878317F00884319 /* context.hpp in Resources */,
+				FA100A9528786FBE00884319 /* shading.hpp in Resources */,
+				FA100A962878701A00884319 /* ShaderTypes.h in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

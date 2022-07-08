@@ -44,6 +44,10 @@ class Renderer: NSObject, MTKViewDelegate {
     var instanceBuffer: MTLBuffer?
     var outputImageSize: MTLSize?
     var outputImage: MTLTexture?
+    var shaderFunctionTable: MTLVisibleFunctionTable?
+    var shaderFunctionTableLast: MTLVisibleFunctionTable?
+    var contextBuffer: MTLBuffer?
+    var resourcesRead: [MTLResource]
     
     var mesh: Mesh
     
@@ -77,8 +81,6 @@ class Renderer: NSObject, MTKViewDelegate {
         ptr.deallocate()
         
         imageFillPipelineState = Renderer.buildComputePipelineWithDevice(device: device, name: "background")!
-        intersectionHandler = Renderer.buildComputePipelineWithDevice(device: device, name: "handleIntersections")!
-        lastIntersectionHandler = Renderer.buildComputePipelineWithDevice(device: device, name: "handleIntersections", constantValues: lastHandlerConstants)!
         rayGenerator = Renderer.buildComputePipelineWithDevice(device: device, name: "generateRays")!
         makeIndirectDispatch = Renderer.buildComputePipelineWithDevice(device: device, name: "makeIndirectDispatchArguments")!
         
@@ -103,11 +105,59 @@ class Renderer: NSObject, MTKViewDelegate {
             
             var meshLoader = MeshLoader()
             for shapeName in instancing.shapeNames {
-                print(shapeName)
                 try meshLoader.addShape(scene.shapes[shapeName]!)
             }
             
             mesh = try meshLoader.build(withDevice: device)
+            
+            var codegen = Codegen(basePath: path, device: device)
+            for materialName in mesh.materialNames {
+                try codegen.addMaterial(scene.materials[materialName]!)
+            }
+            let library = try codegen.build()
+            
+            let linkedFunctions = MTLLinkedFunctions()
+            linkedFunctions.functions = []
+            for index in 0..<mesh.materialNames.count {
+                let function = library.makeFunction(name: "material_\(index)")!
+                linkedFunctions.functions!.append(function)
+            }
+            
+            let descriptor = MTLComputePipelineDescriptor()
+            descriptor.computeFunction = library.makeFunction(
+                name: "handleIntersections")
+            descriptor.label = "handleIntersections"
+            descriptor.linkedFunctions = linkedFunctions
+            intersectionHandler = try library.device.makeComputePipelineState(
+                descriptor: descriptor,
+                options: [],
+                reflection: nil)
+            
+            descriptor.computeFunction = try library.makeFunction(
+                name: "handleIntersections",
+                constantValues: lastHandlerConstants)
+            lastIntersectionHandler = try library.device.makeComputePipelineState(
+                descriptor: descriptor,
+                options: [],
+                reflection: nil)
+            
+            let fnTableDescriptor = MTLVisibleFunctionTableDescriptor()
+            fnTableDescriptor.functionCount = mesh.materialNames.count
+            
+            shaderFunctionTable = intersectionHandler.makeVisibleFunctionTable(
+                descriptor: fnTableDescriptor)
+            shaderFunctionTableLast = lastIntersectionHandler.makeVisibleFunctionTable(
+                descriptor: fnTableDescriptor)
+            
+            for index in 0..<mesh.materialNames.count {
+                let function = linkedFunctions.functions![index]
+                shaderFunctionTable!.setFunction(
+                    intersectionHandler.functionHandle(function: function)!,
+                    index: index)
+                shaderFunctionTableLast!.setFunction(
+                    lastIntersectionHandler.functionHandle(function: function)!,
+                    index: index)
+            }
             
             instanceBuffer = device.makeBuffer(
                 length: MemoryLayout<PerInstanceData>.stride * Int(instancing.instanceCount))
@@ -122,6 +172,16 @@ class Renderer: NSObject, MTKViewDelegate {
                 )
             }
             
+            let argumentEncoder = descriptor.computeFunction!.makeArgumentEncoder(bufferIndex: ShadingBufferIndex.context.rawValue)
+            contextBuffer = device.makeBuffer(length: argumentEncoder.encodedLength, options: .storageModeShared)!
+            argumentEncoder.setArgumentBuffer(contextBuffer, offset: 0)
+
+            resourcesRead = []
+            for (index, texture) in codegen.textures.enumerated() {
+                argumentEncoder.setTexture(texture, index: index)
+                resourcesRead.append(texture)
+            }
+
             accelerationStructure = MPSInstanceAccelerationStructure(group: mesh.accelerationGroup)
             accelerationStructure.accelerationStructures = mesh.accelerationStructures
             accelerationStructure.instanceCount = Int(instancing.instanceCount)
@@ -170,7 +230,8 @@ class Renderer: NSObject, MTKViewDelegate {
     class func buildComputePipelineWithDevice(
         device: MTLDevice,
         name: String,
-        constantValues: MTLFunctionConstantValues = MTLFunctionConstantValues()
+        constantValues: MTLFunctionConstantValues = MTLFunctionConstantValues(),
+        linkedFunctions: MTLLinkedFunctions? = nil
     ) -> MTLComputePipelineState? {
         let library = device.makeDefaultLibrary()!
         
@@ -178,6 +239,7 @@ class Renderer: NSObject, MTKViewDelegate {
             let descriptor = MTLComputePipelineDescriptor()
             descriptor.computeFunction = try library.makeFunction(name: name, constantValues: constantValues)
             descriptor.label = name
+            descriptor.linkedFunctions = linkedFunctions
             return try library.device.makeComputePipelineState(descriptor: descriptor, options: [], reflection: nil)
         } catch {
             print("Unable to compile compute pipeline state. Error info: \(error)")
@@ -315,7 +377,8 @@ class Renderer: NSObject, MTKViewDelegate {
                 if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
                     computeEncoder.label = "Shade Rays and Secondary Ray Generation"
                     computeEncoder.setTexture(outputImage, index: 0)
-                    computeEncoder.setComputePipelineState(isMaxDepth ? lastIntersectionHandler : intersectionHandler)
+                    computeEncoder.setComputePipelineState(isMaxDepth ?
+                        lastIntersectionHandler : intersectionHandler)
                     
                     // ray buffers
                     computeEncoder.setBuffer(intersectionBuffer, offset: 0, index: ShadingBufferIndex.intersections.rawValue)
@@ -338,6 +401,14 @@ class Renderer: NSObject, MTKViewDelegate {
                     computeEncoder.setBuffer(dynamicUniformBuffer, offset: 0, index: ShadingBufferIndex.uniforms.rawValue)
                     computeEncoder.setBuffer(instanceBuffer, offset: 0, index: ShadingBufferIndex.perInstanceData.rawValue)
                     computeEncoder.setBuffer(mesh.materials, offset: 0, index: ShadingBufferIndex.materials.rawValue)
+                    
+                    // shader table
+                    computeEncoder.setVisibleFunctionTable(isMaxDepth ?
+                        shaderFunctionTableLast : shaderFunctionTable,
+                        bufferIndex: ShadingBufferIndex.functionTable.rawValue)
+                    
+                    computeEncoder.setBuffer(contextBuffer, offset: 0, index: ShadingBufferIndex.context.rawValue)
+                    computeEncoder.useResources(resourcesRead, usage: .read)
                     
                     computeEncoder.dispatchThreadgroups(
                         indirectBuffer: indirectDispatchBuffer!,

@@ -3,20 +3,25 @@
 #ifdef __METAL_VERSION__
 #define NS_ENUM(_type, _name) enum _name : _type _name; enum _name : _type
 #define NSInteger metal::int32_t
+typedef packed_float3 MPSPackedFloat3;
 #else
 #include <simd/simd.h>
 #import <Foundation/Foundation.h>
 typedef simd_float4x4 float4x4;
 typedef __fp16 half;
-/*typedef struct {
-    half x;
-    half y;
-    half z;
-} half3;*/
 typedef __attribute__((__ext_vector_type__(3))) half half3;
-#endif
 
-#include <MetalPerformanceShaders/MetalPerformanceShaders.h>
+typedef struct _MPSPackedFloat3 {
+    union {
+        struct {
+            float x;
+            float y;
+            float z;
+        };
+        float elements[3];
+    };
+} MPSPackedFloat3;
+#endif
 
 typedef NS_ENUM(NSInteger, GeneratorBufferIndex) {
     GeneratorBufferRays     = 0,
@@ -47,6 +52,10 @@ typedef NS_ENUM(NSInteger, ShadingBufferIndex) {
     ShadingBufferPerInstanceData = 12,
     ShadingBufferMaterials       = 13,
     ShadingBufferLightSources    = 14,
+    
+    // awesome
+    ShadingBufferFunctionTable   = 15,
+    ShadingBufferContext         = 16
 };
 
 typedef NS_ENUM(NSInteger, ShadowBufferIndex) {
@@ -77,7 +86,10 @@ typedef struct {
 } PRNGState;
 
 typedef struct {
-    MPSRayOriginMinDistanceDirectionMaxDistance base;
+    MPSPackedFloat3 origin;
+    float minDistance;
+    MPSPackedFloat3 direction;
+    float maxDistance;
     
     PRNGState prng;
     simd_float3 weight;
@@ -86,12 +98,21 @@ typedef struct {
 } Ray;
 
 typedef struct {
-    MPSRayOriginMinDistanceDirectionMaxDistance base;
+    MPSPackedFloat3 origin;
+    float minDistance;
+    MPSPackedFloat3 direction;
+    float maxDistance;
+    
     simd_float3 weight;
     uint16_t x, y;
 } ShadowRay;
 
-typedef MPSIntersectionDistancePrimitiveIndexInstanceIndexCoordinates Intersection;
+typedef struct {
+    float distance;
+    unsigned int primitiveIndex;
+    unsigned int instanceIndex;
+    vector_float2 coordinates;
+} Intersection;
 
 typedef struct {
     float x, y, z;

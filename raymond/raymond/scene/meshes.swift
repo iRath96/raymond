@@ -148,6 +148,7 @@ struct Mesh {
     }
     
     var shapeInfos: [ShapeInfo]
+    var materialNames: [String]
 }
 
 struct MeshLoader {
@@ -325,7 +326,8 @@ struct MeshLoader {
             accelerationGroup: group,
             accelerationStructures: accelerationStructures,
             
-            shapeInfos: shapeInfos
+            shapeInfos: shapeInfos,
+            materialNames: materialIds.sorted(by: { $0.value < $1.value }).map { $0.key }
         )
     }
 }

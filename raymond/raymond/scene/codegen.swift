@@ -129,20 +129,42 @@ struct Codegen {
         case emitted
     }
     
-    private var basePath: String
-    private var material: Scene.Material
+    private var basePath: URL
+    private var device: MTLDevice
     private var textureLoader: MTKTextureLoader
     
-    private var state: [String: NodeState] = [:]
     private(set) var textures: [MTLTexture] = []
     private var textureIndices: [String: Int] = [:]
+    
+    private var materialIndex = 0
+    private var state: [String: NodeState] = [:]
     private var invocations: [KernelInvocation] = []
     private var text = CodegenOutput()
     
-    init(basePath: String, material: Scene.Material, textureLoader: MTKTextureLoader) {
+    init(basePath: URL, device: MTLDevice) {
         self.basePath = basePath
-        self.material = material
-        self.textureLoader = textureLoader
+        self.device = device
+        self.textureLoader = .init(device: device)
+    }
+    
+    func build() throws -> MTLLibrary {
+        let metalEntryURL = Bundle.main.url(
+            forResource: "shading",
+            withExtension: "hpp"
+        )!
+        
+        let header = """
+        #define JIT_COMPILED
+        #define NUMBER_OF_TEXTURES \(textures.count)
+        #include \"\(metalEntryURL.relativePath)\"
+        // \(Date.now)
+        """
+        
+        let source = "\(header)\n\(text.output)"
+        let compileOptions = MTLCompileOptions()
+        let library = try device.makeLibrary(source: source, options: compileOptions)
+        print(source)
+        return library
     }
     
     private func warn(_ message: String) {
@@ -228,11 +250,18 @@ struct Codegen {
         }
     }
     
-    mutating func emit() throws -> String {
+    mutating func addMaterial(_ material: Scene.Material) throws {
+        try emit(material)
+    }
+    
+    private mutating func emit(_ material: Scene.Material) throws {
+        state = [:]
+        invocations = []
+        
         for node in material.nodes.sorted(by: { $0.0 < $1.0 }) {
             if node.value.kernel is OutputMaterialKernel {
                 // Only output nodes that are really needed
-                try emitNode(key: node.key)
+                try emitNode(material, key: node.key)
             }
         }
         
@@ -246,27 +275,21 @@ struct Codegen {
             textures.append(textureLoader.device.makeTexture(descriptor: descriptor)!)
         }
         
-        let metalEntryURL = Bundle.main.url(forResource: "entry", withExtension: "metal", subdirectory: "metal")!
-        text.addLine("#define JIT_COMPILED")
-        text.addLine("#define NUMBER_OF_TEXTURES \(textures.count)")
-        text.addLine("#include \"\(metalEntryURL.relativePath)\"")
-        text.addLine("// \(Date.now)")
         text.addLine("""
-        void shader(
-            device Context &ctx,
+        [[visible]] void material_\(materialIndex)(
+            Context ctx,
             thread ThreadContext &tctx
         ) {
         """)
-        
         text.indent()
         for invocation in invocations {
             invocation.output(&text)
         }
         text.unindent()
-        
         text.addLine("}")
+        text.addLine("")
         
-        return text.output
+        materialIndex += 1
     }
     
     private mutating func registerTexture(_ path: String, _ colorspace: String) throws -> Int {
@@ -284,7 +307,7 @@ struct Codegen {
         }
         
         let texture = try textureLoader.newTexture(
-            URL: URL(filePath: basePath + path.dropFirst(2)),
+            URL: URL(string: String(path.dropFirst(2)), relativeTo: basePath)!.absoluteURL,
             options: options
         )
         
@@ -308,7 +331,7 @@ struct Codegen {
         }
     }
     
-    private mutating func emitNode(key: String) throws {
+    private mutating func emitNode(_ material: Scene.Material, key: String) throws {
         switch state[key] {
             case .emitted: return
             case .pending: throw CodegenError.cycleDetected
@@ -337,7 +360,7 @@ struct Codegen {
                 }
             } else if value.links!.count == 1 {
                 let link = value.links![0]
-                try emitNode(key: link.node)
+                try emitNode(material, key: link.node)
                 
                 invocation.assign(key: key, link: link, type: value.type)
             } else {
