@@ -100,4 +100,8 @@ class GameViewController: NSViewController {
         ])
         renderer.updateProjection(by: rotation)
     }
+    
+    @IBAction func saveFrame(_ sender: Any) {
+        renderer.saveFrame()
+    }
 }

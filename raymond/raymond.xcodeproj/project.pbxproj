@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		FA100A832877685100884319 /* meshes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA100A822877685100884319 /* meshes.swift */; };
+		FA100A8A287809B600884319 /* tinyexr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA100A88287809B600884319 /* tinyexr.cpp */; };
+		FA100A8D28780BA900884319 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = FA100A8C28780BA300884319 /* libz.tbd */; };
 		FAC3AAF32875D4D800C0B0D0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF22875D4D800C0B0D0 /* AppDelegate.swift */; };
 		FAC3AAF52875D4D800C0B0D0 /* GameViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF42875D4D800C0B0D0 /* GameViewController.swift */; };
 		FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */; };
@@ -22,6 +24,10 @@
 /* Begin PBXFileReference section */
 		FA100A822877685100884319 /* meshes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = meshes.swift; sourceTree = "<group>"; };
 		FA100A85287790ED00884319 /* random.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = random.hpp; sourceTree = "<group>"; };
+		FA100A87287809B600884319 /* tinyexr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tinyexr.h; sourceTree = "<group>"; };
+		FA100A88287809B600884319 /* tinyexr.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tinyexr.cpp; sourceTree = "<group>"; };
+		FA100A89287809B600884319 /* BridgingHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
+		FA100A8C28780BA300884319 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		FAC3AAEF2875D4D800C0B0D0 /* raymond.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = raymond.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3AAF22875D4D800C0B0D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		FAC3AAF42875D4D800C0B0D0 /* GameViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewController.swift; sourceTree = "<group>"; };
@@ -41,6 +47,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA100A8D28780BA900884319 /* libz.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,11 +62,29 @@
 			path = gpu;
 			sourceTree = "<group>";
 		};
+		FA100A86287809A600884319 /* io */ = {
+			isa = PBXGroup;
+			children = (
+				FA100A88287809B600884319 /* tinyexr.cpp */,
+				FA100A87287809B600884319 /* tinyexr.h */,
+			);
+			path = io;
+			sourceTree = "<group>";
+		};
+		FA100A8B28780BA300884319 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				FA100A8C28780BA300884319 /* libz.tbd */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		FAC3AAE62875D4D800C0B0D0 = {
 			isa = PBXGroup;
 			children = (
 				FAC3AAF12875D4D800C0B0D0 /* raymond */,
 				FAC3AAF02875D4D800C0B0D0 /* Products */,
+				FA100A8B28780BA300884319 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -74,6 +99,7 @@
 		FAC3AAF12875D4D800C0B0D0 /* raymond */ = {
 			isa = PBXGroup;
 			children = (
+				FA100A86287809A600884319 /* io */,
 				FA100A84287790CD00884319 /* gpu */,
 				FAC3AB062875D53800C0B0D0 /* scene */,
 				FAC3AAF22875D4D800C0B0D0 /* AppDelegate.swift */,
@@ -81,6 +107,7 @@
 				FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */,
 				FAC3AAF82875D4D800C0B0D0 /* Shaders.metal */,
 				FAC3AAFA2875D4D800C0B0D0 /* ShaderTypes.h */,
+				FA100A89287809B600884319 /* BridgingHeader.h */,
 				FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */,
 				FAC3AAFD2875D4D900C0B0D0 /* Main.storyboard */,
 				FAC3AB002875D4D900C0B0D0 /* raymond.entitlements */,
@@ -170,6 +197,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FAC3AB1F2876D34600C0B0D0 /* scene.swift in Sources */,
+				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
 				FAC3AAF92875D4D800C0B0D0 /* Shaders.metal in Sources */,
 				FAC3AAF52875D4D800C0B0D0 /* GameViewController.swift in Sources */,
 				FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */,
@@ -330,7 +358,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "$(TARGET_NAME)/ShaderTypes.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "$(TARGET_NAME)/BridgingHeader.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -358,7 +386,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "$(TARGET_NAME)/ShaderTypes.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "$(TARGET_NAME)/BridgingHeader.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

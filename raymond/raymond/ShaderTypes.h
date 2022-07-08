@@ -62,6 +62,11 @@ typedef NS_ENUM(uint8_t, ImportanceSampling) {
 };
 
 typedef struct {
+    uint32_t vertexOffset;
+    uint32_t faceOffset;
+} PerInstanceData;
+
+typedef struct {
     uint32_t frameIndex;
     float4x4 projectionMatrix;
 } Uniforms;
@@ -86,7 +91,7 @@ typedef struct {
     uint16_t x, y;
 } ShadowRay;
 
-typedef MPSIntersectionDistancePrimitiveIndexBufferIndexInstanceIndexCoordinates Intersection;
+typedef MPSIntersectionDistancePrimitiveIndexInstanceIndexCoordinates Intersection;
 
 typedef struct {
     float x, y, z;

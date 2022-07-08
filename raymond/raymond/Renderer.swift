@@ -41,6 +41,7 @@ class Renderer: NSObject, MTKViewDelegate {
     var shadowRayCountBuffer: MTLBuffer?
     var shadowRayBuffer: MTLBuffer?
     var intersectionBuffer: MTLBuffer?
+    var instanceBuffer: MTLBuffer?
     var outputImageSize: MTLSize?
     var outputImage: MTLTexture?
     
@@ -108,6 +109,19 @@ class Renderer: NSObject, MTKViewDelegate {
             
             mesh = try meshLoader.build(withDevice: device)
             
+            instanceBuffer = device.makeBuffer(
+                length: MemoryLayout<PerInstanceData>.stride * Int(instancing.instanceCount))
+            instanceBuffer!.label = "Per instance data"
+            let instances = instanceBuffer!.contents().assumingMemoryBound(to: PerInstanceData.self)
+            for index in 0..<Int(instancing.instanceCount) {
+                let instanceData = instances.advanced(by: index)
+                let shapeInfo = mesh.shapeInfos[Int(instancing.indicesArray[index])]
+                instanceData.pointee = PerInstanceData(
+                    vertexOffset: shapeInfo.vertexOffset,
+                    faceOffset: shapeInfo.faceOffset
+                )
+            }
+            
             accelerationStructure = MPSInstanceAccelerationStructure(group: mesh.accelerationGroup)
             accelerationStructure.accelerationStructures = mesh.accelerationStructures
             accelerationStructure.instanceCount = Int(instancing.instanceCount)
@@ -144,7 +158,7 @@ class Renderer: NSObject, MTKViewDelegate {
     private func setupRayIntersectors() {
         rayIntersector.rayDataType = .originMinDistanceDirectionMaxDistance
         rayIntersector.rayStride = MemoryLayout<Ray>.stride
-        rayIntersector.intersectionDataType = .distancePrimitiveIndexBufferIndexInstanceIndexCoordinates
+        rayIntersector.intersectionDataType = .distancePrimitiveIndexInstanceIndexCoordinates
         rayIntersector.intersectionStride = MemoryLayout<Intersection>.stride
         
         shadowRayIntersector.rayDataType = .originMinDistanceDirectionMaxDistance
@@ -322,6 +336,7 @@ class Renderer: NSObject, MTKViewDelegate {
                     
                     // scene buffers
                     computeEncoder.setBuffer(dynamicUniformBuffer, offset: 0, index: ShadingBufferIndex.uniforms.rawValue)
+                    computeEncoder.setBuffer(instanceBuffer, offset: 0, index: ShadingBufferIndex.perInstanceData.rawValue)
                     computeEncoder.setBuffer(mesh.materials, offset: 0, index: ShadingBufferIndex.materials.rawValue)
                     
                     computeEncoder.dispatchThreadgroups(
@@ -433,5 +448,72 @@ class Renderer: NSObject, MTKViewDelegate {
         intersectionBuffer!.label = "Intersections"
         
         frameIndex = 0
+    }
+    
+    func saveFrame() {
+        let norm = Float(1) / Float(frameIndex)
+        let img = outputImage!
+        let numComponents = 4
+        let bytesPerRow = 4 * img.width * MemoryLayout<Float>.stride // @todo hack
+        let data = UnsafeMutableRawPointer.allocate(
+            byteCount: bytesPerRow * img.height,
+            alignment: 16
+        )
+        defer {
+            data.deallocate()
+        }
+        
+        // load image data
+        img.getBytes(
+            data,
+            bytesPerRow: bytesPerRow,
+            from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
+            size: MTLSize(width: img.width, height: img.height, depth: 1)),
+            mipmapLevel: 0
+        )
+        
+        // normalize image data
+        let buffer = data.bindMemory(to: Float.self, capacity: numComponents * img.width * img.height)
+        for i in 0..<(img.width * img.height) {
+            buffer[numComponents*i + 0] *= norm
+            buffer[numComponents*i + 1] *= norm
+            buffer[numComponents*i + 2] *= norm
+            buffer[numComponents*i + 3] = 1
+        }
+        
+        for y in 0..<(img.height / 2) {
+            let y2 = img.height - (y + 1)
+            let elementsPerRow = numComponents * img.width
+            for i in 0..<elementsPerRow {
+                let tmp = buffer[y * elementsPerRow + i]
+                buffer[y * elementsPerRow + i] = buffer[y2 * elementsPerRow + i]
+                buffer[y2 * elementsPerRow + i] = tmp
+            }
+        }
+        
+        // write data out
+        let err = UnsafeMutablePointer<Optional<UnsafePointer<CChar>>>.allocate(capacity: 1)
+        err.pointee = UnsafePointer(bitPattern: 0)
+        defer {
+            err.deallocate()
+        }
+        
+        let resourcesURL = URL(fileURLWithPath: "/Users/alex/Desktop", isDirectory: true)
+        let fileName = resourcesURL.appendingPathComponent("frame.exr")
+        
+        SaveEXR(
+            data.bindMemory(to: Float.self, capacity: numComponents * img.width * img.height),
+            Int32(img.width), Int32(img.height),
+            Int32(numComponents),
+            0,
+            NSString(string: fileName.path).utf8String!,
+            err
+        )
+        
+        if let p = err.pointee {
+            print(NSString(utf8String: p)!)
+        } else {
+            print("Saved to EXR file")
+        }
     }
 }

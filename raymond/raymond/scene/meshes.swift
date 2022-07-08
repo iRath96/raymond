@@ -78,6 +78,8 @@ struct Instancing {
     
     let indices: MTLBuffer
     let transforms: MTLBuffer
+    
+    let indicesArray: [UInt32]
 }
 
 struct InstanceLoader {
@@ -118,15 +120,14 @@ struct InstanceLoader {
             
             indices = indices.advanced(by: 1)
             transforms = transforms.advanced(by: 1)
-            
-            print(instance.transform)
         }
         
         return Instancing(
             instanceCount: UInt32(instances.count),
             shapeNames: shapeIds.sorted(by: { $0.value < $1.value }).map { $0.key },
             indices: indexBuffer,
-            transforms: transformBuffer
+            transforms: transformBuffer,
+            indicesArray: instances.map { $0.index }
         )
     }
 }
@@ -140,6 +141,13 @@ struct Mesh {
     
     let accelerationGroup: MPSAccelerationStructureGroup
     let accelerationStructures: [MPSTriangleAccelerationStructure]
+    
+    struct ShapeInfo {
+        var vertexOffset: UInt32
+        var faceOffset: UInt32
+    }
+    
+    var shapeInfos: [ShapeInfo]
 }
 
 struct MeshLoader {
@@ -283,23 +291,26 @@ struct MeshLoader {
         // build acceleration structure
         let group = MPSAccelerationStructureGroup(device: device)
         
-        var vertexOffset = 0
-        var indexOffset = 0
+        var shapeInfo = Mesh.ShapeInfo(vertexOffset: 0, faceOffset: 0)
+        var shapeInfos: [Mesh.ShapeInfo] = []
+        
         let accelerationStructures = shapeHandles.map { shapeHandle in
             let triAccel = MPSTriangleAccelerationStructure(group: group)
             triAccel.vertexBuffer = vertexBuffer
             triAccel.vertexStride = 3 * MemoryLayout<Float>.stride
-            triAccel.vertexBufferOffset = triAccel.vertexStride * vertexOffset
+            triAccel.vertexBufferOffset = triAccel.vertexStride * Int(shapeInfo.vertexOffset)
             
             triAccel.indexBuffer = indexBuffer
             triAccel.indexType = .uInt32
-            triAccel.indexBufferOffset = MemoryLayout<UInt32>.stride * indexOffset
+            triAccel.indexBufferOffset = MemoryLayout<UInt32>.stride * Int(3 * shapeInfo.faceOffset)
             
             triAccel.triangleCount = Int(shapeHandle.faceCount)
             triAccel.rebuild()
             
-            vertexOffset += Int(shapeHandle.vertexCount)
-            indexOffset += 3 * Int(shapeHandle.faceCount)
+            shapeInfos.append(shapeInfo)
+            
+            shapeInfo.vertexOffset += shapeHandle.vertexCount
+            shapeInfo.faceOffset += shapeHandle.faceCount
             
             return triAccel
         }
@@ -312,7 +323,9 @@ struct MeshLoader {
             materials: materialBuffer,
             
             accelerationGroup: group,
-            accelerationStructures: accelerationStructures
+            accelerationStructures: accelerationStructures,
+            
+            shapeInfos: shapeInfos
         )
     }
 }
