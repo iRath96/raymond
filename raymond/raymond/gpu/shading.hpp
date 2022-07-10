@@ -8,6 +8,8 @@
 #include <metal_stdlib>
 using namespace metal;
 
+constant float eps = 0.001f;
+
 template<typename T>
 T interpolate(T a, T b, T c, float2 barycentric) {
     float u = barycentric.x;
@@ -58,8 +60,23 @@ kernel void handleIntersections(
     
     device Ray &ray = rays[rayIndex];
     constant Intersection &isect = intersections[rayIndex];
-    if (isect.distance <= 0.0f)
+    if (isect.distance <= 0.0f) {
+        // miss
+        float envmapCos = dot(ray.direction, normalize(float3(1.192f, -1, 0.42f)));
+        envmapCos = select(1, 0, envmapCos < 0.9);
+        float3 envmap = 10 * float3(1.538, 1.351, 1.257) * envmapCos + 0.05f;
+            
+        uint2 coordinates = uint2(ray.x, ray.y);
+        image.write(
+            //image.read(coordinates) + float4(isect.distance, 0, 0, 1),
+            image.read(coordinates) + float4(
+                envmap * ray.weight,
+                1),
+            coordinates
+        );
+        
         return;
+    }
     
     const device PerInstanceData &instance = perInstanceData[isect.instanceIndex];
     
@@ -69,34 +86,63 @@ kernel void handleIntersections(
     tctx.rnd = sample3d(ray.prng);
     tctx.wo = -ray.direction;
     
+    float3 ipoint;
     {
         const unsigned int faceIndex = instance.faceOffset + isect.primitiveIndex;
         const unsigned int idx0 = instance.vertexOffset + vertexIndices[3 * faceIndex + 0];
         const unsigned int idx1 = instance.vertexOffset + vertexIndices[3 * faceIndex + 1];
         const unsigned int idx2 = instance.vertexOffset + vertexIndices[3 * faceIndex + 2];
         
-        /*float3 p = interpolate(
-            vertexToFloat3(vertices[idx0]),
-            vertexToFloat3(vertices[idx1]),
-            vertexToFloat3(vertices[idx2]),
-            isect.coordinates);*/
+        // @todo: is this numerically stable enough?
+        //ipoint = ray.origin + ray.direction * isect.distance;
         
-        tctx.uv = interpolate(
-            texcoords[idx0],
-            texcoords[idx1],
-            texcoords[idx2],
-            isect.coordinates);
+        float2 Tc = texcoords[idx2];
+        float2x2 T;
+        T.columns[0] = texcoords[idx0] - Tc;
+        T.columns[1] = texcoords[idx1] - Tc;
+        tctx.uv = T * isect.coordinates + Tc;
         
-        tctx.normal = interpolate(
+        float3 Pc = vertexToFloat3(vertices[idx2]);
+        float2x3 P;
+        P.columns[0] = vertexToFloat3(vertices[idx0]) - Pc;
+        P.columns[1] = vertexToFloat3(vertices[idx1]) - Pc;
+        ipoint = (instance.pointTransform * float4(P * isect.coordinates + Pc, 1)).xyz;
+        
+        tctx.normal = instance.normalTransform * interpolate(
             vertexToFloat3(vertexNormals[idx0]),
             vertexToFloat3(vertexNormals[idx1]),
             vertexToFloat3(vertexNormals[idx2]),
             isect.coordinates);
+        tctx.normal = normalize(tctx.normal);
         
+        tctx.tu = normalize(instance.normalTransform * (P * float2(T[1][1], -T[0][1])));
+        tctx.tv = normalize(instance.normalTransform * (P * float2(T[1][0], -T[0][0])));
+
         shaderIndex = materials[faceIndex];
     }
     
+    /*{
+        uint2 coordinates = uint2(ray.x, ray.y);
+        image.write(
+            image.read(coordinates) + float4(
+                ipoint,//float3(pow(max(dot(-ray.direction, tctx.normal), 0.f), 100.f)),
+                1),
+            coordinates
+        );
+        return;
+    }*/
+    
     shaders[shaderIndex](ctx, tctx);
+    
+    if (mean(tctx.material.emission) > 0) {
+        uint2 coordinates = uint2(ray.x, ray.y);
+        image.write(
+            image.read(coordinates) + float4(
+                ray.weight + tctx.material.emission,
+                1),
+            coordinates
+        );
+    }
     
     float3x3 worldToShadingFrame;
     if (all(tctx.material.normal == 0)) {
@@ -106,38 +152,42 @@ kernel void handleIntersections(
         worldToShadingFrame = buildOrthonormalBasis(normal);
     }
     
+    float3 weight = ray.weight;
+    float3 direction;
+    
     do {
         const float3 transformedWo = tctx.wo * worldToShadingFrame;
         const float woDotGeoN = dot(tctx.wo, tctx.normal);
         const float woDotShN = transformedWo.z;
         if (woDotShN * woDotGeoN < 0) {
-            ray.weight = 0;
+            weight = 0;
             break;
         }
         
         auto sample = tctx.material.sample(tctx.rnd, transformedWo);
-        ray.weight *= sample.weight;
-        ray.direction = sample.wi * transpose(worldToShadingFrame);
+        weight *= sample.weight;
+        direction = sample.wi * transpose(worldToShadingFrame);
         
-        const float wiDotGeoN = dot(ray.direction, tctx.normal);
+        const float wiDotGeoN = dot(direction, tctx.normal);
         const float wiDotShN = sample.wi.z;
         if (wiDotShN * wiDotGeoN < 0) {
-            ray.weight = 0;
+            weight = 0;
             break;
         }
     } while (false);
     
-    float envmapCos = dot(ray.direction, normalize(float3(1.192f, -1, 0.42f)));
-    envmapCos = select(1, 0, envmapCos < 0.8);
-    float3 envmap = 10 * float3(1.538, 1.351, 1.257) * envmapCos + 0.05f;
-        
-    uint2 coordinates = uint2(ray.x, ray.y);
-    image.write(
-        //image.read(coordinates) + float4(isect.distance, 0, 0, 1),
-        image.read(coordinates) + float4(
-            envmap * ray.weight,
-            1),
-        coordinates
-    );
+    if (mean(weight) > 0) {
+        uint nextRayIndex = atomic_fetch_add_explicit(&nextRayCount, 1, memory_order_relaxed);
+        device Ray &nextRay = nextRays[nextRayIndex];
+        nextRay.origin = ipoint;
+        nextRay.direction = direction;
+        nextRay.minDistance = eps;
+        nextRay.maxDistance = INFINITY;
+        nextRay.weight = weight;
+        nextRay.x = ray.x;
+        nextRay.y = ray.y;
+        nextRay.prng = ray.prng;
+    }
+    
     return;
 }

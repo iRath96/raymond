@@ -248,7 +248,7 @@ struct Codegen {
         case is EmissionKernel:
             return .init(kernel: "Emission")
         case is NewGeometryKernel:
-            return .init(kernel: "Geometry")
+            return .init(kernel: "NewGeometry")
         default:
             throw CodegenError.unsupportedKernel
         }
@@ -306,6 +306,9 @@ struct Codegen {
         switch colorspace {
         case "Linear": options[.SRGB] = false
         case "sRGB": options[.SRGB] = true
+        case "Non-Color":
+            warn("colorspace: 'Non-Color' has not been tested")
+            options[.SRGB] = false
         default:
             throw CodegenError.unsupportedColorSpace
         }

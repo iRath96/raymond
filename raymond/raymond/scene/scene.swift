@@ -64,11 +64,17 @@ struct SceneLoader {
     func makeScene(fromURL url: URL) throws -> Scene {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
-        let scene = try decoder.decode(Scene.self, from: data)
-        /*for var (_, shape) in scene.shapes {
+        var scene = try decoder.decode(Scene.self, from: data)
+        for (shapeName, shape) in scene.shapes {
+            if shape.materials.isEmpty {
+                print("assigning random material to shape without materials: \(shapeName)!")
+                scene.shapes[shapeName]!.materials = [ scene.materials.keys.first! ]
+            }
+            
             // make all relative paths of shapes absolute
-            shape.filepath = URL(string: shape.filepath.relativePath, relativeTo: url)!.absoluteURL
-        }*/
+            let filepath = URL(string: shape.filepath.relativePath, relativeTo: url)!.absoluteURL
+            scene.shapes[shapeName]!.filepath = filepath
+        }
         return scene
     }
 }

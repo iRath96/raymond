@@ -2,74 +2,14 @@ import Foundation
 import Metal
 import MetalPerformanceShaders
 
-/**
- * @todo improve efficiency
- */
-class FileReader {
-    enum FileReaderError: Error {
-        case unexpectedLine
-        case unexpectedToken
-    }
-    
-    var fileHandle: FileHandle
-    private let bufferSize: Int = 1024
-    private var buffer: Data
-    
-    private let asciiSpace = Character(" ").asciiValue!
-    private let asciiNewline = Character("\n").asciiValue!
-    
-    init(withURL url: URL) throws {
-        fileHandle = try FileHandle(forReadingFrom: url)
-        buffer = Data(capacity: bufferSize)
-    }
-    
-    private func readTokenOrLine(_ token: Bool) throws -> String {
-        while true {
-            var index: Int?
-            for i in 0..<buffer.count {
-                if (token && (buffer[i] == asciiSpace)) || buffer[i] == asciiNewline {
-                    index = i
-                    break
-                }
-            }
-            
-            if let index = index {
-                let token = buffer.subdata(in: 0..<index)
-                buffer.removeSubrange(0...index)
-                return String(data: token, encoding: .ascii)!
-            }
-            
-            let chunk = try fileHandle.read(upToCount: bufferSize)!
-            if chunk.count == 0 {
-                // end of file
-                return String(data: buffer, encoding: .ascii)!
-            }
-            
-            buffer.append(chunk)
-        }
-    }
-    
-    @discardableResult
-    func readLine() throws -> String {
-        return try readTokenOrLine(false)
-    }
-    
-    @discardableResult
-    func readToken() throws -> String {
-        return try readTokenOrLine(true)
-    }
-    
-    func assertLine(_ line: String) throws {
-        guard try readLine() == line else {
-            throw FileReaderError.unexpectedLine
-        }
-    }
-    
-    func assertToken(_ token: String) throws {
-        guard try readToken() == token else {
-            throw FileReaderError.unexpectedLine
-        }
-    }
+func normalTransformFromPointTransform(_ transform: float4x4) -> float3x3 {
+    let inv = transform.inverse.transpose
+    let result = float3x3(
+        SIMD3(inv[0,0], inv[0,1], inv[0,2]),
+        SIMD3(inv[1,0], inv[1,1], inv[1,2]),
+        SIMD3(inv[2,0], inv[2,1], inv[2,2])
+    )
+    return result
 }
 
 struct Instancing {
@@ -80,6 +20,8 @@ struct Instancing {
     let transforms: MTLBuffer
     
     let indicesArray: [UInt32]
+    let pointTransforms: [simd_float4x4]
+    let normalTransforms: [simd_float3x3]
 }
 
 struct InstanceLoader {
@@ -127,7 +69,11 @@ struct InstanceLoader {
             shapeNames: shapeIds.sorted(by: { $0.value < $1.value }).map { $0.key },
             indices: indexBuffer,
             transforms: transformBuffer,
-            indicesArray: instances.map { $0.index }
+            indicesArray: instances.map { $0.index },
+            pointTransforms: instances.map { $0.transform },
+            normalTransforms: instances.map {
+                normalTransformFromPointTransform($0.transform)
+            }
         )
     }
 }
@@ -159,49 +105,48 @@ struct MeshLoader {
     }
     
     private struct ShapeHandle {
+        var path: String
+        
         var materials: [UInt32]
         var vertexCount: UInt32
         var faceCount: UInt32
         
-        var fileReader: FileReader
-        
-        private func assertToken(_ str: String) throws {
-            guard try fileReader.readToken() == str else {
-                throw MeshLoaderError.invalidShapeHeader
-            }
-        }
+        var fileReader: PLYReader
         
         init(withPath url: URL, materials: [UInt32]) throws {
             self.materials = materials
-            fileReader = try FileReader(withURL: url)
+            path = url.relativeString
+            fileReader = PLYReader(url: url)
             
             // read header
             
-            try fileReader.assertLine("ply")
-            try fileReader.assertLine("format ascii 1.0")
-            try fileReader.assertToken("comment")
-            try fileReader.readLine()
+            fileReader.assertLine("ply")
+            fileReader.assertLine("format ascii 1.0")
+            fileReader.assertToken("comment")
+            fileReader.readLine()
             
-            try fileReader.assertToken("element")
-            try fileReader.assertToken("vertex")
-            vertexCount = UInt32(try fileReader.readToken())!
+            fileReader.assertToken("element")
+            fileReader.assertToken("vertex")
+            vertexCount = UInt32(exactly: fileReader.readInt())!
             
-            try fileReader.assertLine("property float x")
-            try fileReader.assertLine("property float y")
-            try fileReader.assertLine("property float z")
-            try fileReader.assertLine("property float nx")
-            try fileReader.assertLine("property float ny")
-            try fileReader.assertLine("property float nz")
-            try fileReader.assertLine("property float s")
-            try fileReader.assertLine("property float t")
+            fileReader.assertLine("property float x")
+            fileReader.assertLine("property float y")
+            fileReader.assertLine("property float z")
+            fileReader.assertLine("property float nx")
+            fileReader.assertLine("property float ny")
+            fileReader.assertLine("property float nz")
+            fileReader.assertLine("property float s")
+            fileReader.assertLine("property float t")
             
-            try fileReader.assertToken("element")
-            try fileReader.assertToken("face")
-            faceCount = UInt32(try fileReader.readToken())!
+            fileReader.assertToken("element")
+            fileReader.assertToken("face")
+            faceCount = UInt32(exactly: fileReader.readInt())!
             
-            try fileReader.assertLine("property list uchar uint vertex_indices")
-            try fileReader.assertLine("property uchar material_index")
-            try fileReader.assertLine("end_header")
+            fileReader.assertLine("property list uchar uint vertex_indices")
+            fileReader.assertLine("property uchar material_index")
+            fileReader.assertLine("end_header")
+            
+            fileReader.close()
         }
     }
     
@@ -252,41 +197,25 @@ struct MeshLoader {
         var materials = materialBuffer.contents().assumingMemoryBound(to: UInt32.self)
         
         for shapeHandle in shapeHandles {
-            // read vertices
-            for _ in 0..<shapeHandle.vertexCount {
-                for dim in 0..<3 {
-                    vertices.advanced(by: dim).pointee = Float(try shapeHandle.fileReader.readToken())!
-                }
-                
-                for dim in 0..<3 {
-                    normals.advanced(by: dim).pointee = Float(try shapeHandle.fileReader.readToken())!
-                }
-                
-                for dim in 0..<2 {
-                    texCoords.advanced(by: dim).pointee = Float(try shapeHandle.fileReader.readToken())!
-                }
-                
-                vertices = vertices.advanced(by: 3)
-                normals = normals.advanced(by: 3)
-                texCoords = texCoords.advanced(by: 2)
-            }
+            print("parsing shape \(shapeHandle.path)")
             
-            // read faces
-            for _ in 0..<shapeHandle.faceCount {
-                let indexCount = Int(try shapeHandle.fileReader.readToken())!
-                guard indexCount == 3 else {
-                    throw MeshLoaderError.onlyTrianglesSupported
-                }
-                
-                for dim in 0..<3 {
-                    indices.advanced(by: dim).pointee = UInt32(try shapeHandle.fileReader.readToken())!
-                }
-                
-                materials.pointee = shapeHandle.materials[Int(try shapeHandle.fileReader.readToken())!]
-                
-                indices = indices.advanced(by: 3)
-                materials = materials.advanced(by: 1)
-            }
+            shapeHandle.fileReader.reopen()
+            
+            shapeHandle.fileReader.readVertexElements(
+                shapeHandle.vertexCount,
+                vertices: &vertices,
+                normals: &normals,
+                texCoords: &texCoords)
+            
+            let palette = UnsafePointer<UInt32>(shapeHandle.materials)
+            shapeHandle.fileReader.readFaces(
+                shapeHandle.faceCount,
+                indices: &indices,
+                materials: &materials,
+                fromPalette: palette
+            )
+            
+            shapeHandle.fileReader.close()
         }
         
         // build acceleration structure
@@ -296,6 +225,8 @@ struct MeshLoader {
         var shapeInfos: [Mesh.ShapeInfo] = []
         
         let accelerationStructures = shapeHandles.map { shapeHandle in
+            print("accelerating \(shapeHandle.path)")
+            
             let triAccel = MPSTriangleAccelerationStructure(group: group)
             triAccel.vertexBuffer = vertexBuffer
             triAccel.vertexStride = 3 * MemoryLayout<Float>.stride

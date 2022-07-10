@@ -33,7 +33,7 @@ class Renderer: NSObject, MTKViewDelegate {
     var projectionMatrix: float4x4
     var frameIndex = UInt32(0)
     var rayCount = 0
-    let maxDepth = 1
+    let maxDepth = 8
     
     var rayBuffer: MTLBuffer?
     var rayCountBuffer: MTLBuffer?
@@ -99,14 +99,28 @@ class Renderer: NSObject, MTKViewDelegate {
             let scene = try SceneLoader().makeScene(fromURL: path)
             
             var instanceLoader = InstanceLoader()
-            for entityName in [
+            let entityNames = [
                 "AI55_008_floor_001",
                 "Am185_12_obj_169",
                 "AI55_008_sit_pillows_021",
                 "Am185_12_obj_131",
                 "Am185_12_obj_127",
-                "Am185_12_obj_126"
-            ] {
+                "Am185_12_obj_126",
+                "Am185_12_obj_129",
+                "Am185_12_obj_128",
+                "AI55_008_Golden_Pot_001",
+                "AM208_018_Saucer002",
+                "AM208_018_Candle_002",
+                "AI55_008_sit_pillows_013",
+                "Am185_12_obj_121",
+                "AI55_008_sit_pillows_009",
+                "AI55_008_Chair_Brown002",
+                "AI55_008_Light009",
+                "AI55_008_Plane_002"
+            ]
+            //let entityNames: [String] = scene.entities.keys.sorted()[0..<50]
+            for entityName in entityNames {
+                print("adding entity \(entityName)")
                 try instanceLoader.addEntity(scene.entities[entityName]!)
             }
             
@@ -114,15 +128,20 @@ class Renderer: NSObject, MTKViewDelegate {
             
             var meshLoader = MeshLoader()
             for shapeName in instancing.shapeNames {
+                print("adding shape \(shapeName)")
                 try meshLoader.addShape(scene.shapes[shapeName]!)
             }
             
+            print("building acceleration structures")
             mesh = try meshLoader.build(withDevice: device)
             
             var codegen = Codegen(basePath: path, device: device)
             for materialName in mesh.materialNames {
+                print("generating shader for \(materialName)")
                 try codegen.addMaterial(scene.materials[materialName]!)
             }
+            
+            print("compiling shaders")
             let library = try codegen.build()
             
             let linkedFunctions = MTLLinkedFunctions()
@@ -177,7 +196,9 @@ class Renderer: NSObject, MTKViewDelegate {
                 let shapeInfo = mesh.shapeInfos[Int(instancing.indicesArray[index])]
                 instanceData.pointee = PerInstanceData(
                     vertexOffset: shapeInfo.vertexOffset,
-                    faceOffset: shapeInfo.faceOffset
+                    faceOffset: shapeInfo.faceOffset,
+                    pointTransform: instancing.pointTransforms[index],
+                    normalTransform: instancing.normalTransforms[index]
                 )
             }
             
@@ -191,6 +212,7 @@ class Renderer: NSObject, MTKViewDelegate {
                 resourcesRead.append(texture)
             }
 
+            print("building top level AS")
             accelerationStructure = MPSInstanceAccelerationStructure(group: mesh.accelerationGroup)
             accelerationStructure.accelerationStructures = mesh.accelerationStructures
             accelerationStructure.instanceCount = Int(instancing.instanceCount)
@@ -198,6 +220,8 @@ class Renderer: NSObject, MTKViewDelegate {
             accelerationStructure.transformType = .float4x4
             accelerationStructure.transformBuffer = instancing.transforms
             accelerationStructure.rebuild()
+            
+            print("done!")
             
             projectionMatrix = float4x4([
                 SIMD4([ 0, 0, 1, 314.8 ]),
