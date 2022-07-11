@@ -116,11 +116,34 @@ class Renderer: NSObject, MTKViewDelegate {
                 "AI55_008_sit_pillows_009",
                 "AI55_008_Chair_Brown002",
                 "AI55_008_Light009",
-                "AI55_008_Plane_002"
+                "AI55_008_Plane_002",
+                "AI55_008_sit_pillows_012",
+                "Am185_12_obj_130",
+                "AI55_008_Pill_460",
+                "AI55_008_Pill_459",
+                "AI55_008_Pill_458",
+                "AI55_008_Pill_453",
+                "AI55_008_Pill_452",
+                "AI55_008_Pill_439",
+                "AI55_008_Pill_447",
+                "AI55_008_sit_001",
+                "AI55_008_Stair",
+                "AI55_008_Wall_001",
+                "AI55_008_Wall_Pattern_002",
+                "AI55_008_Wall_Pattern_001",
+                "AI55_008_sit_002",
+                "AI55_008_Metal_Frame_009",
+                "AM208_018_Vessel003",
+                "Am185_12_obj_123",
+                "AM141_035_obj_148",
+                "AM141_035_obj_145",
+                "AM141_035_obj_146",
+                "AM141_035_obj_152",
+                "AM201_032_Dypsis_Lanceloata_leafs002"
             ]
-            //let entityNames: [String] = scene.entities.keys.sorted()[0..<50]
+            //let entityNames = [String](scene.entities.keys.sorted())[0..<0]
             for entityName in entityNames {
-                print("adding entity \(entityName)")
+                NSLog("adding entity \(entityName)")
                 try instanceLoader.addEntity(scene.entities[entityName]!)
             }
             
@@ -128,29 +151,31 @@ class Renderer: NSObject, MTKViewDelegate {
             
             var meshLoader = MeshLoader()
             for shapeName in instancing.shapeNames {
-                print("adding shape \(shapeName)")
+                NSLog("adding shape \(shapeName)")
                 try meshLoader.addShape(scene.shapes[shapeName]!)
             }
             
-            print("building acceleration structures")
+            NSLog("building acceleration structures")
             mesh = try meshLoader.build(withDevice: device)
             
             var codegen = Codegen(basePath: path, device: device)
             for materialName in mesh.materialNames {
-                print("generating shader for \(materialName)")
+                NSLog("generating shader for \(materialName)")
                 try codegen.addMaterial(scene.materials[materialName]!)
             }
             
-            print("compiling shaders")
+            NSLog("generating shaders")
             let library = try codegen.build()
             
             let linkedFunctions = MTLLinkedFunctions()
             linkedFunctions.functions = []
             for index in 0..<mesh.materialNames.count {
+                NSLog("making function material_\(index)")
                 let function = library.makeFunction(name: "material_\(index)")!
                 linkedFunctions.functions!.append(function)
             }
             
+            NSLog("making function handleIntersections")
             let descriptor = MTLComputePipelineDescriptor()
             descriptor.computeFunction = library.makeFunction(
                 name: "handleIntersections")
@@ -161,6 +186,7 @@ class Renderer: NSObject, MTKViewDelegate {
                 options: [],
                 reflection: nil)
             
+            NSLog("making function handleIntersections (last)")
             descriptor.computeFunction = try library.makeFunction(
                 name: "handleIntersections",
                 constantValues: lastHandlerConstants)
@@ -212,7 +238,7 @@ class Renderer: NSObject, MTKViewDelegate {
                 resourcesRead.append(texture)
             }
 
-            print("building top level AS")
+            NSLog("building top level AS")
             accelerationStructure = MPSInstanceAccelerationStructure(group: mesh.accelerationGroup)
             accelerationStructure.accelerationStructures = mesh.accelerationStructures
             accelerationStructure.instanceCount = Int(instancing.instanceCount)
@@ -221,7 +247,7 @@ class Renderer: NSObject, MTKViewDelegate {
             accelerationStructure.transformBuffer = instancing.transforms
             accelerationStructure.rebuild()
             
-            print("done!")
+            NSLog("done!")
             
             projectionMatrix = float4x4([
                 SIMD4([ 0, 0, 1, 314.8 ]),
@@ -326,8 +352,13 @@ class Renderer: NSObject, MTKViewDelegate {
         if let commandBuffer = commandQueue.makeCommandBuffer() {
             let frameStart = Date()
             let semaphore = inFlightSemaphore
-            commandBuffer.addCompletedHandler { (_ commandBuffer)-> Swift.Void in
+            commandBuffer.addCompletedHandler { (_ commandBuffer) -> Swift.Void in
                 let frameTime = -Float(frameStart.timeIntervalSinceNow)
+                if frameTime > 1.0 {
+                    print("frame took more than \(frameTime) seconds. Sleeping 3 seconds to not lock up system!")
+                    sleep(3)
+                }
+                
                 self.framesPerSecond += 1/frameTime
                 self.fpsSamples += 1
                 

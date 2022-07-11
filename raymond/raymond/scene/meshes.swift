@@ -197,7 +197,7 @@ struct MeshLoader {
         var materials = materialBuffer.contents().assumingMemoryBound(to: UInt32.self)
         
         for shapeHandle in shapeHandles {
-            print("parsing shape \(shapeHandle.path)")
+            NSLog("parsing shape \(shapeHandle.path)")
             
             shapeHandle.fileReader.reopen()
             
@@ -225,7 +225,7 @@ struct MeshLoader {
         var shapeInfos: [Mesh.ShapeInfo] = []
         
         let accelerationStructures = shapeHandles.map { shapeHandle in
-            print("accelerating \(shapeHandle.path)")
+            NSLog("accelerating \(shapeHandle.path)")
             
             let triAccel = MPSTriangleAccelerationStructure(group: group)
             triAccel.vertexBuffer = vertexBuffer

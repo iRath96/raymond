@@ -138,7 +138,7 @@ kernel void handleIntersections(
         uint2 coordinates = uint2(ray.x, ray.y);
         image.write(
             image.read(coordinates) + float4(
-                ray.weight + tctx.material.emission,
+                ray.weight * tctx.material.emission,
                 1),
             coordinates
         );
