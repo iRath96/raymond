@@ -33,7 +33,7 @@ class Renderer: NSObject, MTKViewDelegate {
     var projectionMatrix: float4x4
     var frameIndex = UInt32(0)
     var rayCount = 0
-    let maxDepth = 8
+    let maxDepth = 2
     
     var rayBuffer: MTLBuffer?
     var rayCountBuffer: MTLBuffer?
@@ -99,7 +99,7 @@ class Renderer: NSObject, MTKViewDelegate {
             let scene = try SceneLoader().makeScene(fromURL: path)
             
             var instanceLoader = InstanceLoader()
-            let entityNames = [
+            /*let entityNames = [
                 "AI55_008_floor_001",
                 "Am185_12_obj_169",
                 "AI55_008_sit_pillows_021",
@@ -140,8 +140,8 @@ class Renderer: NSObject, MTKViewDelegate {
                 "AM141_035_obj_146",
                 "AM141_035_obj_152",
                 "AM201_032_Dypsis_Lanceloata_leafs002"
-            ]
-            //let entityNames = [String](scene.entities.keys.sorted())[0..<0]
+            ]*/
+            let entityNames = [String](scene.entities.keys.sorted())//[0..<800]
             for entityName in entityNames {
                 NSLog("adding entity \(entityName)")
                 try instanceLoader.addEntity(scene.entities[entityName]!)
@@ -158,7 +158,8 @@ class Renderer: NSObject, MTKViewDelegate {
             NSLog("building acceleration structures")
             mesh = try meshLoader.build(withDevice: device)
             
-            var codegen = Codegen(basePath: path, device: device)
+            let codegenOptions: Codegen.Options = [ .useFunctionTable ]
+            var codegen = Codegen(basePath: path, device: device, options: codegenOptions)
             for materialName in mesh.materialNames {
                 NSLog("generating shader for \(materialName)")
                 try codegen.addMaterial(scene.materials[materialName]!)
@@ -169,10 +170,12 @@ class Renderer: NSObject, MTKViewDelegate {
             
             let linkedFunctions = MTLLinkedFunctions()
             linkedFunctions.functions = []
-            for index in 0..<mesh.materialNames.count {
-                NSLog("making function material_\(index)")
-                let function = library.makeFunction(name: "material_\(index)")!
-                linkedFunctions.functions!.append(function)
+            if codegenOptions.contains(.useFunctionTable) {
+                for index in 0..<mesh.materialNames.count {
+                    NSLog("making function material_\(index)")
+                    let function = library.makeFunction(name: "material_\(index)")!
+                    linkedFunctions.functions!.append(function)
+                }
             }
             
             NSLog("making function handleIntersections")
@@ -185,6 +188,13 @@ class Renderer: NSObject, MTKViewDelegate {
                 descriptor: descriptor,
                 options: [],
                 reflection: nil)
+            
+            /*NSLog("saving to binary")
+            let binDescriptor = MTLBinaryArchiveDescriptor()
+            let binArchive = try device.makeBinaryArchive(descriptor: binDescriptor)
+            try binArchive.addComputePipelineFunctions(descriptor: descriptor)
+            let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
+            try binArchive.serialize(to: desktopURL.appending(path: "binary.metallib"))*/
             
             NSLog("making function handleIntersections (last)")
             descriptor.computeFunction = try library.makeFunction(
@@ -203,14 +213,16 @@ class Renderer: NSObject, MTKViewDelegate {
             shaderFunctionTableLast = lastIntersectionHandler.makeVisibleFunctionTable(
                 descriptor: fnTableDescriptor)
             
-            for index in 0..<mesh.materialNames.count {
-                let function = linkedFunctions.functions![index]
-                shaderFunctionTable!.setFunction(
-                    intersectionHandler.functionHandle(function: function)!,
-                    index: index)
-                shaderFunctionTableLast!.setFunction(
-                    lastIntersectionHandler.functionHandle(function: function)!,
-                    index: index)
+            if codegenOptions.contains(.useFunctionTable) {
+                for index in 0..<mesh.materialNames.count {
+                    let function = linkedFunctions.functions![index]
+                    shaderFunctionTable!.setFunction(
+                        intersectionHandler.functionHandle(function: function)!,
+                        index: index)
+                    shaderFunctionTableLast!.setFunction(
+                        lastIntersectionHandler.functionHandle(function: function)!,
+                        index: index)
+                }
             }
             
             instanceBuffer = device.makeBuffer(

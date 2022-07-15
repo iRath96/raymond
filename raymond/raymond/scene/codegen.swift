@@ -129,6 +129,11 @@ struct Codegen {
         case emitted
     }
     
+    struct Options: OptionSet {
+        let rawValue: Int
+        static let useFunctionTable = Options(rawValue: 1 << 0)
+    }
+    
     private var basePath: URL
     private var device: MTLDevice
     private var textureLoader: MTKTextureLoader
@@ -140,10 +145,12 @@ struct Codegen {
     private var state: [String: NodeState] = [:]
     private var invocations: [KernelInvocation] = []
     private var text = CodegenOutput()
+    private(set) var options: Options
     
-    init(basePath: URL, device: MTLDevice) {
+    init(basePath: URL, device: MTLDevice, options: Options) {
         self.basePath = basePath
         self.device = device
+        self.options = options
         self.textureLoader = .init(device: device)
     }
     
@@ -153,17 +160,34 @@ struct Codegen {
             withExtension: "hpp"
         )!
         
-        let header = """
+        var header = """
+        // \(Date.now)
+        
         #define JIT_COMPILED
         #define NUMBER_OF_TEXTURES \(textures.count)
-        #include \"\(metalEntryURL.relativePath)\"
-        // \(Date.now)
+        
         """
         
+        if options.contains(.useFunctionTable) {
+            header += "#define USE_FUNCTION_TABLE\n"
+        } else {
+            header += "#define SWITCH_SHADERS switch (shaderIndex) { \\\n"
+            for index in 0..<materialIndex {
+                header += "  case \(index): \\\n"
+                header += "    void material_\(index)(device Context &, thread ThreadContext &); \\\n"
+                header += "    material_\(index)(ctx, tctx); \\\n"
+                header += "    break; \\\n"
+            }
+            header += "}\n"
+        }
+        
+        header += "#include \"\(metalEntryURL.relativePath)\"\n"
+        
         let source = "\(header)\n\(text.output)"
+        print(source)
+        
         let compileOptions = MTLCompileOptions()
         let library = try device.makeLibrary(source: source, options: compileOptions)
-        print(source)
         return library
     }
     
@@ -279,9 +303,10 @@ struct Codegen {
             textures.append(textureLoader.device.makeTexture(descriptor: descriptor)!)
         }
         
+        let attributes = options.contains(.useFunctionTable) ? "[[visible]] " : ""
         text.addLine("""
-        [[visible]] void material_\(materialIndex)(
-            Context ctx,
+        \(attributes)void material_\(materialIndex)(
+            device Context &ctx,
             thread ThreadContext &tctx
         ) {
         """)

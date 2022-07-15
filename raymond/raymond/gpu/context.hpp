@@ -72,6 +72,7 @@ struct ThreadContext {
 
 #ifndef JIT_COMPILED
 #define NUMBER_OF_TEXTURES 1
+#define USE_FUNCTION_TABLE
 #endif
 
 struct Context {

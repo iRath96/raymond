@@ -10,7 +10,7 @@ struct LightPath {
     bool isDiffuseRay;
     bool isCameraRay;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         isDiffuseRay = true;
         isCameraRay = tctx.isCameraRay;
     }
@@ -22,7 +22,7 @@ struct VECT_MATH {
     float3 vector_001;
     float3 vector_002;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         // @todo implement more than just "normalize" mode
         vector = normalize(vector);
     }
@@ -33,7 +33,7 @@ struct NewGeometry {
     float3 tangent;
     bool backfacing;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         normal = tctx.normal;
         tangent = tctx.tu;
         backfacing = dot(tctx.wo, tctx.normal) < 0;
@@ -44,7 +44,7 @@ struct TextureCoordinate {
     float2 uv;
     float3 normal;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         uv = tctx.uv;
         normal = tctx.normal;
     }
@@ -58,7 +58,7 @@ struct TexChecker {
     
     float4 color;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         int3 idx = int3(floor(vector * scale));
         color = select(color2, color1, (idx.x ^ idx.y ^ idx.z) & 1);
     }
@@ -68,7 +68,7 @@ struct SEPXYZ {
     float3 vector;
     float x, y, z;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         x = vector.x;
         y = vector.y;
         z = vector.z;
@@ -79,7 +79,7 @@ struct CombineVector {
     float x, y, z;
     float3 vector;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         vector = float3(x, y, z);
     }
 };
@@ -88,7 +88,7 @@ struct CombineColor {
     float red, green, blue;
     float3 color;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         color = float3(red, green, blue);
     }
 };
@@ -99,7 +99,7 @@ struct Bump {
     float3 normal;
     float strength;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
     }
 };
 
@@ -118,7 +118,7 @@ struct Mapping {
     float3 location;
     float3 vector;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         vector = euler2mat(rotation) * (vector * scale) + location;
     }
 };
@@ -162,7 +162,7 @@ struct TexImage {
     float3 vector;
     float4 color;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         constexpr sampler linearSampler(address::repeat, coord::normalized, filter::linear);
         color = ctx.textures[TextureIndex].sample(
             linearSampler,
@@ -192,7 +192,7 @@ struct ColorRamp {
         float4 color;
     } elements[NumElements];
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         if (fac < elements[0].position) {
             color = elements[0].color;
             return;
@@ -230,7 +230,7 @@ struct NormalMap {
     
     float3 normal;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         float s = max(strength, 0.f);
         
         normal = normalize(2 * color.xyz - 1);
@@ -255,7 +255,7 @@ struct SeparateColor {
     float green;
     float blue;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         red = color.x;
         green = color.y;
         blue = color.z;
@@ -269,7 +269,7 @@ struct HueSaturation {
     float saturation;
     float value;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         float3 hsv = rgb2hsv(color.xyz);
         hsv.x = fmod(hsv.x + hue + 0.5, 1);
         hsv.y = saturate(hsv.y * saturation);
@@ -302,7 +302,7 @@ struct ColorMix {
     
     float4 color;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         switch (BlendType) {
         case kColorMix::BLEND_TYPE_MIX:
             color = lerp(color1, color2, fac); break;
@@ -340,7 +340,7 @@ struct ColorInvert {
     float4 color;
     float fac;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         color.xyz = color.xyz - fac * (2 * color.xyz - 1);
     }
 };
@@ -352,7 +352,7 @@ struct Emission {
     
     Material emission;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         emission.lobeProbabilities[0] = 1;
         emission.emission = color.xyz * strength;
     }
@@ -379,7 +379,7 @@ struct BsdfGlass {
     
     Material bsdf;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         const float alpha = square(max(roughness, 1e-4));
         bsdf.transmission = (Transmission){
             .reflectionAlpha = alpha,
@@ -439,7 +439,7 @@ struct BsdfPrincipled {
     
     Material bsdf;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         clearcoatRoughness = max(clearcoatRoughness, 1e-4);
         roughness = max(roughness, 1e-4);
         
@@ -518,7 +518,7 @@ struct BsdfTransparent {
     
     Material bsdf;
     
-    void compute(Context ctx, ThreadContext tctx) {
+    void compute(device Context &ctx, ThreadContext tctx) {
         bsdf.alpha = 0;
         bsdf.alphaWeight = color.xyz;
     }
@@ -532,7 +532,7 @@ struct MixShader {
     Material shader;
     Material shader_001;
     
-    void compute(Context ctx, thread ThreadContext &tctx) {
+    void compute(device Context &ctx, thread ThreadContext &tctx) {
         if (tctx.rnd.x < fac) {
             tctx.rnd.x /= fac;
             shader = shader_001;
@@ -547,7 +547,7 @@ struct OutputMaterial {
     float thickness;
     Material surface;
     
-    void compute(Context ctx, thread ThreadContext &tctx) {
+    void compute(device Context &ctx, thread ThreadContext &tctx) {
         tctx.material = surface;
         //tctx.material.diffuse.diffuseWeight = float3(1, 0, 0);
     }

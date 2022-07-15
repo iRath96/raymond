@@ -49,7 +49,7 @@ kernel void handleIntersections(
     
     // awesome
     visible_function_table<
-        void (Context, thread ThreadContext &)
+        void (device Context &, thread ThreadContext &)
     > shaders [[buffer(ShadingBufferFunctionTable)]],
     device Context &ctx [[buffer(ShadingBufferContext)]],
     
@@ -132,7 +132,11 @@ kernel void handleIntersections(
         return;
     }*/
     
+#ifdef USE_FUNCTION_TABLE
     shaders[shaderIndex](ctx, tctx);
+#else
+    SWITCH_SHADERS
+#endif
     
     if (mean(tctx.material.emission) > 0) {
         uint2 coordinates = uint2(ray.x, ray.y);
