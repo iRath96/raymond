@@ -59,6 +59,8 @@ kernel void handleIntersections(
         return;
     
     device Ray &ray = rays[rayIndex];
+    PRNGState prng = ray.prng;
+    
     constant Intersection &isect = intersections[rayIndex];
     if (isect.distance <= 0.0f) {
         // miss
@@ -83,7 +85,7 @@ kernel void handleIntersections(
     int shaderIndex;
     
     ThreadContext tctx;
-    tctx.rnd = sample3d(ray.prng);
+    tctx.rnd = sample3d(prng);
     tctx.wo = -ray.direction;
     
     float3 ipoint;
@@ -131,6 +133,10 @@ kernel void handleIntersections(
         );
         return;
     }*/
+    
+    // 30.5 Mray/s (no divergence), 27.5 Mray/s (divergence)
+    // 30.8 Mray/s (no divergence, specialized shaders)
+    //shaderIndex = simd_broadcast_first(shaderIndex);
     
 #ifdef USE_FUNCTION_TABLE
     shaders[shaderIndex](ctx, tctx);
@@ -180,17 +186,21 @@ kernel void handleIntersections(
         }
     } while (false);
     
-    if (mean(weight) > 0) {
+    float meanWeight = mean(weight);
+    if (!isfinite(meanWeight)) return;
+    
+    float survivalProb = min(meanWeight, 1.f);
+    if (sample1d(prng) < survivalProb) {
         uint nextRayIndex = atomic_fetch_add_explicit(&nextRayCount, 1, memory_order_relaxed);
         device Ray &nextRay = nextRays[nextRayIndex];
         nextRay.origin = ipoint;
         nextRay.direction = direction;
         nextRay.minDistance = eps;
         nextRay.maxDistance = INFINITY;
-        nextRay.weight = weight;
+        nextRay.weight = weight / survivalProb;
         nextRay.x = ray.x;
         nextRay.y = ray.y;
-        nextRay.prng = ray.prng;
+        nextRay.prng = prng;
     }
     
     return;
