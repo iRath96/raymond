@@ -49,6 +49,7 @@ struct Codegen {
         enum Parameter {
             case int(Int)
             case bool(Bool)
+            case constant(String)
             case `enum`(String, String)
         }
         
@@ -101,6 +102,7 @@ struct Codegen {
                     switch parameter {
                     case .int(let v): kernelType += "\(v)"
                     case .bool(let v): kernelType += "\(v)"
+                    case .constant(let v): kernelType += "\(v)"
                     case .enum(let ns, let v): kernelType += "k\(kernel)::\(ns)_\(v.uppercased())"
                     }
                     kernelType += idx < parameters.count-1 ? ",\n" : "\n"
@@ -134,10 +136,17 @@ struct Codegen {
         static let useFunctionTable = Options(rawValue: 1 << 0)
     }
     
+    private struct TextureDescriptor {
+        var url: URL
+        var options: [MTKTextureLoader.Option: Any]
+        var texture: MTLTexture?
+    }
+    
     private var basePath: URL
     private var device: MTLDevice
     private var textureLoader: MTKTextureLoader
     
+    private var textureDescriptors: [TextureDescriptor] = []
     private(set) var textures: [MTLTexture] = []
     private var textureIndices: [String: Int] = [:]
     
@@ -154,7 +163,25 @@ struct Codegen {
         self.textureLoader = .init(device: device)
     }
     
-    func build() throws -> MTLLibrary {
+    private mutating func loadTextures() throws {
+        NSLog("loading textures")
+        DispatchQueue.concurrentPerform(iterations: textureDescriptors.count) { index in
+            do {
+                textureDescriptors[index].texture = try textureLoader.newTexture(
+                    URL: textureDescriptors[index].url,
+                    options: textureDescriptors[index].options
+                )
+            } catch {
+                print("Could not load texture: \(error)")
+            }
+        }
+        textures = textureDescriptors.map { $0.texture! }
+    }
+    
+    mutating func build() throws -> MTLLibrary {
+        try loadTextures()
+        
+        NSLog("building code")
         let metalEntryURL = Bundle.main.url(
             forResource: "shading",
             withExtension: "hpp"
@@ -167,6 +194,11 @@ struct Codegen {
         #define NUMBER_OF_TEXTURES \(textures.count)
         
         """
+        
+        for index in 0..<textures.count {
+            let pixelFormat = textures[index].pixelFormat
+            header += "#define TEX\(index)_PIXEL_FORMAT kTexImage::PIXEL_FORMAT_\(try mapPixelFormat(pixelFormat))\n"
+        }
         
         if options.contains(.useFunctionTable) {
             header += "#define USE_FUNCTION_TABLE\n"
@@ -199,14 +231,13 @@ struct Codegen {
         switch kernel {
         case let kernel as TexImageKernel:
             let slot = try registerTexture(kernel.filepath, kernel.colorspace)
-            let pixelFormat = try mapPixelFormat(textures[slot].pixelFormat)
             return .init(kernel: "TexImage", parameters: [
                 .int(slot),
                 .enum("INTERPOLATION", kernel.interpolation),
                 .enum("PROJECTION", kernel.projection),
                 .enum("EXTENSION", kernel.extension),
                 .enum("ALPHA", kernel.alpha),
-                .enum("PIXEL_FORMAT", pixelFormat)
+                .constant("TEX\(slot)_PIXEL_FORMAT")
             ], comments: [
                 kernel.filepath
             ])
@@ -363,13 +394,11 @@ struct Codegen {
             throw CodegenError.unsupportedColorSpace
         }
         
-        let texture = try textureLoader.newTexture(
-            URL: URL(string: String(path.dropFirst(2)), relativeTo: basePath)!.absoluteURL,
+        let idx = textureDescriptors.count
+        textureDescriptors.append(TextureDescriptor(
+            url: URL(string: String(path.dropFirst(2)), relativeTo: basePath)!.absoluteURL,
             options: options
-        )
-        
-        let idx = textures.count
-        textures.append(texture)
+        ))
         
         textureIndices[path] = idx
         return idx
