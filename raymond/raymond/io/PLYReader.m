@@ -60,35 +60,86 @@
     fseek(file, offset, SEEK_SET);
 }
 
-- (void)readVertexElements:(unsigned int)number vertices:(float * _Nonnull *)vertices normals:(float * _Nonnull *)normals texCoords:(float * _Nonnull *)texCoords {
-    for (int i = 0; i < number; ++i) {
-        fscanf(file, "%f %f %f %f %f %f %f %f\n",
-            *vertices+0, *vertices+1, *vertices+2,
-            *normals+0, *normals+1, *normals+2,
-            *texCoords+0, *texCoords+1
-        );
-        
-        *vertices += 3;
-        *normals += 3;
-        *texCoords += 2;
+float my_strtof(char *head, char **endPtr) {
+    while (*head == ' ') ++head;
+    
+    bool isNegative = *head == '-';
+    if (isNegative) head++;
+    
+    /// @todo perhaps switch to int?
+    long decimal = 0;
+    int baseExp = 0;
+    bool hasSeenPoint = false;
+    
+    while (true) {
+        char chr = *(head++);
+        if (chr >= '0' && chr <= '9') {
+            /// @todo handle overflows of 'decimal' gracefully, maybe by limiting number of digits read
+            decimal *= 10;
+            decimal += chr - '0';
+            baseExp -= hasSeenPoint ? 1 : 0;
+        } else if (chr == '.') {
+            assert(!hasSeenPoint);
+            hasSeenPoint = true;
+        } else if (chr == ' ' || chr == '\n') {
+            break;
+        } else {
+            assert(!"invalid character");
+        }
     }
+    
+    *endPtr = head - 1;
+    
+    /// @todo is this precise enough?
+    if (isNegative) decimal *= -1;
+    return decimal * powf(10, baseExp);
 }
 
-- (void)readFaces:(unsigned int)number indices:(unsigned int * _Nonnull *)indices materials:(unsigned int * _Nonnull *)materials fromPalette:(const unsigned int *)palette {
+- (void)readVertexElements:(unsigned int)number vertices:(float * _Nonnull)vertices normals:(float * _Nonnull)normals texCoords:(float * _Nonnull)texCoords {
+    char buffer[16384];
+    long n = sizeof(buffer);
+    char *threshold = buffer + sizeof(buffer) - 256;
+    char *head = buffer + n;
+    
     for (int i = 0; i < number; ++i) {
-        int numIndices;
-        fscanf(file, "%d %d %d %d %d\n",
-            &numIndices,
-            *indices+0, *indices+1, *indices+2,
-            *materials
-        );
+        if (head >= threshold) {
+            fseek(file, (head - buffer) - n, SEEK_CUR);
+            n = fread(buffer, 1, sizeof(buffer), file);
+            head = buffer;
+        }
+        
+        for (int j = 0; j < 3; ++j) *(vertices++) = my_strtof(head, &head);
+        for (int j = 0; j < 3; ++j) *(normals++) = my_strtof(head, &head);
+        for (int j = 0; j < 2; ++j) *(texCoords++) = my_strtof(head, &head);
+        
+        assert(*head == '\n');
+        head++;
+    }
+    
+    fseek(file, (head - buffer) - n, SEEK_CUR);
+}
+
+- (void)readFaces:(unsigned int)number indices:(unsigned int * _Nonnull)indices materials:(unsigned int * _Nonnull)materials fromPalette:(const unsigned int *)palette {
+    char buffer[16384];
+    long n = sizeof(buffer);
+    char *threshold = buffer + sizeof(buffer) - 256;
+    char *head = buffer + n;
+    
+    for (int i = 0; i < number; ++i) {
+        if (head >= threshold) {
+            fseek(file, (head - buffer) - n, SEEK_CUR);
+            n = fread(buffer, 1, sizeof(buffer), file);
+            head = buffer;
+        }
+        
+        int numIndices = (int)strtol(head, &head, 10);
+        for (int j = 0; j < 3; ++j) *(indices++) = (int)strtol(head, &head, 10);
+        *materials = (int)strtol(head, &head, 10);
         
         assert(numIndices == 3);
         
-        **materials = palette[**materials];
-        
-        *indices += 3;
-        *materials += 1;
+        *materials = palette[*materials];
+        materials++;
     }
 }
 

@@ -13,8 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)close;
 - (void)reopen;
 
-- (void)readVertexElements:(unsigned int)number vertices:(float * _Nonnull * _Nonnull)vertices normals:(float * _Nonnull * _Nonnull)normals texCoords:(float * _Nonnull * _Nonnull)texCoords;
-- (void)readFaces:(unsigned int)number indices:(unsigned int * _Nonnull * _Nonnull)indices materials:(unsigned int * _Nonnull * _Nonnull)materials fromPalette:(const unsigned int * _Nonnull)palette;
+- (void)readVertexElements:(unsigned int)number vertices:(float * _Nonnull)vertices normals:(float * _Nonnull)normals texCoords:(float * _Nonnull)texCoords;
+- (void)readFaces:(unsigned int)number indices:(unsigned int * _Nonnull)indices materials:(unsigned int * _Nonnull)materials fromPalette:(const unsigned int * _Nonnull)palette;
 
 @end
 

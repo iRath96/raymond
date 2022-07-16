@@ -110,13 +110,17 @@ struct MeshLoader {
         var materials: [UInt32]
         var vertexCount: UInt32
         var faceCount: UInt32
+        var vertexOffset: UInt32
+        var faceOffset: UInt32
         
         var fileReader: PLYReader
         
-        init(withPath url: URL, materials: [UInt32]) throws {
+        init(withPath url: URL, materials: [UInt32], vertexOffset: UInt32, faceOffset: UInt32) throws {
             self.materials = materials
-            path = url.relativeString
-            fileReader = PLYReader(url: url)
+            self.path = url.relativeString
+            self.fileReader = PLYReader(url: url)
+            self.vertexOffset = vertexOffset
+            self.faceOffset = faceOffset
             
             // read header
             
@@ -152,6 +156,8 @@ struct MeshLoader {
     
     private var materialIds: [String: UInt32] = [:]
     private var shapeHandles: [ShapeHandle] = []
+    private var vertexOffset: UInt32 = 0
+    private var faceOffset: UInt32 = 0
     
     mutating func addShape(_ shape: Scene.Shape) throws {
         guard shape.type == "ply" else {
@@ -169,13 +175,21 @@ struct MeshLoader {
             return newId
         }
         
-        let shapeHandle = try ShapeHandle(withPath: shape.filepath, materials: materials)
+        let shapeHandle = try ShapeHandle(
+            withPath: shape.filepath,
+            materials: materials,
+            vertexOffset: vertexOffset,
+            faceOffset: faceOffset
+        )
         shapeHandles.append(shapeHandle)
+        
+        vertexOffset += shapeHandle.vertexCount
+        faceOffset += shapeHandle.faceCount
     }
     
     mutating func build(withDevice device: MTLDevice) throws -> Mesh {
-        let totalVertexCount = Int(shapeHandles.reduce(0) { $0 + $1.vertexCount })
-        let totalFaceCount = Int(shapeHandles.reduce(0) { $0 + $1.faceCount })
+        let totalVertexCount = Int(vertexOffset)
+        let totalFaceCount = Int(faceOffset)
         let totalIndexCount = 3 * totalFaceCount
         
         let vertexBuffer = device.makeBuffer(length: 3 * MemoryLayout<Float>.stride * totalVertexCount)!
@@ -190,28 +204,30 @@ struct MeshLoader {
         texCoordBuffer.label = "UV buffer"
         materialBuffer.label = "Material buffer"
         
-        var vertices = vertexBuffer.contents().assumingMemoryBound(to: Float.self)
-        var indices = indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
-        var normals = normalBuffer.contents().assumingMemoryBound(to: Float.self)
-        var texCoords = texCoordBuffer.contents().assumingMemoryBound(to: Float.self)
-        var materials = materialBuffer.contents().assumingMemoryBound(to: UInt32.self)
+        let vertices = vertexBuffer.contents().assumingMemoryBound(to: Float.self)
+        let indices = indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
+        let normals = normalBuffer.contents().assumingMemoryBound(to: Float.self)
+        let texCoords = texCoordBuffer.contents().assumingMemoryBound(to: Float.self)
+        let materials = materialBuffer.contents().assumingMemoryBound(to: UInt32.self)
         
-        for shapeHandle in shapeHandles {
+        DispatchQueue.concurrentPerform(iterations: shapeHandles.count) { index in
+        //for index in 0..<shapeHandles.count {
+            let shapeHandle = shapeHandles[index]
             NSLog("parsing shape \(shapeHandle.path)")
             
             shapeHandle.fileReader.reopen()
             
             shapeHandle.fileReader.readVertexElements(
                 shapeHandle.vertexCount,
-                vertices: &vertices,
-                normals: &normals,
-                texCoords: &texCoords)
+                vertices: vertices.advanced(by: 3 * Int(shapeHandle.vertexOffset)),
+                normals: normals.advanced(by: 3 * Int(shapeHandle.vertexOffset)),
+                texCoords: texCoords.advanced(by: 2 * Int(shapeHandle.vertexOffset)))
             
             let palette = UnsafePointer<UInt32>(shapeHandle.materials)
             shapeHandle.fileReader.readFaces(
                 shapeHandle.faceCount,
-                indices: &indices,
-                materials: &materials,
+                indices: indices.advanced(by: 3 * Int(shapeHandle.faceOffset)),
+                materials: materials.advanced(by: Int(shapeHandle.faceOffset)),
                 fromPalette: palette
             )
             
@@ -221,28 +237,26 @@ struct MeshLoader {
         // build acceleration structure
         let group = MPSAccelerationStructureGroup(device: device)
         
-        var shapeInfo = Mesh.ShapeInfo(vertexOffset: 0, faceOffset: 0)
         var shapeInfos: [Mesh.ShapeInfo] = []
-        
         let accelerationStructures = shapeHandles.map { shapeHandle in
             NSLog("accelerating \(shapeHandle.path)")
             
             let triAccel = MPSTriangleAccelerationStructure(group: group)
             triAccel.vertexBuffer = vertexBuffer
             triAccel.vertexStride = 3 * MemoryLayout<Float>.stride
-            triAccel.vertexBufferOffset = triAccel.vertexStride * Int(shapeInfo.vertexOffset)
+            triAccel.vertexBufferOffset = triAccel.vertexStride * Int(shapeHandle.vertexOffset)
             
             triAccel.indexBuffer = indexBuffer
             triAccel.indexType = .uInt32
-            triAccel.indexBufferOffset = MemoryLayout<UInt32>.stride * Int(3 * shapeInfo.faceOffset)
+            triAccel.indexBufferOffset = MemoryLayout<UInt32>.stride * Int(3 * shapeHandle.faceOffset)
             
             triAccel.triangleCount = Int(shapeHandle.faceCount)
             triAccel.rebuild()
             
-            shapeInfos.append(shapeInfo)
-            
-            shapeInfo.vertexOffset += shapeHandle.vertexCount
-            shapeInfo.faceOffset += shapeHandle.faceCount
+            shapeInfos.append(Mesh.ShapeInfo(
+                vertexOffset: shapeHandle.vertexOffset,
+                faceOffset: shapeHandle.faceOffset
+            ))
             
             return triAccel
         }
