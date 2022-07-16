@@ -61,6 +61,10 @@ float sample1d(device PRNGState &prng) {
     return sample_tea_float32(prng.seed, prng.index++);
 }
 
+float sample1d(thread PRNGState &prng) {
+    return sample_tea_float32(prng.seed, prng.index++);
+}
+
 float2 sample2d(device PRNGState &prng) {
     return float2(
         sample_tea_float32(prng.seed, prng.index++),

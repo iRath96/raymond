@@ -210,6 +210,12 @@ struct Codegen {
             ], comments: [
                 kernel.filepath
             ])
+        case is TexCheckerKernel:
+            return .init(kernel: "TexChecker")
+        case let kernel as TexNoiseKernel:
+            return .init(kernel: "TexNoise", parameters: [
+                .enum("DIMENSION", kernel.dimension)
+            ])
         case let kernel as ColorRampKernel:
             let elementStrings = kernel.elements.map { element in
                 "\t{ \(element.position), { \(element.color.map { String($0) }.joined(separator: ", ")) } }"
@@ -249,6 +255,17 @@ struct Codegen {
             return .init(kernel: "BsdfGlass", parameters: [
                 .enum("DISTRIBUTION", "GGX")
             ])
+        case let kernel as BsdfGlossyKernel:
+            if kernel.distribution != "GGX" {
+                warn("BsdfGlossy: only GGX distribution supported!");
+            }
+            
+            return .init(kernel: "BsdfGlass", parameters: [
+                .enum("DISTRIBUTION", "GGX")
+            ])
+        case is BsdfTranslucentKernel:
+            warn("BsdfTranslucent: not implemented")
+            return .init(kernel: "BsdfTranslucent")
         case is BumpKernel:
             warn("Bump: bump mapping not supported")
             return .init(kernel: "Bump")
@@ -260,6 +277,8 @@ struct Codegen {
             return .init(kernel: "ColorInvert")
         case is BsdfTransparentKernel:
             return .init(kernel: "BsdfTransparent")
+        case is AddShaderKernel:
+            return .init(kernel: "AddShader")
         case is MixShaderKernel:
             return .init(kernel: "MixShader")
         case is SeparateColorKernel:
@@ -273,6 +292,12 @@ struct Codegen {
             return .init(kernel: "Emission")
         case is NewGeometryKernel:
             return .init(kernel: "NewGeometry")
+        case is BlackbodyKernel:
+            warn("Blackbody: not implemented")
+            return .init(kernel: "Blackbody")
+        case is ColorCurvesKernel:
+            warn("ColorCurves: not implemented")
+            return .init(kernel: "ColorCurves")
         default:
             throw CodegenError.unsupportedKernel
         }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bsdf.hpp"
+#include "noise.hpp"
 #include "context.hpp"
 
 #include <metal_stdlib>
@@ -93,6 +94,14 @@ struct CombineColor {
     }
 };
 
+struct ColorCurves {
+    float4 color;
+    float fac;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+    }
+};
+
 struct Bump {
     float distance;
     float height;
@@ -177,6 +186,147 @@ struct TexImage {
         case kTexImage::PIXEL_FORMAT_RGBA:
             break;
         }
+    }
+};
+
+struct kTexNoise {
+    enum Dimension {
+        DIMENSION_1D,
+        DIMENSION_2D,
+        DIMENSION_3D,
+        DIMENSION_4D
+    };
+};
+
+template<
+    kTexNoise::Dimension Dimension
+>
+struct TexNoise {
+    float detail;
+    float distortion;
+    float roughness;
+    float scale;
+    float w;
+    float3 vector;
+    
+    float fac;
+    float4 color;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        float3 p = this->vector * scale;
+        float w = this->w * scale;
+        
+        switch (Dimension) {
+        case kTexNoise::DIMENSION_1D:
+            noiseTexture(w);
+            break;
+        case kTexNoise::DIMENSION_2D:
+            noiseTexture(p.xy);
+            break;
+        case kTexNoise::DIMENSION_3D:
+            noiseTexture(p);
+            break;
+        case kTexNoise::DIMENSION_4D:
+            noiseTexture(float4(p, w));
+            break;
+        }
+    }
+    
+private:
+    static float random_float_offset(float seed) {
+        return 100.0f + hash_float_to_float(seed) * 100.0f;
+    }
+    
+    static float2 random_float2_offset(float seed) {
+        return float2(
+            100.0f + hash_float2_to_float(float2(seed, 0.0f)) * 100.0f,
+            100.0f + hash_float2_to_float(float2(seed, 1.0f)) * 100.0f
+        );
+    }
+    
+    static float3 random_float3_offset(float seed) {
+        return float3(
+            100.0f + hash_float2_to_float(float2(seed, 0.0f)) * 100.0f,
+            100.0f + hash_float2_to_float(float2(seed, 1.0f)) * 100.0f,
+            100.0f + hash_float2_to_float(float2(seed, 2.0f)) * 100.0f
+        );
+    }
+    
+    static float4 random_float4_offset(float seed) {
+        return float4(
+            100.0f + hash_float2_to_float(float2(seed, 0.0f)) * 100.0f,
+            100.0f + hash_float2_to_float(float2(seed, 1.0f)) * 100.0f,
+            100.0f + hash_float2_to_float(float2(seed, 2.0f)) * 100.0f,
+            100.0f + hash_float2_to_float(float2(seed, 3.0f)) * 100.0f
+        );
+    }
+
+    void noiseTexture(float p) {
+        if (distortion != 0) {
+            p += snoise(p + random_float_offset(0)) * distortion;
+        }
+        
+        color = float4(
+            fractal_noise(p, detail, roughness),
+            fractal_noise(p + random_float_offset(1), detail, roughness),
+            fractal_noise(p + random_float_offset(2), detail, roughness),
+            1
+        );
+        fac = color.x;
+    }
+    
+    void noiseTexture(float2 p) {
+        if (distortion != 0) {
+            p += distortion * float2(
+                snoise(p + random_float2_offset(0)),
+                snoise(p + random_float2_offset(1))
+            );
+        }
+        
+        color = float4(
+            fractal_noise(p, detail, roughness),
+            fractal_noise(p + random_float2_offset(2), detail, roughness),
+            fractal_noise(p + random_float2_offset(3), detail, roughness),
+            1
+        );
+        fac = color.x;
+    }
+    
+    void noiseTexture(float3 p) {
+        if (distortion != 0) {
+            p += distortion * float3(
+                snoise(p + random_float3_offset(0)),
+                snoise(p + random_float3_offset(1)),
+                snoise(p + random_float3_offset(2))
+            );
+        }
+        
+        color = float4(
+            fractal_noise(p, detail, roughness),
+            fractal_noise(p + random_float3_offset(3), detail, roughness),
+            fractal_noise(p + random_float3_offset(4), detail, roughness),
+            1
+        );
+        fac = color.x;
+    }
+    
+    void noiseTexture(float4 p) {
+        if (distortion != 0) {
+            p += distortion * float4(
+                snoise(p + random_float4_offset(0)),
+                snoise(p + random_float4_offset(1)),
+                snoise(p + random_float4_offset(2)),
+                snoise(p + random_float4_offset(3))
+            );
+        }
+        
+        color = float4(
+            fractal_noise(p, detail, roughness),
+            fractal_noise(p + random_float4_offset(4), detail, roughness),
+            fractal_noise(p + random_float4_offset(5), detail, roughness),
+            1
+        );
+        fac = color.x;
     }
 };
 
@@ -358,6 +508,15 @@ struct Emission {
     }
 };
 
+struct Blackbody {
+    float temperature;
+    float4 color;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        color = float4(1);
+    }
+};
+
 struct kBsdfGlass {
     enum Distribution {
         DISTRIBUTION_GGX
@@ -391,6 +550,40 @@ struct BsdfGlass {
         };
         
         bsdf.lobeProbabilities[2] = 1;
+        bsdf.normal = normal;
+    }
+};
+
+struct kBsdfGlossy {
+    enum Distribution {
+        DISTRIBUTION_GGX
+    };
+};
+
+/**
+ * @todo not tested
+ */
+template<
+    kBsdfGlass::Distribution Distribution
+>
+struct BsdfGlossy {
+    float4 color;
+    float3 normal;
+    float roughness;
+    
+    Material bsdf;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        const float alpha = square(max(roughness, 1e-4));
+        bsdf.specular = (Specular){
+            .alphaX = alpha,
+            .alphaY = alpha,
+            .Cspec0 = color.xyz,
+            .ior = 1.45,
+            .weight = 1
+        };
+        
+        bsdf.lobeProbabilities[1] = 1;
         bsdf.normal = normal;
     }
 };
@@ -521,6 +714,37 @@ struct BsdfTransparent {
     void compute(device Context &ctx, ThreadContext tctx) {
         bsdf.alpha = 0;
         bsdf.alphaWeight = color.xyz;
+    }
+};
+
+struct BsdfTranslucent {
+    float4 color;
+    float3 normal;
+    float weight;
+    
+    Material bsdf;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        bsdf.alpha = 0;
+        bsdf.alphaWeight = color.xyz;
+    }
+};
+
+/**
+ * @todo would be cool if some materials (or lobes thereof) would be mixed analytically instead of stochastically
+ * @todo not working yet
+ */
+struct AddShader {
+    Material shader;
+    Material shader_001;
+    
+    void compute(device Context &ctx, thread ThreadContext &tctx) {
+        if (tctx.rnd.x < 0.5f) {
+            tctx.rnd.x /= 0.5f;
+            shader = shader_001;
+        } else {
+            tctx.rnd.x = 2 * (tctx.rnd.x - 0.5f);
+        }
     }
 };
 

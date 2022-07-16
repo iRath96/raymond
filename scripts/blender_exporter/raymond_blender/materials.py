@@ -26,6 +26,28 @@ def export_material(material: bpy.types.Material):
                 "colorspace": node.image.colorspace_settings.name,
                 "alpha": node.image.alpha_mode
             }
+        elif isinstance(node, bpy.types.ShaderNodeTexNoise):
+            result_node["parameters"] = {
+                "noise_dimensions": node.noise_dimensions
+            }
+        elif isinstance(node, bpy.types.ShaderNodeRGBCurve):
+            mapping = node.mapping
+            result_node["parameters"] = {
+                "black_level": list(mapping.black_level),
+                "white_level": list(mapping.white_level),
+                "clip_min_x": mapping.clip_min_x,
+                "clip_min_y": mapping.clip_min_y,
+                "clip_max_x": mapping.clip_max_x,
+                "clip_max_y": mapping.clip_max_y,
+                "extend": mapping.extend,
+                "tone": mapping.tone,
+                "curves": [[
+                    {
+                        "location": list(point.location),
+                        "handle_type": point.handle_type
+                    } for point in curve.points.values()
+                ] for curve in mapping.curves.values()]
+            }
         elif isinstance(node, bpy.types.ShaderNodeValToRGB):
             result_node["parameters"] = {
                 "color_mode": node.color_ramp.color_mode,
@@ -56,6 +78,10 @@ def export_material(material: bpy.types.Material):
                 "uv_map": node.uv_map
             }
         elif isinstance(node, bpy.types.ShaderNodeBsdfGlass):
+            result_node["parameters"] = {
+                "distribution": node.distribution
+            }
+        elif isinstance(node, bpy.types.ShaderNodeBsdfGlossy):
             result_node["parameters"] = {
                 "distribution": node.distribution
             }

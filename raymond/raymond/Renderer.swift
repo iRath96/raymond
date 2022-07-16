@@ -33,7 +33,7 @@ class Renderer: NSObject, MTKViewDelegate {
     var projectionMatrix: float4x4
     var frameIndex = UInt32(0)
     var rayCount = 0
-    let maxDepth = 2
+    let maxDepth = 8
     
     var rayBuffer: MTLBuffer?
     var rayCountBuffer: MTLBuffer?
@@ -95,53 +95,12 @@ class Renderer: NSObject, MTKViewDelegate {
         }
         
         do {
-            let path = URL(filePath: "/Users/alex/Desktop/evermotion/unzipped/AI55_008/AI55_008.json")
+            let sceneName = "AI55_008"
+            let path = URL(filePath: "/Users/alex/Desktop/evermotion/unzipped/\(sceneName)/\(sceneName).json")
             let scene = try SceneLoader().makeScene(fromURL: path)
             
             var instanceLoader = InstanceLoader()
-            /*let entityNames = [
-                "AI55_008_floor_001",
-                "Am185_12_obj_169",
-                "AI55_008_sit_pillows_021",
-                "Am185_12_obj_131",
-                "Am185_12_obj_127",
-                "Am185_12_obj_126",
-                "Am185_12_obj_129",
-                "Am185_12_obj_128",
-                "AI55_008_Golden_Pot_001",
-                "AM208_018_Saucer002",
-                "AM208_018_Candle_002",
-                "AI55_008_sit_pillows_013",
-                "Am185_12_obj_121",
-                "AI55_008_sit_pillows_009",
-                "AI55_008_Chair_Brown002",
-                "AI55_008_Light009",
-                "AI55_008_Plane_002",
-                "AI55_008_sit_pillows_012",
-                "Am185_12_obj_130",
-                "AI55_008_Pill_460",
-                "AI55_008_Pill_459",
-                "AI55_008_Pill_458",
-                "AI55_008_Pill_453",
-                "AI55_008_Pill_452",
-                "AI55_008_Pill_439",
-                "AI55_008_Pill_447",
-                "AI55_008_sit_001",
-                "AI55_008_Stair",
-                "AI55_008_Wall_001",
-                "AI55_008_Wall_Pattern_002",
-                "AI55_008_Wall_Pattern_001",
-                "AI55_008_sit_002",
-                "AI55_008_Metal_Frame_009",
-                "AM208_018_Vessel003",
-                "Am185_12_obj_123",
-                "AM141_035_obj_148",
-                "AM141_035_obj_145",
-                "AM141_035_obj_146",
-                "AM141_035_obj_152",
-                "AM201_032_Dypsis_Lanceloata_leafs002"
-            ]*/
-            let entityNames = [String](scene.entities.keys.sorted())//[0..<800]
+            let entityNames = [String](scene.entities.keys.sorted())//[100..<300]
             for entityName in entityNames {
                 NSLog("adding entity \(entityName)")
                 try instanceLoader.addEntity(scene.entities[entityName]!)

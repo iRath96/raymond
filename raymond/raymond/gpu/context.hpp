@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bsdf.hpp"
+#include "ShaderTypes.h"
 
 #include <metal_stdlib>
 using namespace metal;
@@ -64,6 +65,7 @@ struct ThreadContext {
     float3 tu, tv;
     float3 rnd;
     float3 wo;
+    Ray ray;
     
     bool isCameraRay;
     

@@ -5,8 +5,13 @@ protocol NodeKernel: Codable {}
 // MARK: - Shader kernels
 
 struct BsdfTransparentKernel: NodeKernel {}
+struct BsdfTranslucentKernel: NodeKernel {}
 
 struct BsdfGlassKernel: NodeKernel {
+    var distribution: String
+}
+
+struct BsdfGlossyKernel: NodeKernel {
     var distribution: String
 }
 
@@ -20,6 +25,7 @@ struct BsdfPrincipledKernel: NodeKernel {
     }
 }
 
+struct AddShaderKernel: NodeKernel {}
 struct MixShaderKernel: NodeKernel {}
 struct EmissionKernel: NodeKernel {}
 
@@ -33,6 +39,16 @@ struct TexImageKernel: NodeKernel {
     var source: String
     var colorspace: String
     var alpha: String
+}
+
+struct TexCheckerKernel: NodeKernel {}
+
+struct TexNoiseKernel: NodeKernel {
+    var dimension: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case dimension = "noise_dimensions"
+    }
 }
 
 // MARK: - Color kernels
@@ -69,6 +85,42 @@ struct ColorMixKernel: NodeKernel {
 struct ColorInvertKernel: NodeKernel {}
 struct SeparateColorKernel: NodeKernel {}
 struct HueSaturationKernel: NodeKernel {}
+
+struct ColorCurvesKernel: NodeKernel {
+    struct CurvePoint: Codable {
+        var type: String
+        var location: [Float]
+        
+        private enum CodingKeys: String, CodingKey {
+            case type = "handle_type"
+            case location
+        }
+    }
+    
+    var blackLevel: [Float]
+    var whiteLevel: [Float]
+    var clipMinX: Float
+    var clipMinY: Float
+    var clipMaxX: Float
+    var clipMaxY: Float
+    var extend: String
+    var tone: String
+    var curves: [[CurvePoint]]
+    
+    private enum CodingKeys: String, CodingKey {
+        case blackLevel = "black_level"
+        case whiteLevel = "white_level"
+        case clipMinX = "clip_min_x"
+        case clipMinY = "clip_min_y"
+        case clipMaxX = "clip_max_x"
+        case clipMaxY = "clip_max_y"
+        case extend
+        case tone
+        case curves
+    }
+}
+
+struct BlackbodyKernel: NodeKernel {}
 
 // MARK: - Math kernels
 
@@ -162,24 +214,42 @@ struct Node: Codable {
     var kernel: NodeKernel
     
     static let kernels: [String: NodeKernel.Type] = [
-        "TEX_IMAGE": TexImageKernel.self,
-        "VALTORGB": ColorRampKernel.self,
-        "MIX_RGB": ColorMixKernel.self,
-        "BSDF_PRINCIPLED": BsdfPrincipledKernel.self,
-        "MAPPING": MappingKernel.self,
-        "NORMAL_MAP": NormalMapKernel.self,
-        "BSDF_GLASS": BsdfGlassKernel.self,
-        "BUMP": BumpKernel.self,
-        "OUTPUT_MATERIAL": OutputMaterialKernel.self,
-        "TEX_COORD": TexCoordKernel.self,
-        "INVERT": ColorInvertKernel.self,
+        // texture nodes
+        "TEX_IMAGE":    TexImageKernel.self,
+        "TEX_CHECKER":  TexCheckerKernel.self,
+        "TEX_NOISE":    TexNoiseKernel.self,
+        
+        // shader nodes
+        "BSDF_PRINCIPLED":  BsdfPrincipledKernel.self,
+        "BSDF_GLASS":       BsdfGlassKernel.self,
+        "BSDF_GLOSSY":      BsdfGlossyKernel.self,
         "BSDF_TRANSPARENT": BsdfTransparentKernel.self,
-        "MIX_SHADER": MixShaderKernel.self,
+        "BSDF_TRANSLUCENT": BsdfTranslucentKernel.self,
+        "EMISSION":         EmissionKernel.self,
+        "ADD_SHADER":       AddShaderKernel.self,
+        "MIX_SHADER":       MixShaderKernel.self,
+        
+        // color nodes
+        "VALTORGB":       ColorRampKernel.self,
+        "MIX_RGB":        ColorMixKernel.self,
+        "CURVE_RGB":      ColorCurvesKernel.self,
+        "INVERT":         ColorInvertKernel.self,
         "SEPARATE_COLOR": SeparateColorKernel.self,
-        "HUE_SAT": HueSaturationKernel.self,
-        "LIGHT_PATH": LightPathKernel.self,
-        "EMISSION": EmissionKernel.self,
-        "NEW_GEOMETRY": NewGeometryKernel.self
+        "HUE_SAT":        HueSaturationKernel.self,
+        "BLACKBODY":      BlackbodyKernel.self,
+        
+        // vector nodes
+        "MAPPING":    MappingKernel.self,
+        "NORMAL_MAP": NormalMapKernel.self,
+        "BUMP":       BumpKernel.self,
+        
+        // input nodes
+        "LIGHT_PATH":   LightPathKernel.self,
+        "NEW_GEOMETRY": NewGeometryKernel.self,
+        "TEX_COORD":    TexCoordKernel.self,
+        
+        // output nodes
+        "OUTPUT_MATERIAL": OutputMaterialKernel.self
     ]
     
     init(from decoder: Decoder) throws {
