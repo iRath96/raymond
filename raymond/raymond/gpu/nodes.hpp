@@ -7,25 +7,55 @@
 #include <metal_stdlib>
 using namespace metal;
 
+/**
+ * @todo not properly supported!
+ */
 struct LightPath {
     bool isDiffuseRay;
     bool isCameraRay;
+    bool isTransmissionRay;
+    bool isSingularRay;
     
     void compute(device Context &ctx, ThreadContext tctx) {
         isDiffuseRay = true;
+        isTransmissionRay = false;
+        isSingularRay = false; // ???
         isCameraRay = tctx.isCameraRay;
     }
 };
 
-struct VECT_MATH {
+struct kVectorMath {
+    enum Operation {
+        OPERATION_ADD,
+        OPERATION_SUB,
+        OPERATION_MULTIPLY,
+        OPERATION_NORMALIZE
+    };
+};
+
+/**
+ * @todo not tested
+ */
+template<
+    kVectorMath::Operation Operation
+>
+struct VectorMath {
     float scale;
     float3 vector;
     float3 vector_001;
     float3 vector_002;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        // @todo implement more than just "normalize" mode
-        vector = normalize(vector);
+        switch (Operation) {
+        case kVectorMath::OPERATION_ADD:
+            vector = vector_001 + vector_002; break;
+        case kVectorMath::OPERATION_SUB:
+            vector = vector_001 - vector_002; break;
+        case kVectorMath::OPERATION_MULTIPLY:
+            vector = vector_001 * vector_002; break;
+        case kVectorMath::OPERATION_NORMALIZE:
+            vector = normalize(vector); break;
+        }
     }
 };
 
@@ -51,6 +81,17 @@ struct TextureCoordinate {
     }
 };
 
+/**
+ * @todo not tested
+ */
+struct UVMapCoordinate {
+    float2 uv;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        uv = tctx.uv;
+    }
+};
+
 struct TexChecker {
     float scale;
     float4 color1;
@@ -65,7 +106,7 @@ struct TexChecker {
     }
 };
 
-struct SEPXYZ {
+struct SeparateVector {
     float3 vector;
     float x, y, z;
     
@@ -396,9 +437,75 @@ struct NormalMap {
     }
 };
 
+struct Displacement {
+    float height;
+    float midlevel;
+    float3 normal;
+    float scale;
+    
+    float3 displacement;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        displacement = float3(0);
+    }
+};
+
+struct Fresnel {
+    float ior;
+    float3 normal;
+    
+    float fac;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        fac = 1.f;
+    }
+};
+
+struct kMath {
+    enum Operation {
+        OPERATION_ADD,
+        OPERATION_SUB,
+        OPERATION_MULTIPLY
+    };
+};
+
 /**
- * @todo only supports RGB, add support for HSV and HSL
+ * @todo not tested
  */
+template<
+    kMath::Operation Operation,
+    bool Clamp
+>
+struct Math {
+    float3 value;
+    float3 value_001;
+    float3 value_002;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        switch (Operation) {
+        case kMath::OPERATION_ADD:
+            value = value_001 + value_002; break;
+        case kMath::OPERATION_SUB:
+            value = value_001 - value_002; break;
+        case kMath::OPERATION_MULTIPLY:
+            value = value_001 * value_002; break;
+        }
+        
+        if (Clamp) {
+            value = saturate(value);
+        }
+    }
+};
+
+struct kSeparateColor {
+    enum Mode {
+        MODE_RGB
+    };
+};
+
+template<
+    kSeparateColor::Mode Mode
+>
 struct SeparateColor {
     float4 color;
     float red;
@@ -430,6 +537,19 @@ struct HueSaturation {
     }
 };
 
+struct BrightnessContrast {
+    float bright;
+    float contrast;
+    float4 color;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        float a = 1 + contrast;
+        float b = bright - contrast / 2;
+        
+        color = max(a * color + b, 0.f);
+    }
+};
+
 struct kColorMix {
     enum BlendType {
         BLEND_TYPE_MIX,
@@ -437,7 +557,9 @@ struct kColorMix {
         BLEND_TYPE_MULTIPLY,
         BLEND_TYPE_SCREEN,
         BLEND_TYPE_SUB,
-        BLEND_TYPE_COLOR
+        BLEND_TYPE_COLOR,
+        BLEND_TYPE_LIGHTEN,
+        BLEND_TYPE_DARKEN
     };
 };
 
@@ -478,6 +600,10 @@ struct ColorMix {
 
               break;
         }
+        case kColorMix::BLEND_TYPE_LIGHTEN:
+            color = lerp(color1, max(color1, color2), fac); break;
+        case kColorMix::BLEND_TYPE_DARKEN:
+            color = lerp(color1, min(color1, color2), fac); break;
         }
         
         if (Clamp) {
@@ -508,12 +634,82 @@ struct Emission {
     }
 };
 
+/**
+ * @todo not tested
+ */
 struct Blackbody {
     float temperature;
     float4 color;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        color = float4(1);
+        color = float4(blackbody(temperature), 1);
+    }
+    
+private:
+    // taken from blender/intern/cycles/kernels/svm/math_util.h
+    
+    static constant constexpr float blackbody_table_r[][3] = {
+        {1.61919106e+03f, -2.05010916e-03f, 5.02995757e+00f},
+        {2.48845471e+03f, -1.11330907e-03f, 3.22621544e+00f},
+        {3.34143193e+03f, -4.86551192e-04f, 1.76486769e+00f},
+        {4.09461742e+03f, -1.27446582e-04f, 7.25731635e-01f},
+        {4.67028036e+03f, 2.91258199e-05f, 1.26703442e-01f},
+        {4.59509185e+03f, 2.87495649e-05f, 1.50345020e-01f},
+        {3.78717450e+03f, 9.35907826e-06f, 3.99075871e-01f}
+    };
+
+    static constant constexpr float blackbody_table_g[][3] = {
+        {-4.88999748e+02f, 6.04330754e-04f, -7.55807526e-02f},
+        {-7.55994277e+02f, 3.16730098e-04f, 4.78306139e-01f},
+        {-1.02363977e+03f, 1.20223470e-04f, 9.36662319e-01f},
+        {-1.26571316e+03f, 4.87340896e-06f, 1.27054498e+00f},
+        {-1.42529332e+03f, -4.01150431e-05f, 1.43972784e+00f},
+        {-1.17554822e+03f, -2.16378048e-05f, 1.30408023e+00f},
+        {-5.00799571e+02f, -4.59832026e-06f, 1.09098763e+00f}
+    };
+
+    static constant constexpr float blackbody_table_b[][4] = {
+        {5.96945309e-11f, -4.85742887e-08f, -9.70622247e-05f, -4.07936148e-03f},
+        {2.40430366e-11f, 5.55021075e-08f, -1.98503712e-04f, 2.89312858e-02f},
+        {-1.40949732e-11f, 1.89878968e-07f, -3.56632824e-04f, 9.10767778e-02f},
+        {-3.61460868e-11f, 2.84822009e-07f, -4.93211319e-04f, 1.56723440e-01f},
+        {-1.97075738e-11f, 1.75359352e-07f, -2.50542825e-04f, -2.22783266e-02f},
+        {-1.61997957e-13f, -1.64216008e-08f, 3.86216271e-04f, -7.38077418e-01f},
+        {6.72650283e-13f, -2.73078809e-08f, 4.24098264e-04f, -7.52335691e-01f}
+    };
+    
+    float3 blackbody(float t) {
+        /* Calculate color in range 800..12000 using an approximation
+        * a/x+bx+c for R and G and ((at + b)t + c)t + d) for B.
+        *
+        * The result of this can be negative to support gamut wider than
+        * than rec.709, just needs to be clamped. */
+
+        if (t >= 12000.0f) {
+            return float3(0.8262954810464208f, 0.9945080501520986f, 1.566307710274283f);
+        } else if (t < 800.0f) {
+            /* Arbitrary lower limit where light is very dim, matching OSL. */
+            return float3(5.413294490189271f, -0.20319390035873933f, -0.0822535242887164f);
+        }
+
+        int i = (t >= 6365.0f) ? 6 :
+                (t >= 3315.0f) ? 5 :
+                (t >= 1902.0f) ? 4 :
+                (t >= 1449.0f) ? 3 :
+                (t >= 1167.0f) ? 2 :
+                (t >= 965.0f)  ? 1 :
+                                 0;
+
+        constant float *r = blackbody_table_r[i];
+        constant float *g = blackbody_table_g[i];
+        constant float *b = blackbody_table_b[i];
+
+        const float t_inv = 1.0f / t;
+        return float3(
+            r[0] * t_inv + r[1] * t + r[2],
+            g[0] * t_inv + g[1] * t + g[2],
+            ((b[0] * t + b[1]) * t + b[2]) * t + b[3]
+        );
     }
 };
 

@@ -83,7 +83,7 @@ struct Codegen {
         
         @discardableResult
         mutating func assign(key: String, link: Node.Link, type: String) -> Self {
-            inputs[key] = "\(type)(\(makeIdentifier(link.node)).\(makeIdentifier(link.property)))"
+            inputs[key] = "\(type)(n_\(makeIdentifier(link.node)).\(makeIdentifier(link.property)))"
             return self
         }
         
@@ -110,10 +110,11 @@ struct Codegen {
                 kernelType += ">"
             }
             
+            let nodeName = "n_\(makeIdentifier(name!))"
             if inputs.isEmpty {
-                text.addLine("\(kernelType) \(makeIdentifier(name!));")
+                text.addLine("\(kernelType) \(nodeName);")
             } else {
-                text.addLine("\(kernelType) \(makeIdentifier(name!)) = {")
+                text.addLine("\(kernelType) \(nodeName) = {")
                 text.indent()
                 for input in inputs.sorted(by: { $0.0 < $1.0 }) {
                     text.addLine(".\(makeIdentifier(input.key)) = \(input.value),")
@@ -121,7 +122,7 @@ struct Codegen {
                 text.unindent()
                 text.addLine("};")
             }
-            text.addLine("\(makeIdentifier(name!)).compute(ctx, tctx);")
+            text.addLine("\(nodeName).compute(ctx, tctx);")
         }
     }
     
@@ -172,7 +173,13 @@ struct Codegen {
                     options: textureDescriptors[index].options
                 )
             } catch {
-                print("Could not load texture: \(error)")
+                print("Could not load texture \(textureDescriptors[index].url): \(error)")
+                
+                let descriptor = MTLTextureDescriptor()
+                descriptor.width = 1
+                descriptor.height = 1
+                descriptor.pixelFormat = .r8Unorm
+                textureDescriptors[index].texture = textureLoader.device.makeTexture(descriptor: descriptor)!
             }
         }
         textures = textureDescriptors.map { $0.texture! }
@@ -231,12 +238,15 @@ struct Codegen {
         switch kernel {
         case let kernel as TexImageKernel:
             let slot = try registerTexture(kernel.filepath, kernel.colorspace)
+            if kernel.alpha != "STRAIGHT" {
+                warn("TexImage: alpha mode '\(kernel.alpha)' not supported")
+            }
             return .init(kernel: "TexImage", parameters: [
                 .int(slot),
                 .enum("INTERPOLATION", kernel.interpolation),
                 .enum("PROJECTION", kernel.projection),
                 .enum("EXTENSION", kernel.extension),
-                .enum("ALPHA", kernel.alpha),
+                .enum("ALPHA", "STRAIGHT"),
                 .constant("TEX\(slot)_PIXEL_FORMAT")
             ], comments: [
                 kernel.filepath
@@ -274,15 +284,16 @@ struct Codegen {
             if !kernel.uvMap.isEmpty {
                 warn("NormalMap: UV maps not yet supported")
             }
-            
             return .init(kernel: "NormalMap", parameters: [
                 .enum("SPACE", kernel.space)
             ])
+        case is DisplacementKernel:
+            warn("Displacement: not supported")
+            return .init(kernel: "Displacement")
         case let kernel as BsdfGlassKernel:
             if kernel.distribution != "GGX" {
                 warn("BsdfGlass: only GGX distribution supported!");
             }
-            
             return .init(kernel: "BsdfGlass", parameters: [
                 .enum("DISTRIBUTION", "GGX")
             ])
@@ -290,7 +301,6 @@ struct Codegen {
             if kernel.distribution != "GGX" {
                 warn("BsdfGlossy: only GGX distribution supported!");
             }
-            
             return .init(kernel: "BsdfGlass", parameters: [
                 .enum("DISTRIBUTION", "GGX")
             ])
@@ -304,6 +314,12 @@ struct Codegen {
             return .init(kernel: "OutputMaterial")
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
+        case let kernel as UVMapKernel:
+            if !kernel.uvMap.isEmpty {
+                warn("UVMap: UV maps not yet supported")
+            }
+            warn("UVMap: not tested")
+            return .init(kernel: "UVMapCoordinate")
         case is ColorInvertKernel:
             return .init(kernel: "ColorInvert")
         case is BsdfTransparentKernel:
@@ -312,10 +328,14 @@ struct Codegen {
             return .init(kernel: "AddShader")
         case is MixShaderKernel:
             return .init(kernel: "MixShader")
-        case is SeparateColorKernel:
-            return .init(kernel: "SeparateColor")
+        case let kernel as SeparateColorKernel:
+            return .init(kernel: "SeparateColor", parameters: [
+                .enum("MODE", kernel.mode)
+            ])
         case is HueSaturationKernel:
             return .init(kernel: "HueSaturation")
+        case is BrightnessContrastKernel:
+            return .init(kernel: "BrightnessContrast")
         case is LightPathKernel:
             warn("LightPath: support for this node is rudimentary")
             return .init(kernel: "LightPath")
@@ -324,11 +344,27 @@ struct Codegen {
         case is NewGeometryKernel:
             return .init(kernel: "NewGeometry")
         case is BlackbodyKernel:
-            warn("Blackbody: not implemented")
+            warn("Blackbody: not tested")
             return .init(kernel: "Blackbody")
         case is ColorCurvesKernel:
-            warn("ColorCurves: not implemented")
+            warn("ColorCurves: not yet supported")
             return .init(kernel: "ColorCurves")
+        case is FresnelKernel:
+            warn("Fresnel: not yet supported")
+            return .init(kernel: "Fresnel")
+        case is CombineVectorKernel:
+            return .init(kernel: "CombineVector")
+        case is SeparateVectorKernel:
+            return .init(kernel: "SeparateVector")
+        case let kernel as MathKernel:
+            return .init(kernel: "Math", parameters: [
+                .enum("OPERATION", kernel.operation),
+                .bool(kernel.useClamp)
+            ])
+        case let kernel as VectorMathKernel:
+            return .init(kernel: "VectorMath", parameters: [
+                .enum("OPERATION", kernel.operation)
+            ])
         default:
             throw CodegenError.unsupportedKernel
         }
@@ -396,7 +432,7 @@ struct Codegen {
         
         let idx = textureDescriptors.count
         textureDescriptors.append(TextureDescriptor(
-            url: URL(string: String(path.dropFirst(2)), relativeTo: basePath)!.absoluteURL,
+            url: URL(fileURLWithPath: String(path.dropFirst(2)), relativeTo: basePath).absoluteURL,
             options: options
         ))
         
@@ -413,7 +449,10 @@ struct Codegen {
         case .bgra8Unorm, .bgra8Unorm_srgb: return "RGBA"
         case .rgba16Unorm: return "RGBA"
         
-        default: throw CodegenError.unsupportedTextureFormat
+        default:
+            warn("unsupported texture format: \(pixelFormat)")
+            return "RGBA"
+            //throw CodegenError.unsupportedTextureFormat
         }
     }
     

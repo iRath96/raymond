@@ -28,6 +28,7 @@ struct BsdfPrincipledKernel: NodeKernel {
 struct AddShaderKernel: NodeKernel {}
 struct MixShaderKernel: NodeKernel {}
 struct EmissionKernel: NodeKernel {}
+struct FresnelKernel: NodeKernel {}
 
 // MARK: - Texture kernels
 
@@ -83,8 +84,13 @@ struct ColorMixKernel: NodeKernel {
 }
 
 struct ColorInvertKernel: NodeKernel {}
-struct SeparateColorKernel: NodeKernel {}
+
+struct SeparateColorKernel: NodeKernel {
+    var mode: String
+}
+
 struct HueSaturationKernel: NodeKernel {}
+struct BrightnessContrastKernel: NodeKernel {}
 
 struct ColorCurvesKernel: NodeKernel {
     struct CurvePoint: Codable {
@@ -138,14 +144,45 @@ struct NormalMapKernel: NodeKernel {
     }
 }
 
+struct DisplacementKernel: NodeKernel {
+    var space: String
+}
+
 struct BumpKernel: NodeKernel {
     var invert: Bool
+}
+
+struct CombineVectorKernel: NodeKernel {}
+struct SeparateVectorKernel: NodeKernel {}
+
+struct MathKernel: NodeKernel {
+    var operation: String
+    var useClamp: Bool
+    
+    private enum CodingKeys: String, CodingKey {
+        case operation
+        case useClamp = "use_clamp"
+    }
+}
+
+struct VectorMathKernel: NodeKernel {
+    var operation: String
 }
 
 // MARK: - Input kernels
 struct TexCoordKernel: NodeKernel {}
 struct LightPathKernel: NodeKernel {}
 struct NewGeometryKernel: NodeKernel {}
+
+struct UVMapKernel: NodeKernel {
+    var fromInstancer: Bool
+    var uvMap: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case fromInstancer = "from_instancer"
+        case uvMap = "uv_map"
+    }
+}
 
 // MARK: - Output kernels
 struct OutputMaterialKernel: NodeKernel {}
@@ -228,6 +265,7 @@ struct Node: Codable {
         "EMISSION":         EmissionKernel.self,
         "ADD_SHADER":       AddShaderKernel.self,
         "MIX_SHADER":       MixShaderKernel.self,
+        "FRESNEL":          FresnelKernel.self,
         
         // color nodes
         "VALTORGB":       ColorRampKernel.self,
@@ -237,16 +275,23 @@ struct Node: Codable {
         "SEPARATE_COLOR": SeparateColorKernel.self,
         "HUE_SAT":        HueSaturationKernel.self,
         "BLACKBODY":      BlackbodyKernel.self,
+        "BRIGHTCONTRAST": BrightnessContrastKernel.self,
         
         // vector nodes
-        "MAPPING":    MappingKernel.self,
-        "NORMAL_MAP": NormalMapKernel.self,
-        "BUMP":       BumpKernel.self,
+        "MAPPING":      MappingKernel.self,
+        "NORMAL_MAP":   NormalMapKernel.self,
+        "BUMP":         BumpKernel.self,
+        "DISPLACEMENT": DisplacementKernel.self,
+        "COMBXYZ":      CombineVectorKernel.self,
+        "SEPXYZ":       SeparateVectorKernel.self,
+        "VECT_MATH":    VectorMathKernel.self,
+        "MATH":         MathKernel.self,
         
         // input nodes
         "LIGHT_PATH":   LightPathKernel.self,
         "NEW_GEOMETRY": NewGeometryKernel.self,
         "TEX_COORD":    TexCoordKernel.self,
+        "UVMAP":        UVMapKernel.self,
         
         // output nodes
         "OUTPUT_MATERIAL": OutputMaterialKernel.self

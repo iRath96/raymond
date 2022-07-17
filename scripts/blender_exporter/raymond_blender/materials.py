@@ -26,6 +26,19 @@ def export_material(material: bpy.types.Material):
                 "colorspace": node.image.colorspace_settings.name,
                 "alpha": node.image.alpha_mode
             }
+        elif isinstance(node, bpy.types.ShaderNodeMath):
+            result_node["parameters"] = {
+                "operation": node.operation,
+                "use_clamp": node.use_clamp
+            }
+        elif isinstance(node, bpy.types.ShaderNodeVectorMath):
+            result_node["parameters"] = {
+                "operation": node.operation
+            }
+        elif isinstance(node, bpy.types.ShaderNodeDisplacement):
+            result_node["parameters"] = {
+                "space": node.space
+            }
         elif isinstance(node, bpy.types.ShaderNodeTexNoise):
             result_node["parameters"] = {
                 "noise_dimensions": node.noise_dimensions
@@ -92,6 +105,11 @@ def export_material(material: bpy.types.Material):
         elif isinstance(node, bpy.types.ShaderNodeSeparateColor):
             result_node["parameters"] = {
                 "mode": node.mode
+            }
+        elif isinstance(node, bpy.types.ShaderNodeUVMap):
+            result_node["parameters"] = {
+                "from_instancer": node.from_instancer,
+                "uv_map": node.uv_map
             }
         elif isinstance(node, (
             bpy.types.ShaderNodeOutputMaterial,
