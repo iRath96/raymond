@@ -1,19 +1,10 @@
-//
-//  GameViewController.swift
-//  raymond macOS
-//
-//  Created by Alexander Rath on 16.11.21.
-//
-
 import Cocoa
 import MetalKit
 
-// Our macOS specific view controller
-class GameViewController: NSViewController {
-
+class RendererViewController: NSViewController {
     var renderer: Renderer!
-    var mtkView: MTKView!
-
+    var scene: Scene!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -22,17 +13,19 @@ class GameViewController: NSViewController {
             return
         }
 
-        // Select the device to render with.  We choose the default device
         guard let defaultDevice = MTLCreateSystemDefaultDevice() else {
             print("Metal is not supported on this device")
             return
         }
 
         mtkView.device = defaultDevice
-
-        guard let newRenderer = Renderer(metalKitView: mtkView) else {
-            print("Renderer cannot be initialized")
-            return
+    }
+    
+    func attach(scene: Scene) {
+        let mtkView = self.view as! MTKView
+        
+        guard let newRenderer = Renderer(metalKitView: mtkView, scene: scene) else {
+            fatalError("Renderer cannot be initialized")
         }
 
         renderer = newRenderer

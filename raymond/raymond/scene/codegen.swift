@@ -370,11 +370,11 @@ struct Codegen {
         }
     }
     
-    mutating func addMaterial(_ material: Scene.Material) throws {
+    mutating func addMaterial(_ material: SceneDescription.Material) throws {
         try emit(material)
     }
     
-    private mutating func emit(_ material: Scene.Material) throws {
+    private mutating func emit(_ material: SceneDescription.Material) throws {
         state = [:]
         invocations = []
         
@@ -456,7 +456,7 @@ struct Codegen {
         }
     }
     
-    private mutating func emitNode(_ material: Scene.Material, key: String) throws {
+    private mutating func emitNode(_ material: SceneDescription.Material, key: String) throws {
         switch state[key] {
             case .emitted: return
             case .pending: throw CodegenError.cycleDetected

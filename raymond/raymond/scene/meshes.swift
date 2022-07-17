@@ -44,7 +44,7 @@ struct InstanceLoader {
         return newId
     }
     
-    mutating func addEntity(_ entity: Scene.Entity) throws {
+    mutating func addEntity(_ entity: SceneDescription.Entity) throws {
         let shapeId = shapeId(forName: entity.shape)
         instances.append(Instance(index: shapeId, transform: entity.matrix))
     }
@@ -159,7 +159,7 @@ struct MeshLoader {
     private var vertexOffset: UInt32 = 0
     private var faceOffset: UInt32 = 0
     
-    mutating func addShape(_ shape: Scene.Shape) throws {
+    mutating func addShape(_ shape: SceneDescription.Shape) throws {
         guard shape.type == "ply" else {
             throw MeshLoaderError.unsupportedFormat
         }

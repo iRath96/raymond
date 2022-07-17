@@ -29,12 +29,12 @@ kernel void handleIntersections(
     constant Intersection *intersections [[buffer(ShadingBufferIntersections)]],
     device Ray *rays [[buffer(ShadingBufferRays)]],
     device Ray *nextRays [[buffer(ShadingBufferNextRays)]],
-    device ShadowRay *shadowRays [[buffer(ShadingBufferShadowRays)]],
+    //device ShadowRay *shadowRays [[buffer(ShadingBufferShadowRays)]],
     
     // ray counters
     device const uint &currentRayCount [[buffer(ShadingBufferCurrentRayCount)]],
     device atomic_uint &nextRayCount [[buffer(ShadingBufferNextRayCount)]],
-    device atomic_uint &shadowRayCount [[buffer(ShadingBufferShadowRayCount)]],
+    //device atomic_uint &shadowRayCount [[buffer(ShadingBufferShadowRayCount)]],
     
     // geometry buffers
     device const Vertex *vertices [[buffer(ShadingBufferVertices)]],
@@ -153,6 +153,22 @@ kernel void handleIntersections(
             coordinates
         );
     }
+    
+    /*{
+        uint2 coordinates = uint2(ray.x, ray.y);
+        image.write(
+            image.read(coordinates) + float4(
+                ray.weight * (
+                    tctx.material.diffuse.diffuseWeight +
+                    tctx.material.diffuse.sheenWeight +
+                    tctx.material.specular.Cspec0 +
+                    tctx.material.transmission.Cspec0
+                ),
+                1),
+            coordinates
+        );
+        return;
+    }*/
     
     float3x3 worldToShadingFrame;
     if (all(tctx.material.normal == 0)) {

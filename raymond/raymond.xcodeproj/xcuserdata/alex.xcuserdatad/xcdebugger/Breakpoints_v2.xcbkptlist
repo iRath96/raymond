@@ -14,8 +14,8 @@
             filePath = "raymond/scene/codegen.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "363"
-            endingLineNumber = "363"
+            startingLineNumber = "430"
+            endingLineNumber = "430"
             landmarkName = "registerTexture(_:_:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -30,8 +30,8 @@
             filePath = "raymond/scene/nodes.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "260"
-            endingLineNumber = "260"
+            startingLineNumber = "305"
+            endingLineNumber = "305"
             landmarkName = "init(from:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -46,8 +46,8 @@
             filePath = "raymond/scene/codegen.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "302"
-            endingLineNumber = "302"
+            startingLineNumber = "369"
+            endingLineNumber = "369"
             landmarkName = "makeKernelInvocation(for:)"
             landmarkType = "7">
          </BreakpointContent>
