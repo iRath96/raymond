@@ -29,6 +29,7 @@ struct BsdfPrincipledKernel: NodeKernel {
 struct AddShaderKernel: NodeKernel {}
 struct MixShaderKernel: NodeKernel {}
 struct EmissionKernel: NodeKernel {}
+struct BackgroundKernel: NodeKernel {}
 struct FresnelKernel: NodeKernel {}
 
 // MARK: - Texture kernels
@@ -306,6 +307,7 @@ struct Node: Codable {
         "ADD_SHADER":       AddShaderKernel.self,
         "MIX_SHADER":       MixShaderKernel.self,
         "FRESNEL":          FresnelKernel.self,
+        "BACKGROUND":       BackgroundKernel.self,
         
         // color nodes
         "VALTORGB":       ColorRampKernel.self,

@@ -72,7 +72,7 @@ struct SceneDescription: Codable {
         var farClip: Float
         var film: Film
         var transform: float4x4
-        var depthOfField: DepthOfField
+        var depthOfField: DepthOfField?
         
         private enum CodingKeys: String, CodingKey {
             case nearClip = "near_clip"
@@ -87,7 +87,7 @@ struct SceneDescription: Codable {
             nearClip = try container.decode(Float.self, forKey: .nearClip)
             farClip = try container.decode(Float.self, forKey: .farClip)
             film = try container.decode(Film.self, forKey: .film)
-            depthOfField = try container.decode(DepthOfField.self, forKey: .depthOfField)
+            depthOfField = try container.decodeIfPresent(DepthOfField.self, forKey: .depthOfField)
             
             let matrixEntries = try container.decode([Float].self, forKey: .transform)
             transform = float4x4()
@@ -103,7 +103,7 @@ struct SceneDescription: Codable {
             try container.encode(nearClip, forKey: .nearClip)
             try container.encode(farClip, forKey: .farClip)
             try container.encode(film, forKey: .film)
-            try container.encode(depthOfField, forKey: .depthOfField)
+            try container.encodeIfPresent(depthOfField, forKey: .depthOfField)
             
             var matrixEntries: [Float] = .init(repeating: 0, count: 16)
             for y in 0..<4 {
@@ -192,6 +192,7 @@ struct SceneLoader {
             NSLog("generating shader for \(materialName)")
             try codegen.addMaterial(sceneDescription.materials[materialName]!)
         }
+        try codegen.setWorld(sceneDescription.world)
         
         NSLog("generating shaders")
         let library = try codegen.build()
@@ -204,6 +205,10 @@ struct SceneLoader {
                 let function = library.makeFunction(name: "material_\(index)")!
                 linkedFunctions.functions!.append(function)
             }
+            
+            NSLog("making function world")
+            let function = library.makeFunction(name: "world")!
+            linkedFunctions.functions!.append(function)
         }
         
         NSLog("making function handleIntersections")
@@ -225,7 +230,7 @@ struct SceneLoader {
         try binArchive.serialize(to: desktopURL.appending(path: "binary.metallib"))*/
         
         let fnTableDescriptor = MTLVisibleFunctionTableDescriptor()
-        fnTableDescriptor.functionCount = mesh.materialNames.count
+        fnTableDescriptor.functionCount = mesh.materialNames.count + 1
         
         let shaderFunctionTable = intersectionHandler.makeVisibleFunctionTable(
             descriptor: fnTableDescriptor)!

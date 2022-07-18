@@ -661,6 +661,18 @@ struct Emission {
     }
 };
 
+struct Background {
+    float4 color;
+    float strength;
+    float weight;
+    
+    Material background;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        background.emission = color.xyz * strength;
+    }
+};
+
 static constant float blackbody_table_r[][3] = {
     {1.61919106e+03f, -2.05010916e-03f, 5.02995757e+00f},
     {2.48845471e+03f, -1.11330907e-03f, 3.22621544e+00f},
@@ -923,6 +935,7 @@ struct BsdfPrincipled {
         
         bsdf.alpha = alpha;
         bsdf.normal = normal;
+        bsdf.emission = emission.xyz;
     }
 };
 
@@ -1013,7 +1026,15 @@ struct OutputMaterial {
     
     void compute(device Context &ctx, thread ThreadContext &tctx) {
         tctx.material = surface;
-        //tctx.material.diffuse.diffuseWeight = float3(1, 0, 0);
+    }
+};
+
+struct OutputWorld {
+    float thickness;
+    Material surface;
+    
+    void compute(device Context &ctx, thread ThreadContext &tctx) {
+        tctx.material = surface;
     }
 };
 

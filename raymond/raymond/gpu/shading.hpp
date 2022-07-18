@@ -61,18 +61,22 @@ kernel void handleIntersections(
     device Ray &ray = rays[rayIndex];
     PRNGState prng = ray.prng;
     
+    ThreadContext tctx;
+    tctx.rnd = sample3d(prng);
+    tctx.wo = -ray.direction;
+    
     constant Intersection &isect = intersections[rayIndex];
     if (isect.distance <= 0.0f) {
         // miss
-        float envmapCos = dot(ray.direction, normalize(float3(1.192f, -1, 0.42f)));
-        envmapCos = select(1, 0, envmapCos < 0.9);
-        float3 envmap = 10 * float3(1.538, 1.351, 1.257) * envmapCos + 0.05f;
-            
+        tctx.normal = tctx.wo;
+        
+        int worldShaderIndex = shaders.size() - 1;
+        shaders[worldShaderIndex](ctx, tctx);
+        
         uint2 coordinates = uint2(ray.x, ray.y);
         image.write(
-            //image.read(coordinates) + float4(isect.distance, 0, 0, 1),
             image.read(coordinates) + float4(
-                envmap * ray.weight,
+                ray.weight * tctx.material.emission,
                 1),
             coordinates
         );
@@ -83,11 +87,6 @@ kernel void handleIntersections(
     const device PerInstanceData &instance = perInstanceData[isect.instanceIndex];
     
     int shaderIndex;
-    
-    ThreadContext tctx;
-    tctx.rnd = sample3d(prng);
-    tctx.wo = -ray.direction;
-    
     float3 ipoint;
     {
         const unsigned int faceIndex = instance.faceOffset + isect.primitiveIndex;

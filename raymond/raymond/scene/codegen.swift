@@ -315,6 +315,8 @@ struct Codegen {
             return .init(kernel: "Bump")
         case is OutputMaterialKernel:
             return .init(kernel: "OutputMaterial")
+        case is OutputWorldKernel:
+            return .init(kernel: "OutputWorld")
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
         case let kernel as UVMapKernel:
@@ -348,6 +350,8 @@ struct Codegen {
             return .init(kernel: "LightPath")
         case is EmissionKernel:
             return .init(kernel: "Emission")
+        case is BackgroundKernel:
+            return .init(kernel: "Background")
         case is NewGeometryKernel:
             return .init(kernel: "NewGeometry")
         case is BlackbodyKernel:
@@ -376,17 +380,27 @@ struct Codegen {
     }
     
     mutating func addMaterial(_ material: SceneDescription.Material) throws {
-        try emit(material)
+        try emit(material, isWorld: false)
     }
     
-    private mutating func emit(_ material: SceneDescription.Material) throws {
+    mutating func setWorld(_ world: SceneDescription.Material) throws {
+        try emit(world, isWorld: true)
+    }
+    
+    private mutating func emit(_ material: SceneDescription.Material, isWorld: Bool) throws {
         state = [:]
         invocations = []
         
         for node in material.nodes.sorted(by: { $0.0 < $1.0 }) {
-            if node.value.kernel is OutputMaterialKernel {
-                // Only output nodes that are really needed
-                try emitNode(material, key: node.key)
+            // Only output nodes that are really needed
+            if isWorld {
+                if node.value.kernel is OutputWorldKernel {
+                    try emitNode(material, key: node.key)
+                }
+            } else {
+                if node.value.kernel is OutputMaterialKernel {
+                    try emitNode(material, key: node.key)
+                }
             }
         }
         
@@ -400,9 +414,10 @@ struct Codegen {
             textures.append(textureLoader.device.makeTexture(descriptor: descriptor)!)
         }
         
+        let functionName = isWorld ? "world" : "material_\(materialIndex)"
         let attributes = options.contains(.useFunctionTable) ? "[[visible]] " : ""
         text.addLine("""
-        \(attributes)void material_\(materialIndex)(
+        \(attributes)void \(functionName)(
             device Context &ctx,
             thread ThreadContext &tctx
         ) {
