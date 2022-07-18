@@ -138,8 +138,8 @@ struct Codegen {
     }
     
     private struct TextureDescriptor {
-        var url: URL
-        var options: [MTKTextureLoader.Option: Any]
+        var url: URL?
+        var options: [MTKTextureLoader.Option: Any]?
         var texture: MTLTexture?
     }
     
@@ -167,19 +167,21 @@ struct Codegen {
     private mutating func loadTextures() throws {
         NSLog("loading textures")
         DispatchQueue.concurrentPerform(iterations: textureDescriptors.count) { index in
-            do {
-                textureDescriptors[index].texture = try textureLoader.newTexture(
-                    URL: textureDescriptors[index].url,
-                    options: textureDescriptors[index].options
-                )
-            } catch {
-                print("Could not load texture \(textureDescriptors[index].url): \(error)")
-                
-                let descriptor = MTLTextureDescriptor()
-                descriptor.width = 1
-                descriptor.height = 1
-                descriptor.pixelFormat = .r8Unorm
-                textureDescriptors[index].texture = textureLoader.device.makeTexture(descriptor: descriptor)!
+            if let url = textureDescriptors[index].url {
+                do {
+                    textureDescriptors[index].texture = try textureLoader.newTexture(
+                        URL: url,
+                        options: textureDescriptors[index].options
+                    )
+                } catch {
+                    print("Could not load texture \(url): \(error)")
+                    
+                    let descriptor = MTLTextureDescriptor()
+                    descriptor.width = 1
+                    descriptor.height = 1
+                    descriptor.pixelFormat = .r8Unorm
+                    textureDescriptors[index].texture = textureLoader.device.makeTexture(descriptor: descriptor)!
+                }
             }
         }
         textures = textureDescriptors.map { $0.texture! }
@@ -236,6 +238,43 @@ struct Codegen {
     
     private mutating func makeKernelInvocation(for kernel: NodeKernel) throws -> KernelInvocation {
         switch kernel {
+        case let kernel as TexSkyKernel:
+            if kernel.type == "NISHITA" {
+                NSLog("generating sky texture")
+                
+                let textureDescriptor = MTLTextureDescriptor()
+                textureDescriptor.width = 512
+                textureDescriptor.height = 512
+                textureDescriptor.pixelFormat = .rgba32Float
+                
+                let texture = textureLoader.device.makeTexture(descriptor: textureDescriptor)!
+                let options = SkyOptions(
+                    sunElevation: kernel.sunElevation,
+                    sunRotation: kernel.sunRotation,
+                    sunDisc: kernel.sunDisc,
+                    sunSize: kernel.sunSize,
+                    sunIntensity: kernel.sunIntensity,
+                    altitude: kernel.altitude,
+                    airDensity: kernel.airDensity,
+                    dustDensity: kernel.dustDensity,
+                    ozoneDensity: kernel.ozoneDensity
+                )
+                SkyLoader.generate(texture, with: options)
+                
+                var data = [Float].init(repeating: 0, count: 10)
+                data.withUnsafeMutableBufferPointer { ptr in
+                    SkyLoader.generateData(ptr.baseAddress!, with: options)
+                }
+                
+                let slot = registerTexture(texture)
+                var invocation: KernelInvocation = .init(kernel: "TexNishita", parameters: [
+                    .int(slot)
+                ])
+                return invocation.assign(key: "data", value: "{ \(data.map { String($0) }.joined(separator: ", ")) }")
+            }
+            
+            warn("SkyKernel: only Nishita supported")
+            throw CodegenError.unsupportedKernel
         case let kernel as TexImageKernel:
             let slot = try registerTexture(kernel.filepath, kernel.colorspace)
             if kernel.alpha != "STRAIGHT" {
@@ -431,6 +470,12 @@ struct Codegen {
         text.addLine("")
         
         materialIndex += 1
+    }
+    
+    private mutating func registerTexture(_ texture: MTLTexture) -> Int {
+        let idx = textureDescriptors.count
+        textureDescriptors.append(TextureDescriptor(texture: texture))
+        return idx
     }
     
     private mutating func registerTexture(_ path: String, _ colorspace: String) throws -> Int {

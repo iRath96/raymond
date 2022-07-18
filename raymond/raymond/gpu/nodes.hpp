@@ -3,6 +3,7 @@
 #include "bsdf.hpp"
 #include "noise.hpp"
 #include "context.hpp"
+#include "sky.hpp"
 
 #include <metal_stdlib>
 using namespace metal;
@@ -81,17 +82,19 @@ struct NewGeometry {
 };
 
 struct TextureCoordinate {
-    float2 uv;
+    float3 generated;
+    float3 uv;
     float3 normal;
     
     void compute(device Context &ctx, ThreadContext tctx) {
         uv = tctx.uv;
+        generated = tctx.uv; /// @todo
         normal = tctx.normal;
     }
 };
 
 struct UVMapCoordinate {
-    float2 uv;
+    float3 uv;
     
     void compute(device Context &ctx, ThreadContext tctx) {
         uv = tctx.uv;
@@ -224,6 +227,34 @@ struct TexImage {
         case kTexImage::PIXEL_FORMAT_RGBA:
             break;
         }
+    }
+};
+
+template<
+    int TextureIndex
+>
+struct TexNishita {
+    float3 vector;
+    float4 color;
+    float data[10];
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        /*float2 vector;
+        vector.x = (tctx.wo.x-0.5) * 4;
+        vector.y = tctx.wo.z * 4;
+        
+        if (any(vector < 0) or any(vector > 1)) {
+            color = 0;
+            return;
+        }
+        
+        constexpr sampler linearSampler(address::clamp_to_edge, coord::normalized, filter::linear);
+        color = ctx.textures[TextureIndex].sample(
+            linearSampler,
+            float2(vector.x, vector.y)
+        );*/
+        
+        color = float4(sky_radiance_nishita(-tctx.wo, data, ctx.textures[TextureIndex]), 1);
     }
 };
 

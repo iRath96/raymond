@@ -17,7 +17,10 @@
 		FA100A962878701A00884319 /* ShaderTypes.h in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFA2875D4D800C0B0D0 /* ShaderTypes.h */; };
 		FA10CBB328787A69004092CA /* random.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A85287790ED00884319 /* random.hpp */; };
 		FA10CBB8287886B8004092CA /* PLYReader.m in Sources */ = {isa = PBXBuildFile; fileRef = FA10CBB7287886B8004092CA /* PLYReader.m */; };
+		FA289CD728860BBB008AD555 /* sky.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA5779152885FAAC003C10E7 /* sky.hpp */; };
 		FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = FA5779122883EC7F003C10E7 /* ArgumentParser */; };
+		FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FA5779172885FF86003C10E7 /* SkyLoader.mm */; };
+		FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA57791A2885FFE6003C10E7 /* sky_nishita.cpp */; };
 		FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF22875D4D800C0B0D0 /* Main.swift */; };
 		FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */; };
 		FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */; };
@@ -43,6 +46,12 @@
 		FA100A9428786F9A00884319 /* shading.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = shading.hpp; sourceTree = "<group>"; };
 		FA10CBB6287886B8004092CA /* PLYReader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PLYReader.h; sourceTree = "<group>"; };
 		FA10CBB7287886B8004092CA /* PLYReader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PLYReader.m; sourceTree = "<group>"; };
+		FA5779152885FAAC003C10E7 /* sky.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sky.hpp; sourceTree = "<group>"; };
+		FA5779172885FF86003C10E7 /* SkyLoader.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SkyLoader.mm; sourceTree = "<group>"; };
+		FA57791A2885FFE6003C10E7 /* sky_nishita.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sky_nishita.cpp; sourceTree = "<group>"; };
+		FA57791D2885FFFD003C10E7 /* sky_float3.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sky_float3.h; sourceTree = "<group>"; };
+		FA57791E28860042003C10E7 /* sky_model.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sky_model.h; sourceTree = "<group>"; };
+		FA57791F2886009A003C10E7 /* SkyLoader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SkyLoader.h; sourceTree = "<group>"; };
 		FAC3AAEF2875D4D800C0B0D0 /* raymond.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = raymond.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3AAF22875D4D800C0B0D0 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
 		FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendererViewController.swift; sourceTree = "<group>"; };
@@ -81,6 +90,7 @@
 				FA100A902878308200884319 /* bsdf.hpp */,
 				FA100A922878314400884319 /* context.hpp */,
 				FA100A9428786F9A00884319 /* shading.hpp */,
+				FA5779152885FAAC003C10E7 /* sky.hpp */,
 			);
 			path = gpu;
 			sourceTree = "<group>";
@@ -113,6 +123,26 @@
 			path = renderer;
 			sourceTree = "<group>";
 		};
+		FA5779162885FF7B003C10E7 /* host */ = {
+			isa = PBXGroup;
+			children = (
+				FA5779192885FFD3003C10E7 /* sky */,
+			);
+			path = host;
+			sourceTree = "<group>";
+		};
+		FA5779192885FFD3003C10E7 /* sky */ = {
+			isa = PBXGroup;
+			children = (
+				FA57791F2886009A003C10E7 /* SkyLoader.h */,
+				FA5779172885FF86003C10E7 /* SkyLoader.mm */,
+				FA57791E28860042003C10E7 /* sky_model.h */,
+				FA57791D2885FFFD003C10E7 /* sky_float3.h */,
+				FA57791A2885FFE6003C10E7 /* sky_nishita.cpp */,
+			);
+			path = sky;
+			sourceTree = "<group>";
+		};
 		FAC3AAE62875D4D800C0B0D0 = {
 			isa = PBXGroup;
 			children = (
@@ -133,6 +163,7 @@
 		FAC3AAF12875D4D800C0B0D0 /* raymond */ = {
 			isa = PBXGroup;
 			children = (
+				FA5779162885FF7B003C10E7 /* host */,
 				FA100A86287809A600884319 /* io */,
 				FA100A84287790CD00884319 /* gpu */,
 				FAC3AB062875D53800C0B0D0 /* scene */,
@@ -224,6 +255,7 @@
 			files = (
 				FAC3AAFC2875D4D900C0B0D0 /* Assets.xcassets in Resources */,
 				FAC3AAFF2875D4D900C0B0D0 /* Main.storyboard in Resources */,
+				FA289CD728860BBB008AD555 /* sky.hpp in Resources */,
 				FA100A91287830A300884319 /* bsdf.hpp in Resources */,
 				FA100A8F28781C7000884319 /* nodes.hpp in Resources */,
 				FA100A932878317F00884319 /* context.hpp in Resources */,
@@ -242,6 +274,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FAC3AB1F2876D34600C0B0D0 /* scene.swift in Sources */,
+				FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */,
 				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
 				FAC3AAF92875D4D800C0B0D0 /* Shaders.metal in Sources */,
 				FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */,
@@ -250,6 +283,7 @@
 				FAC3AB1D2876D26700C0B0D0 /* codegen.swift in Sources */,
 				FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */,
 				FA10CBB8287886B8004092CA /* PLYReader.m in Sources */,
+				FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */,
 				FAC3AB082875D55800C0B0D0 /* nodes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -60,7 +60,7 @@ struct Material {
 };
 
 struct ThreadContext {
-    float2 uv;
+    float3 uv;
     float3 normal;
     float3 tu, tv;
     float3 rnd;

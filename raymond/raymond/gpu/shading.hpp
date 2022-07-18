@@ -69,6 +69,7 @@ kernel void handleIntersections(
     if (isect.distance <= 0.0f) {
         // miss
         tctx.normal = tctx.wo;
+        tctx.uv = -tctx.wo;
         
         int worldShaderIndex = shaders.size() - 1;
         shaders[worldShaderIndex](ctx, tctx);
@@ -101,7 +102,7 @@ kernel void handleIntersections(
         float2x2 T;
         T.columns[0] = texcoords[idx0] - Tc;
         T.columns[1] = texcoords[idx1] - Tc;
-        tctx.uv = T * isect.coordinates + Tc;
+        tctx.uv = float3(T * isect.coordinates + Tc, 0);
         
         float3 Pc = vertexToFloat3(vertices[idx2]);
         float2x3 P;
