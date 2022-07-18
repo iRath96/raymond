@@ -90,9 +90,6 @@ struct TextureCoordinate {
     }
 };
 
-/**
- * @todo not tested
- */
 struct UVMapCoordinate {
     float2 uv;
     
@@ -694,9 +691,6 @@ static constant float blackbody_table_b[][4] = {
     {6.72650283e-13f, -2.73078809e-08f, 4.24098264e-04f, -7.52335691e-01f}
 };
 
-/**
- * @todo not tested
- */
 struct Blackbody {
     float temperature;
     float4 color;
