@@ -304,6 +304,9 @@ struct Codegen {
             return .init(kernel: "BsdfGlass", parameters: [
                 .enum("DISTRIBUTION", "GGX")
             ])
+        case is BsdfDiffuseKernel:
+            warn("BsdfDiffuse: not tested")
+            return .init(kernel: "BsdfDiffuse")
         case is BsdfTranslucentKernel:
             warn("BsdfTranslucent: not implemented")
             return .init(kernel: "BsdfTranslucent")
@@ -332,6 +335,10 @@ struct Codegen {
             return .init(kernel: "SeparateColor", parameters: [
                 .enum("MODE", kernel.mode)
             ])
+        case let kernel as CombineColorKernel:
+            return .init(kernel: "CombineColor", parameters: [
+                .enum("MODE", kernel.mode)
+            ])
         case is HueSaturationKernel:
             return .init(kernel: "HueSaturation")
         case is BrightnessContrastKernel:
@@ -344,13 +351,11 @@ struct Codegen {
         case is NewGeometryKernel:
             return .init(kernel: "NewGeometry")
         case is BlackbodyKernel:
-            warn("Blackbody: not tested")
             return .init(kernel: "Blackbody")
         case is ColorCurvesKernel:
             warn("ColorCurves: not yet supported")
             return .init(kernel: "ColorCurves")
         case is FresnelKernel:
-            warn("Fresnel: not yet supported")
             return .init(kernel: "Fresnel")
         case is CombineVectorKernel:
             return .init(kernel: "CombineVector")

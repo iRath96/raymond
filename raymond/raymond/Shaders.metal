@@ -48,8 +48,8 @@ kernel void generateRays(
     const float2 uv = jitteredCoordinates / float2(imageSize) * 2.0f - 1.0f;
 
     const float aspect = float(imageSize.x) / float(imageSize.y);
-    ray.origin = (float4(0, 0, 0, 1.f) * uniforms.projectionMatrix).xyz;
-    ray.direction = normalize((float4(aspect * uv.x, uv.y, -2.5f, 0) * uniforms.projectionMatrix).xyz);
+    ray.origin = (uniforms.projectionMatrix * float4(0, 0, 0, 1.f)).xyz;
+    ray.direction = normalize((uniforms.projectionMatrix * float4(aspect * uv.x, uv.y, -2.5f, 0)).xyz);
     ray.minDistance = 0.0f;
     ray.maxDistance = INFINITY;
     ray.weight = float3(1, 1, 1);
@@ -99,8 +99,6 @@ fragment float4 blitFragment(
 ) {
     constexpr sampler linearSampler(coord::normalized, filter::nearest);
     float4 color = image.sample(linearSampler, in.coords) / (uniforms.frameIndex + 1);
-    if (!(color.x >= 0)) color = float4(1, 0, 1, 1);
-    if (!(color.y >= 0)) color = float4(1, 0, 1, 1);
-    if (!(color.z >= 0)) color = float4(1, 0, 1, 1);
-    return color;// + float4(1, 1, 1, 0);
+    if (any(isnan(color))) color = float4(1, 0, 1, 1);
+    return color;
 }

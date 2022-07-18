@@ -413,7 +413,7 @@ class Renderer: NSObject, MTKViewDelegate {
     }
     
     func updateProjection(by multiplying: float4x4) {
-        projectionMatrix = multiplying * projectionMatrix
+        projectionMatrix = projectionMatrix * multiplying.transpose
         reset()
     }
     

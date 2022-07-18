@@ -56,10 +56,80 @@ struct SceneDescription: Codable {
             try container.encode(matrixEntries, forKey: .matrix)
         }
     }
+    
+    struct Camera: Codable {
+        struct Film: Codable {
+            var width: Float
+            var height: Float
+        }
+        
+        struct DepthOfField: Codable {
+            var focus: Float
+            var fstop: Float
+        }
+        
+        var nearClip: Float
+        var farClip: Float
+        var film: Film
+        var transform: float4x4
+        var depthOfField: DepthOfField
+        
+        private enum CodingKeys: String, CodingKey {
+            case nearClip = "near_clip"
+            case farClip = "far_clip"
+            case film
+            case transform
+            case depthOfField = "dof"
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            nearClip = try container.decode(Float.self, forKey: .nearClip)
+            farClip = try container.decode(Float.self, forKey: .farClip)
+            film = try container.decode(Film.self, forKey: .film)
+            depthOfField = try container.decode(DepthOfField.self, forKey: .depthOfField)
+            
+            let matrixEntries = try container.decode([Float].self, forKey: .transform)
+            transform = float4x4()
+            for y in 0..<4 {
+                for x in 0..<4 {
+                    transform[x, y] = matrixEntries[4 * y + x]
+                }
+            }
+        }
+        
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(nearClip, forKey: .nearClip)
+            try container.encode(farClip, forKey: .farClip)
+            try container.encode(film, forKey: .film)
+            try container.encode(depthOfField, forKey: .depthOfField)
+            
+            var matrixEntries: [Float] = .init(repeating: 0, count: 16)
+            for y in 0..<4 {
+                for x in 0..<4 {
+                    matrixEntries[4 * y + x] = transform[x, y]
+                }
+            }
+            try container.encode(matrixEntries, forKey: .transform)
+        }
+    }
+    
+    struct RenderSettings: Codable {
+        struct Resolution: Codable {
+            var width: Float
+            var height: Float
+        }
+        
+        var resolution: Resolution
+    }
 
     var materials: [String: Material]
+    var world: Material
     var shapes: [String: Shape]
     var entities: [String: Entity]
+    var camera: Camera?
+    var render: RenderSettings
 }
 
 struct SceneDescriptionLoader {
@@ -208,12 +278,16 @@ struct SceneLoader {
         
         NSLog("done!")
         
-        let projectionMatrix = float4x4([
+        var projectionMatrix = float4x4(rows: [
             SIMD4([ 0, 0, 1, 314.8 ]),
             SIMD4([ 1, 0, 0, -248.2 ]),
             SIMD4([ 0, 1, 0, 160.5 ]),
             SIMD4([ 0, 0, 0, 1 ]),
         ])
+        
+        if let camera = sceneDescription.camera {
+            projectionMatrix = camera.transform
+        }
         
         return Scene(
             mesh: mesh,

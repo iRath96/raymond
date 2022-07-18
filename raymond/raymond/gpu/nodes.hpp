@@ -7,6 +7,15 @@
 #include <metal_stdlib>
 using namespace metal;
 
+float luminance(float3 color) {
+    // ITU-R standard
+    return dot(float3(0.2126, 0.7152, 0.0722), color);
+}
+
+float safe_divide(float a, float b) {
+  return (b != 0.0) ? a / b : 0.0;
+}
+
 /**
  * @todo not properly supported!
  */
@@ -29,13 +38,11 @@ struct kVectorMath {
         OPERATION_ADD,
         OPERATION_SUB,
         OPERATION_MULTIPLY,
-        OPERATION_NORMALIZE
+        OPERATION_NORMALIZE,
+        OPERATION_SCALE
     };
 };
 
-/**
- * @todo not tested
- */
 template<
     kVectorMath::Operation Operation
 >
@@ -48,13 +55,15 @@ struct VectorMath {
     void compute(device Context &ctx, ThreadContext tctx) {
         switch (Operation) {
         case kVectorMath::OPERATION_ADD:
-            vector = vector_001 + vector_002; break;
+            vector = vector + vector_001; break;
         case kVectorMath::OPERATION_SUB:
-            vector = vector_001 - vector_002; break;
+            vector = vector - vector_001; break;
         case kVectorMath::OPERATION_MULTIPLY:
-            vector = vector_001 * vector_002; break;
+            vector = vector * vector_001; break;
         case kVectorMath::OPERATION_NORMALIZE:
             vector = normalize(vector); break;
+        case kVectorMath::OPERATION_SCALE:
+            vector = vector * scale; break;
         }
     }
 };
@@ -123,15 +132,6 @@ struct CombineVector {
     
     void compute(device Context &ctx, ThreadContext tctx) {
         vector = float3(x, y, z);
-    }
-};
-
-struct CombineColor {
-    float red, green, blue;
-    float3 color;
-    
-    void compute(device Context &ctx, ThreadContext tctx) {
-        color = float3(red, green, blue);
     }
 };
 
@@ -457,38 +457,49 @@ struct Fresnel {
     float fac;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        fac = 1.f;
+        if (all(normal == 0))
+            normal = tctx.normal;
+        
+        float cosI = dot(tctx.wo, normal);
+        bool backfacing = cosI < 0;
+        float eta = max(ior, 1e-5);
+        eta = select(eta, 1 / eta, backfacing);
+        
+        fac = fresnelDielectricCos(cosI, eta);
     }
 };
 
 struct kMath {
     enum Operation {
         OPERATION_ADD,
-        OPERATION_SUB,
-        OPERATION_MULTIPLY
+        OPERATION_SUBTRACT,
+        OPERATION_MULTIPLY,
+        OPERATION_DIVIDE,
+        OPERATION_MULTIPLY_ADD
     };
 };
 
-/**
- * @todo not tested
- */
 template<
     kMath::Operation Operation,
     bool Clamp
 >
 struct Math {
-    float3 value;
-    float3 value_001;
-    float3 value_002;
+    float value;
+    float value_001;
+    float value_002;
     
     void compute(device Context &ctx, ThreadContext tctx) {
         switch (Operation) {
         case kMath::OPERATION_ADD:
-            value = value_001 + value_002; break;
-        case kMath::OPERATION_SUB:
-            value = value_001 - value_002; break;
+            value = value + value_001; break;
+        case kMath::OPERATION_SUBTRACT:
+            value = value - value_001; break;
         case kMath::OPERATION_MULTIPLY:
-            value = value_001 * value_002; break;
+            value = value * value_001; break;
+        case kMath::OPERATION_DIVIDE:
+            value = safe_divide(value, value_001); break;
+        case kMath::OPERATION_MULTIPLY_ADD:
+            value = value * value_001 + value_002; break;
         }
         
         if (Clamp) {
@@ -516,6 +527,25 @@ struct SeparateColor {
         red = color.x;
         green = color.y;
         blue = color.z;
+    }
+};
+
+struct kCombineColor {
+    enum Mode {
+        MODE_RGB
+    };
+};
+
+template<
+    kCombineColor::Mode Mode
+>
+
+struct CombineColor {
+    float red, green, blue;
+    float4 color;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        color = float4(red, green, blue, 1);
     }
 };
 
@@ -672,7 +702,8 @@ struct Blackbody {
     float4 color;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        color = float4(blackbody(temperature), 1);
+        float3 b = blackbody(temperature);
+        color = float4(b / luminance(b), 1);
     }
     
 private:
@@ -789,7 +820,8 @@ struct kBsdfPrincipled {
     };
     
     enum SubsurfaceMethod {
-        SUBSURFACE_METHOD_BURLEY
+        SUBSURFACE_METHOD_BURLEY,
+        SUBSURFACE_METHOD_RANDOM_WALK
     };
 };
 
@@ -837,9 +869,9 @@ struct BsdfPrincipled {
             (1 - saturate(metallic));
         const float specularWeight = 1 - transmissionWeight;
         
-        const float luminance = dot(float3(0.2126, 0.7152, 0.0722), baseColor.xyz);
-        const float3 tintColor = luminance > 0.f ?
-            baseColor.xyz * (1 / luminance) :
+        const float lum = luminance(baseColor.xyz);
+        const float3 tintColor = lum > 0.f ?
+            baseColor.xyz * (1 / lum) :
             float3(1);
         
         const float3 sheenColor = lerp(float3(1), tintColor, sheenTint);
@@ -909,6 +941,25 @@ struct BsdfTransparent {
     void compute(device Context &ctx, ThreadContext tctx) {
         bsdf.alpha = 0;
         bsdf.alphaWeight = color.xyz;
+    }
+};
+
+struct BsdfDiffuse {
+    float4 color;
+    float3 normal;
+    float roughness;
+    float weight;
+    
+    Material bsdf;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        bsdf.diffuse = (Diffuse){
+            .diffuseWeight = color.xyz,
+            .sheenWeight = 0,
+            .roughness = roughness
+        };
+        
+        bsdf.lobeProbabilities[0] = 1;
     }
 };
 
@@ -988,9 +1039,7 @@ float VALUE(float4 v) { return v.w * (v.x + v.y + v.z) / 3; }
 Material SHADER(Material v) { return v; }
 Material SHADER(float3 v) {
     Material m;
-    // @todo
-    //m.type = Material::CONSTANT_COLOR;
-    //m.color = v;
+    m.emission = v;
     return m;
 }
 Material SHADER(float v) { return SHADER(float3(v)); }

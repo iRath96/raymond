@@ -26,6 +26,22 @@ def export_material(material: bpy.types.Material):
                 "colorspace": node.image.colorspace_settings.name,
                 "alpha": node.image.alpha_mode
             }
+        elif isinstance(node, bpy.types.ShaderNodeTexSky):
+            result_node["parameters"] = {
+                "air_density": node.air_density,
+                "altitude": node.altitude,
+                "dust_density": node.dust_density,
+                "ground_albedo": node.ground_albedo,
+                "ozone_density": node.ozone_density,
+                "sky_type": node.sky_type,
+                "sun_direction": list(node.sun_direction),
+                "sun_disc": node.sun_disc,
+                "sun_elevation": node.sun_elevation,
+                "sun_intensity": node.sun_intensity,
+                "sun_rotation": node.sun_rotation,
+                "sun_size": node.sun_size,
+                "turbidity": node.turbidity
+            }
         elif isinstance(node, bpy.types.ShaderNodeMath):
             result_node["parameters"] = {
                 "operation": node.operation,
@@ -101,6 +117,10 @@ def export_material(material: bpy.types.Material):
         elif isinstance(node, bpy.types.ShaderNodeBump):
             result_node["parameters"] = {
                 "invert": node.invert
+            }
+        elif isinstance(node, bpy.types.ShaderNodeCombineColor):
+            result_node["parameters"] = {
+                "mode": node.mode
             }
         elif isinstance(node, bpy.types.ShaderNodeSeparateColor):
             result_node["parameters"] = {

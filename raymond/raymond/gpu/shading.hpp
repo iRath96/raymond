@@ -144,7 +144,7 @@ kernel void handleIntersections(
     SWITCH_SHADERS
 #endif
     
-    if (mean(tctx.material.emission) > 0) {
+    if (mean(tctx.material.emission) != 0) {
         uint2 coordinates = uint2(ray.x, ray.y);
         image.write(
             image.read(coordinates) + float4(

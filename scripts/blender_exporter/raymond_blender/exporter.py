@@ -5,6 +5,7 @@ from warnings import warn
 
 from .materials import export_material
 from .shapes import export_shape, get_shape_name_base
+from .camera import export_camera, export_render
 
 
 def export_materials():
@@ -54,16 +55,22 @@ def export_shapes(filepath: str, depsgraph: bpy.types.Depsgraph, use_selection: 
     return (shapes, entities)
 
 
-def export_scene(filepath, context, use_selection):
+def export_scene(filepath, context: bpy.types.Context, use_selection):
     depsgraph = context.evaluated_depsgraph_get()
 
     materials = export_materials()
+    world = export_material(depsgraph.scene.world)
     (shapes, entities) = export_shapes(filepath, depsgraph, use_selection)
+    camera = export_camera(depsgraph.scene.camera)
+    render = export_render(depsgraph.scene.render)
 
     result = {
         "materials": materials,
+        "world": world,
         "shapes": shapes,
-        "entities": entities
+        "entities": entities,
+        "camera": camera,
+        "render": render
     }
 
     # write output file

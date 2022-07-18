@@ -6,6 +6,7 @@ protocol NodeKernel: Codable {}
 
 struct BsdfTransparentKernel: NodeKernel {}
 struct BsdfTranslucentKernel: NodeKernel {}
+struct BsdfDiffuseKernel: NodeKernel {}
 
 struct BsdfGlassKernel: NodeKernel {
     var distribution: String
@@ -52,6 +53,38 @@ struct TexNoiseKernel: NodeKernel {
     }
 }
 
+struct TexSkyKernel: NodeKernel {
+    var type: String
+    var airDensity: Float
+    var altitude: Float
+    var dustDensity: Float
+    var groundAlbedo: Float
+    var ozoneDensity: Float
+    var sunDirection: [Float]
+    var sunDisc: Bool
+    var sunElevation: Float
+    var sunIntensity: Float
+    var sunRotation: Float
+    var sunSize: Float
+    var turbidity: Float
+    
+    private enum CodingKeys: String, CodingKey {
+        case type = "sky_type"
+        case airDensity = "air_density"
+        case altitude
+        case dustDensity = "dust_density"
+        case groundAlbedo = "ground_albedo"
+        case ozoneDensity = "ozone_density"
+        case sunDirection = "sun_direction"
+        case sunDisc = "sun_disc"
+        case sunElevation = "sun_elevation"
+        case sunIntensity = "sun_intensity"
+        case sunRotation = "sun_rotation"
+        case sunSize = "sun_size"
+        case turbidity
+    }
+}
+
 // MARK: - Color kernels
 
 struct ColorRampKernel: NodeKernel {
@@ -84,6 +117,10 @@ struct ColorMixKernel: NodeKernel {
 }
 
 struct ColorInvertKernel: NodeKernel {}
+
+struct CombineColorKernel: NodeKernel {
+    var mode: String
+}
 
 struct SeparateColorKernel: NodeKernel {
     var mode: String
@@ -186,6 +223,7 @@ struct UVMapKernel: NodeKernel {
 
 // MARK: - Output kernels
 struct OutputMaterialKernel: NodeKernel {}
+struct OutputWorldKernel: NodeKernel {}
 
 // MARK: - Nodes
 
@@ -255,9 +293,11 @@ struct Node: Codable {
         "TEX_IMAGE":    TexImageKernel.self,
         "TEX_CHECKER":  TexCheckerKernel.self,
         "TEX_NOISE":    TexNoiseKernel.self,
+        "TEX_SKY":      TexSkyKernel.self,
         
         // shader nodes
         "BSDF_PRINCIPLED":  BsdfPrincipledKernel.self,
+        "BSDF_DIFFUSE":     BsdfDiffuseKernel.self,
         "BSDF_GLASS":       BsdfGlassKernel.self,
         "BSDF_GLOSSY":      BsdfGlossyKernel.self,
         "BSDF_TRANSPARENT": BsdfTransparentKernel.self,
@@ -272,6 +312,7 @@ struct Node: Codable {
         "MIX_RGB":        ColorMixKernel.self,
         "CURVE_RGB":      ColorCurvesKernel.self,
         "INVERT":         ColorInvertKernel.self,
+        "COMBINE_COLOR":  CombineColorKernel.self,
         "SEPARATE_COLOR": SeparateColorKernel.self,
         "HUE_SAT":        HueSaturationKernel.self,
         "BLACKBODY":      BlackbodyKernel.self,
@@ -294,7 +335,8 @@ struct Node: Codable {
         "UVMAP":        UVMapKernel.self,
         
         // output nodes
-        "OUTPUT_MATERIAL": OutputMaterialKernel.self
+        "OUTPUT_MATERIAL": OutputMaterialKernel.self,
+        "OUTPUT_WORLD":    OutputWorldKernel.self,
     ]
     
     init(from decoder: Decoder) throws {
