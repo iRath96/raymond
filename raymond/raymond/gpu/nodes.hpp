@@ -239,22 +239,7 @@ struct TexNishita {
     float data[10];
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        /*float2 vector;
-        vector.x = (tctx.wo.x-0.5) * 4;
-        vector.y = tctx.wo.z * 4;
-        
-        if (any(vector < 0) or any(vector > 1)) {
-            color = 0;
-            return;
-        }
-        
-        constexpr sampler linearSampler(address::clamp_to_edge, coord::normalized, filter::linear);
-        color = ctx.textures[TextureIndex].sample(
-            linearSampler,
-            float2(vector.x, vector.y)
-        );*/
-        
-        color = float4(sky_radiance_nishita(-tctx.wo, data, ctx.textures[TextureIndex]), 1);
+        color = float4(sky_radiance_nishita(tctx.wo.xyz * float3(1, -1, -1), data, ctx.textures[TextureIndex]), 1);
     }
 };
 
@@ -966,7 +951,7 @@ struct BsdfPrincipled {
         
         bsdf.alpha = alpha;
         bsdf.normal = normal;
-        bsdf.emission = emission.xyz;
+        bsdf.emission = emission.xyz * emissionStrength;
     }
 };
 

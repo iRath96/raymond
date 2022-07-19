@@ -186,7 +186,10 @@ struct SceneLoader {
         NSLog("building acceleration structures")
         let mesh = try meshLoader.build(withDevice: device)
         
-        let codegenOptions: Codegen.Options = [ .useFunctionTable ]
+        // 15.6 FPS, 4.55 s compile time
+        // 16.8 FPS, 4.07 s compile time
+        
+        let codegenOptions: Codegen.Options = []
         var codegen = Codegen(basePath: url, device: device, options: codegenOptions)
         for materialName in mesh.materialNames {
             NSLog("generating shader for \(materialName)")

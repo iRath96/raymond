@@ -71,8 +71,14 @@ kernel void handleIntersections(
         tctx.normal = tctx.wo;
         tctx.uv = -tctx.wo;
         
+#ifdef USE_FUNCTION_TABLE
+        /// @todo NOT SUPPORTED!
         int worldShaderIndex = shaders.size() - 1;
         shaders[worldShaderIndex](ctx, tctx);
+#else
+        void world(device Context &, thread ThreadContext &);
+        world(ctx, tctx);
+#endif
         
         uint2 coordinates = uint2(ray.x, ray.y);
         image.write(

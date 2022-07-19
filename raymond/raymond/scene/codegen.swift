@@ -423,6 +423,15 @@ struct Codegen {
     }
     
     mutating func setWorld(_ world: SceneDescription.Material) throws {
+        if options.contains(.useFunctionTable) {
+            warn("""
+            Function tables are not currently supported when world nodes are used.
+            Somehow the combination of the two deadlocks the GPU, but it has not yet been determined why.
+            Given that function tables are slower to compile and result in worse performance,
+            we recommend not using them anyway.
+            """)
+            throw CodegenError.unsupportedKernel
+        }
         try emit(world, isWorld: true)
     }
     
@@ -469,7 +478,9 @@ struct Codegen {
         text.addLine("}")
         text.addLine("")
         
-        materialIndex += 1
+        if !isWorld {
+            materialIndex += 1
+        }
     }
     
     private mutating func registerTexture(_ texture: MTLTexture) -> Int {
