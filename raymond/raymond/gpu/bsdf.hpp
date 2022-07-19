@@ -489,18 +489,17 @@ struct Transmission {
             if (!(result.pdf > 0))
                 return BSDFSample::invalid();
             
-            const float cosThetaT = abs(ShadingFrame::cosTheta(wh));
-            result.wi = (dot(wh, wo) / eta - cosThetaT) * wh - wo / eta;
+            //result.wi = (dot(wh, wo) / eta - cosThetaT) * wh - wo / eta;
+            result.wi = refract(-wo, wh, 1/eta);
             if (ShadingFrame::sameHemisphere(result.wi, wo))
                 return BSDFSample::invalid();
             
             result.pdf *= 1 - Fr;
             result.pdf *= abs(dot(result.wi, wh) / square(dot(result.wi, wh) + dot(wh, wo) / eta));
-            result.wi = normalize(result.wi); /// @todo what? is cosThetaT broken maybe?
             
-            const float3 F = fresnelReflectionColor(result.wi, wh, eta, Cspec0);
+            //const float3 F = fresnelReflectionColor(result.wi, wh, eta, Cspec0);
             const float Gi = anisotropicSmithG1(result.wi, wh, alphaX, alphaY);
-            result.weight = weight * baseColor * F * Gi;
+            result.weight = weight * baseColor * Gi;
             return result;
         }
     }
