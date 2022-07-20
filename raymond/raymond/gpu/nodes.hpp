@@ -200,6 +200,12 @@ struct kTexImage {
         ALPHA_STRAIGHT
     };
     
+    enum ColorSpace {
+        COLOR_SPACE_LINEAR,
+        COLOR_SPACE_SRGB,
+        COLOR_SPACE_NON_COLOR
+    };
+    
     enum PixelFormat {
         PIXEL_FORMAT_R,
         PIXEL_FORMAT_RGBA
@@ -216,6 +222,7 @@ template<
     kTexImage::Projection Projection,
     kTexImage::Extension Extension,
     kTexImage::Alpha Alpha,
+    kTexImage::ColorSpace ColorSpace,
     kTexImage::PixelFormat PixelFormat
 >
 struct TexImage {
@@ -237,6 +244,33 @@ struct TexImage {
         case kTexImage::PIXEL_FORMAT_RGBA:
             break;
         }
+        
+        switch (ColorSpace) {
+        case kTexImage::COLOR_SPACE_LINEAR:
+            break;
+        
+        case kTexImage::COLOR_SPACE_SRGB:
+            color.xyz = float3(
+                srgb_to_linearrgb(color.x),
+                srgb_to_linearrgb(color.y),
+                srgb_to_linearrgb(color.z)
+            );
+            break;
+        
+        case kTexImage::COLOR_SPACE_NON_COLOR:
+            /// @todo what is this?
+            break;
+        }
+    }
+    
+private:
+    // taken from blender/blenkernel/intern/studiolight.c
+    float srgb_to_linearrgb(float c) {
+        if (c < 0.04045f) {
+            return (c < 0.0f) ? 0.0f : c * (1.0f / 12.92f);
+        }
+
+        return pow((c + 0.055f) * (1.0f / 1.055f), 2.4f);
     }
 };
 

@@ -103,7 +103,9 @@ struct Codegen {
                     case .int(let v): kernelType += "\(v)"
                     case .bool(let v): kernelType += "\(v)"
                     case .constant(let v): kernelType += "\(v)"
-                    case .enum(let ns, let v): kernelType += "k\(kernel)::\(ns)_\(v.uppercased())"
+                    case .enum(let ns, let v):
+                        let vEscaped = v.replacing(/\W/, with: "_").uppercased()
+                        kernelType += "k\(kernel)::\(ns)_\(vEscaped)"
                     }
                     kernelType += idx < parameters.count-1 ? ",\n" : "\n"
                 }
@@ -286,6 +288,7 @@ struct Codegen {
                 .enum("PROJECTION", kernel.projection),
                 .enum("EXTENSION", kernel.extension),
                 .enum("ALPHA", "STRAIGHT"),
+                .enum("COLOR_SPACE", kernel.colorspace),
                 .constant("TEX\(slot)_PIXEL_FORMAT")
             ], comments: [
                 kernel.filepath
@@ -494,17 +497,9 @@ struct Codegen {
             return idx
         }
         
-        var options: [MTKTextureLoader.Option: Any] = [:]
-        
-        switch colorspace {
-        case "Linear": options[.SRGB] = false
-        case "sRGB": options[.SRGB] = true
-        case "Non-Color":
-            warn("colorspace: 'Non-Color' has not been tested")
-            options[.SRGB] = false
-        default:
-            throw CodegenError.unsupportedColorSpace
-        }
+        let options: [MTKTextureLoader.Option: Any] = [
+            .SRGB: false
+        ]
         
         let idx = textureDescriptors.count
         textureDescriptors.append(TextureDescriptor(
@@ -522,7 +517,7 @@ struct Codegen {
         case .r16Sint, .r16Uint, .r16Snorm, .r16Unorm, .r16Float: return "R"
         case .r32Sint, .r32Uint, .r32Float: return "R"
         
-        case .bgra8Unorm, .bgra8Unorm_srgb: return "RGBA"
+        case .bgra8Unorm, .bgra8Unorm_srgb, .rgba8Unorm_srgb: return "RGBA"
         case .rgba16Unorm: return "RGBA"
         
         default:
@@ -557,7 +552,8 @@ struct Codegen {
              is BsdfGlossyKernel,
              is BsdfDiffuseKernel,
              is BsdfPrincipledKernel,
-             is BsdfTranslucentKernel:
+             is BsdfTranslucentKernel,
+             is BumpKernel:
             provideDefault(name: "Normal", value: normal)
         default: break
         }
