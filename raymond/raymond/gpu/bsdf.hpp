@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ShaderTypes.h"
+
 #include <metal_stdlib>
 using namespace metal;
 
@@ -123,11 +125,13 @@ struct BSDFSample {
     float pdf;
     float3 wi;
     float3 weight;
+    Ray::Flags flags;
     
     static BSDFSample invalid() {
         BSDFSample result;
         result.pdf = 0;
         result.weight = 0;
+        result.flags = Ray::TYPE_INVALID;
         return result;
     }
 };

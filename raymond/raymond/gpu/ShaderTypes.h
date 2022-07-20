@@ -96,6 +96,20 @@ typedef struct {
 } PRNGState;
 
 typedef struct {
+    enum Flags : uint8_t {
+        TYPE = 0b00000111,
+        TYPE_INVALID      = 0,
+        TYPE_CAMERA       = 1,
+        TYPE_REFLECTION   = 2,
+        TYPE_TRANSMISSION = 3,
+        TYPE_SHADOW       = 4,
+        
+        LOBE = 0b00011000,
+        LOBE_SINGULAR = 1<<3,
+        LOBE_DIFFUSE  = 2<<3,
+        LOBE_GLOSSY   = 3<<3
+    };
+    
     MPSPackedFloat3 origin;
     float minDistance;
     MPSPackedFloat3 direction;
@@ -104,6 +118,7 @@ typedef struct {
     PRNGState prng;
     simd_float3 weight;
     uint16_t x, y;
+    Flags flags;
     float bsdfPdf;
 } Ray;
 

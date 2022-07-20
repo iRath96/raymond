@@ -21,16 +21,28 @@ float safe_divide(float a, float b) {
  * @todo not properly supported!
  */
 struct LightPath {
-    bool isDiffuseRay;
     bool isCameraRay;
+    bool isReflectionRay;
     bool isTransmissionRay;
+    bool isShadowRay;
+    
+    bool isDiffuseRay;
+    bool isGlossyRay;
     bool isSingularRay;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        isDiffuseRay = true;
-        isTransmissionRay = false;
-        isSingularRay = false; // ???
-        isCameraRay = tctx.isCameraRay;
+        isCameraRay       = (tctx.rayFlags & Ray::TYPE) == Ray::TYPE_CAMERA;
+        isReflectionRay   = (tctx.rayFlags & Ray::TYPE) == Ray::TYPE_REFLECTION;
+        isTransmissionRay = (tctx.rayFlags & Ray::TYPE) == Ray::TYPE_TRANSMISSION;
+        isShadowRay       = (tctx.rayFlags & Ray::TYPE) == Ray::TYPE_SHADOW;
+        
+        isDiffuseRay  = (tctx.rayFlags & Ray::LOBE) == Ray::LOBE_DIFFUSE;
+        isGlossyRay   = (tctx.rayFlags & Ray::LOBE) == Ray::LOBE_GLOSSY;
+        isSingularRay = (tctx.rayFlags & Ray::LOBE) == Ray::LOBE_SINGULAR;
+        
+        if (isSingularRay)
+            /// @todo confirm
+            isGlossyRay = true;
     }
 };
 

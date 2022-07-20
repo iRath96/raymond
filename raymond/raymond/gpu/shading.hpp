@@ -66,6 +66,7 @@ kernel void handleIntersections(
     PRNGState prng = ray.prng;
     
     ThreadContext tctx;
+    tctx.rayFlags = ray.flags;
     tctx.rnd = sample3d(prng);
     tctx.wo = -ray.direction;
     
@@ -119,7 +120,7 @@ kernel void handleIntersections(
         float2x3 P;
         P.columns[0] = vertexToFloat3(vertices[idx0]) - Pc;
         P.columns[1] = vertexToFloat3(vertices[idx1]) - Pc;
-        tctx.trueNormal = normalize(cross(P.columns[0], P.columns[1]));
+        tctx.trueNormal = normalize(instance.normalTransform * cross(P.columns[0], P.columns[1]));
         
         float3 localP = P * isect.coordinates + Pc;
         tctx.object = localP;
@@ -185,6 +186,7 @@ kernel void handleIntersections(
     
     float3 weight = ray.weight;
     float3 direction;
+    BSDFSample sample;
     
     do {
         const float3 transformedWo = tctx.wo * worldToShadingFrame;
@@ -195,7 +197,7 @@ kernel void handleIntersections(
             break;
         }
         
-        auto sample = tctx.material.sample(tctx.rnd, transformedWo);
+        sample = tctx.material.sample(tctx.rnd, transformedWo, ray.flags);
         weight *= sample.weight;
         direction = sample.wi * transpose(worldToShadingFrame);
         
@@ -215,6 +217,7 @@ kernel void handleIntersections(
         uint nextRayIndex = atomic_fetch_add_explicit(&nextRayCount, 1, memory_order_relaxed);
         device Ray &nextRay = nextRays[nextRayIndex];
         nextRay.origin = tctx.position;
+        nextRay.flags = sample.flags;
         nextRay.direction = direction;
         nextRay.minDistance = eps;
         nextRay.maxDistance = INFINITY;

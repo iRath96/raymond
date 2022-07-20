@@ -24,14 +24,15 @@ struct Material {
         return float3(0);
     }
     
-    BSDFSample sample(float3 rnd, float3 wo) {
+    BSDFSample sample(float3 rnd, float3 wo, Ray::Flags previousFlags) {
         if (rnd.x < alpha) {
             rnd.x /= alpha;
         } else {
             BSDFSample sample;
             sample.weight = alphaWeight;
             sample.wi = -wo;
-            sample.pdf = 1e+8; // @todo hack
+            sample.pdf = 1e+8; /// @todo hack
+            sample.flags = previousFlags; /// null scattering does not alter ray flags
             return sample;
         }
         
@@ -39,21 +40,28 @@ struct Material {
             BSDFSample sample = diffuse.sample(rnd.yz, wo);
             sample.weight *= 1 / lobeProbabilities[0];
             sample.pdf *= alpha * lobeProbabilities[0];
+            sample.flags = Ray::Flags(Ray::TYPE_REFLECTION | Ray::LOBE_DIFFUSE);
             return sample;
         } else if (rnd.x < (lobeProbabilities[0] + lobeProbabilities[1])) {
             BSDFSample sample = specular.sample(rnd.yz, wo);
             sample.weight *= 1 / lobeProbabilities[1];
             sample.pdf *= alpha * lobeProbabilities[1];
+            sample.flags = Ray::Flags(Ray::TYPE_REFLECTION | Ray::LOBE_GLOSSY);
+            /// @todo SINGULAR
             return sample;
         } else if (rnd.x < (lobeProbabilities[0] + lobeProbabilities[1] + lobeProbabilities[2])) {
             BSDFSample sample = transmission.sample(rnd.yz, wo);
             sample.weight *= 1 / lobeProbabilities[2];
             sample.pdf *= alpha * lobeProbabilities[2];
+            sample.flags = Ray::Flags(Ray::TYPE_TRANSMISSION | Ray::LOBE_GLOSSY); /// @todo reflection??
+            /// @todo SINGULAR
             return sample;
         } else {
             BSDFSample sample = clearcoat.sample(rnd.yz, wo);
             sample.weight *= 1 / lobeProbabilities[3];
             sample.pdf *= alpha * lobeProbabilities[3];
+            sample.flags = Ray::Flags(Ray::TYPE_REFLECTION | Ray::LOBE_GLOSSY);
+            /// @todo SINGULAR
             return sample;
         }
     }
@@ -69,9 +77,7 @@ struct ThreadContext {
     float3 tu, tv;
     float3 rnd;
     float3 wo;
-    Ray ray;
-    
-    bool isCameraRay;
+    Ray::Flags rayFlags;
     
     Material material;
 };
