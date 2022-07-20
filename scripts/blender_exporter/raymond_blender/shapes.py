@@ -1,4 +1,5 @@
 import os
+from warnings import warn
 import bmesh
 import bpy
 
@@ -157,6 +158,9 @@ def _export_bmesh_by_material(me: bpy.types.Mesh, name: str, meshpath: str):
 
     # Solidify if necessary
     #_solidify_bmesh(bm)
+
+    if me.use_auto_smooth:
+        warn("'Auto Smooth' not supported!")
     
     bm.normal_update()
 
