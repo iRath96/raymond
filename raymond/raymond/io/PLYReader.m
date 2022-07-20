@@ -95,7 +95,13 @@ float my_strtof(char *head, char **endPtr) {
     return decimal * powf(10, baseExp);
 }
 
-- (void)readVertexElements:(unsigned int)number vertices:(float * _Nonnull)vertices normals:(float * _Nonnull)normals texCoords:(float * _Nonnull)texCoords {
+- (void)readVertexElements:(unsigned int)number
+    vertices:(float * _Nonnull)vertices
+    normals:(float * _Nonnull)normals
+    texCoords:(float * _Nonnull)texCoords
+    boundsMin:(simd_float3 *)boundsMin
+    boundsMax:(simd_float3 *)boundsMax
+{
     char buffer[16384];
     long n = sizeof(buffer);
     char *threshold = buffer + sizeof(buffer) - 256;
@@ -108,7 +114,14 @@ float my_strtof(char *head, char **endPtr) {
             head = buffer;
         }
         
-        for (int j = 0; j < 3; ++j) *(vertices++) = my_strtof(head, &head);
+        for (int j = 0; j < 3; ++j) {
+            float value = my_strtof(head, &head);
+            if (value < (*boundsMin)[j])
+                (*boundsMin)[j] = value;
+            else if (value > (*boundsMax)[j])
+                (*boundsMax)[j] = value;
+            *(vertices++) = value;
+        }
         for (int j = 0; j < 3; ++j) *(normals++) = my_strtof(head, &head);
         for (int j = 0; j < 2; ++j) *(texCoords++) = my_strtof(head, &head);
         
@@ -119,7 +132,11 @@ float my_strtof(char *head, char **endPtr) {
     fseek(file, (head - buffer) - n, SEEK_CUR);
 }
 
-- (void)readFaces:(unsigned int)number indices:(unsigned int * _Nonnull)indices materials:(unsigned int * _Nonnull)materials fromPalette:(const unsigned int *)palette {
+- (void)readFaces:(unsigned int)number
+    indices:(unsigned int * _Nonnull)indices
+    materials:(unsigned int * _Nonnull)materials
+    fromPalette:(const unsigned int *)palette
+{
     char buffer[16384];
     long n = sizeof(buffer);
     char *threshold = buffer + sizeof(buffer) - 256;

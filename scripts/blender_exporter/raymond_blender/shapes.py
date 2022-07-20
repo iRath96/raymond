@@ -49,6 +49,8 @@ def ply_save(filepath, bm: bmesh.types.BMesh):
 
         pf = []
 
+        # @todo we should also be exporting vertices that do not belong to any loop,
+        # as the default generated UV maps rely on the bounds of the object
         for loop in f.loops:
             v = map_id = loop.vert
 

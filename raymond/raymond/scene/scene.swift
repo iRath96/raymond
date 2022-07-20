@@ -257,6 +257,8 @@ struct SceneLoader {
             instanceData.pointee = PerInstanceData(
                 vertexOffset: shapeInfo.vertexOffset,
                 faceOffset: shapeInfo.faceOffset,
+                boundsMin: shapeInfo.boundsMin,
+                boundsSize: shapeInfo.boundsMax - shapeInfo.boundsMin,
                 pointTransform: instancing.pointTransforms[index],
                 normalTransform: instancing.normalTransforms[index]
             )

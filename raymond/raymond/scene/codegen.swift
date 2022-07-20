@@ -532,6 +532,37 @@ struct Codegen {
         }
     }
     
+    /**
+     * Default values for some attributes do not make sense (e.g., normals being set to (0,0,0) on BSDFs).
+     * There does not seem to be an elegant way to tell these attributes apart in the exporter plugin,
+     * so we just fix the attributes here in the Codgen.
+     */
+    private func provideDefaults(forNode node: inout Node, inInvocation invocation: inout KernelInvocation) {
+        func provideDefault(name: String, value: String) {
+            node.inputs[name]!.value = nil
+            invocation.assign(key: name, value: value)
+        }
+        
+        let mappedUV = "VECTOR(tctx.uv)"
+        let generatedUV = "VECTOR(tctx.generated)"
+        let normal = "VECTOR(tctx.normal)"
+        
+        switch node.kernel {
+        case is TexImageKernel:
+            provideDefault(name: "Vector", value: mappedUV)
+        case is TexCheckerKernel, is TexNoiseKernel:
+            provideDefault(name: "Vector", value: generatedUV)
+        case is FresnelKernel,
+             is BsdfGlassKernel,
+             is BsdfGlossyKernel,
+             is BsdfDiffuseKernel,
+             is BsdfPrincipledKernel,
+             is BsdfTranslucentKernel:
+            provideDefault(name: "Normal", value: normal)
+        default: break
+        }
+    }
+    
     private mutating func emitNode(_ material: SceneDescription.Material, key: String) throws {
         switch state[key] {
             case .emitted: return
@@ -545,14 +576,7 @@ struct Codegen {
         var invocation = try makeKernelInvocation(for: node.kernel)
         invocation.name = key
         
-        if node.kernel is TexImageKernel {
-            /// @todo hack!
-            /// default values for some attributes don't make any sense
-            /// (no idea why the blender API reports those in the first place)
-            
-            node.inputs["Vector"]!.value = nil
-            invocation.assign(key: "Vector", value: "VECTOR(tctx.uv)")
-        }
+        provideDefaults(forNode: &node, inInvocation: &invocation)
         
         for (key, value) in node.inputs.sorted(by: { $0.0 < $1.0 }) {
             if value.links == nil || value.links!.isEmpty {

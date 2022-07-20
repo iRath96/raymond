@@ -39,6 +39,7 @@ struct kVectorMath {
         OPERATION_ADD,
         OPERATION_SUB,
         OPERATION_MULTIPLY,
+        OPERATION_MULTIPLY_ADD,
         OPERATION_NORMALIZE,
         OPERATION_SCALE
     };
@@ -61,6 +62,8 @@ struct VectorMath {
             vector = vector - vector_001; break;
         case kVectorMath::OPERATION_MULTIPLY:
             vector = vector * vector_001; break;
+        case kVectorMath::OPERATION_MULTIPLY_ADD:
+            vector = vector * vector_001 + vector_002; break;
         case kVectorMath::OPERATION_NORMALIZE:
             vector = normalize(vector); break;
         case kVectorMath::OPERATION_SCALE:
@@ -71,12 +74,16 @@ struct VectorMath {
 
 struct NewGeometry {
     float3 normal;
+    float3 trueNormal;
     float3 tangent;
+    float3 position;
     bool backfacing;
     
     void compute(device Context &ctx, ThreadContext tctx) {
         normal = tctx.normal;
+        trueNormal = tctx.trueNormal;
         tangent = tctx.tu;
+        position = tctx.position;
         backfacing = dot(tctx.wo, tctx.normal) < 0;
     }
 };
@@ -84,11 +91,13 @@ struct NewGeometry {
 struct TextureCoordinate {
     float3 generated;
     float3 uv;
+    float3 object;
     float3 normal;
     
     void compute(device Context &ctx, ThreadContext tctx) {
         uv = tctx.uv;
-        generated = tctx.uv; /// @todo
+        generated = tctx.generated;
+        object = tctx.object;
         normal = tctx.normal;
     }
 };
@@ -110,7 +119,8 @@ struct TexChecker {
     float4 color;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        int3 idx = int3(floor(vector * scale));
+        float3 p = (vector * scale + 0.000001f) * 0.999999f;
+        int3 idx = int3(floor(p));
         color = select(color2, color1, (idx.x ^ idx.y ^ idx.z) & 1);
     }
 };
@@ -470,9 +480,6 @@ struct Fresnel {
     float fac;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        if (all(normal == 0))
-            normal = tctx.normal;
-        
         float cosI = dot(tctx.wo, normal);
         bool backfacing = cosI < 0;
         float eta = max(ior, 1e-5);

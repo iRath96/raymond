@@ -91,6 +91,8 @@ struct Mesh {
     struct ShapeInfo {
         var vertexOffset: UInt32
         var faceOffset: UInt32
+        var boundsMin: simd_float3
+        var boundsMax: simd_float3
     }
     
     var shapeInfos: [ShapeInfo]
@@ -113,6 +115,9 @@ struct MeshLoader {
         var vertexOffset: UInt32
         var faceOffset: UInt32
         
+        var boundsMin: simd_float3
+        var boundsMax: simd_float3
+        
         var fileReader: PLYReader
         
         init(withPath url: URL, materials: [UInt32], vertexOffset: UInt32, faceOffset: UInt32) throws {
@@ -121,6 +126,9 @@ struct MeshLoader {
             self.fileReader = PLYReader(url: url)
             self.vertexOffset = vertexOffset
             self.faceOffset = faceOffset
+            
+            self.boundsMin = simd_float3(repeating: +Float.infinity)
+            self.boundsMax = simd_float3(repeating: -Float.infinity)
             
             // read header
             
@@ -212,7 +220,7 @@ struct MeshLoader {
         
         DispatchQueue.concurrentPerform(iterations: shapeHandles.count) { index in
         //for index in 0..<shapeHandles.count {
-            let shapeHandle = shapeHandles[index]
+            var shapeHandle = shapeHandles[index]
             NSLog("parsing shape \(shapeHandle.path)")
             
             shapeHandle.fileReader.reopen()
@@ -221,17 +229,20 @@ struct MeshLoader {
                 shapeHandle.vertexCount,
                 vertices: vertices.advanced(by: 3 * Int(shapeHandle.vertexOffset)),
                 normals: normals.advanced(by: 3 * Int(shapeHandle.vertexOffset)),
-                texCoords: texCoords.advanced(by: 2 * Int(shapeHandle.vertexOffset)))
+                texCoords: texCoords.advanced(by: 2 * Int(shapeHandle.vertexOffset)),
+                boundsMin: &shapeHandle.boundsMin,
+                boundsMax: &shapeHandle.boundsMax)
             
             let palette = UnsafePointer<UInt32>(shapeHandle.materials)
             shapeHandle.fileReader.readFaces(
                 shapeHandle.faceCount,
                 indices: indices.advanced(by: 3 * Int(shapeHandle.faceOffset)),
                 materials: materials.advanced(by: Int(shapeHandle.faceOffset)),
-                fromPalette: palette
-            )
+                fromPalette: palette)
             
             shapeHandle.fileReader.close()
+            
+            shapeHandles[index] = shapeHandle
         }
         
         // build acceleration structure
@@ -255,7 +266,9 @@ struct MeshLoader {
             
             shapeInfos.append(Mesh.ShapeInfo(
                 vertexOffset: shapeHandle.vertexOffset,
-                faceOffset: shapeHandle.faceOffset
+                faceOffset: shapeHandle.faceOffset,
+                boundsMin: shapeHandle.boundsMin,
+                boundsMax: shapeHandle.boundsMax
             ))
             
             return triAccel

@@ -21,6 +21,10 @@ T interpolate(T a, T b, T c, float2 barycentric) {
 
 float3 vertexToFloat3(Vertex v) { return float3(v.x, v.y, v.z); }
 
+float3 safe_divide(float3 a, float3 b, float3 fallback) {
+    return select(a / b, fallback, b == 0);
+}
+
 constant bool isMaxDepth [[function_constant(0)]];
 kernel void handleIntersections(
     texture2d<float, access::read_write> image [[texture(0)]],
@@ -69,7 +73,9 @@ kernel void handleIntersections(
     if (isect.distance <= 0.0f) {
         // miss
         tctx.normal = tctx.wo;
-        tctx.uv = -tctx.wo;
+        tctx.uv = 0;
+        tctx.generated = -tctx.wo;
+        tctx.object = -tctx.wo;
         
 #ifdef USE_FUNCTION_TABLE
         /// @todo NOT SUPPORTED!
@@ -94,7 +100,6 @@ kernel void handleIntersections(
     const device PerInstanceData &instance = perInstanceData[isect.instanceIndex];
     
     int shaderIndex;
-    float3 ipoint;
     {
         const unsigned int faceIndex = instance.faceOffset + isect.primitiveIndex;
         const unsigned int idx0 = instance.vertexOffset + vertexIndices[3 * faceIndex + 0];
@@ -114,7 +119,12 @@ kernel void handleIntersections(
         float2x3 P;
         P.columns[0] = vertexToFloat3(vertices[idx0]) - Pc;
         P.columns[1] = vertexToFloat3(vertices[idx1]) - Pc;
-        ipoint = (instance.pointTransform * float4(P * isect.coordinates + Pc, 1)).xyz;
+        tctx.trueNormal = normalize(cross(P.columns[0], P.columns[1]));
+        
+        float3 localP = P * isect.coordinates + Pc;
+        tctx.object = localP;
+        tctx.generated = safe_divide(localP - instance.boundsMin, instance.boundsSize, 0.5f);
+        tctx.position = (instance.pointTransform * float4(localP, 1)).xyz;
         
         tctx.normal = instance.normalTransform * interpolate(
             vertexToFloat3(vertexNormals[idx0]),
@@ -128,17 +138,6 @@ kernel void handleIntersections(
 
         shaderIndex = materials[faceIndex];
     }
-    
-    /*{
-        uint2 coordinates = uint2(ray.x, ray.y);
-        image.write(
-            image.read(coordinates) + float4(
-                ipoint,//float3(pow(max(dot(-ray.direction, tctx.normal), 0.f), 100.f)),
-                1),
-            coordinates
-        );
-        return;
-    }*/
     
     // 30.5 Mray/s (no divergence), 27.5 Mray/s (divergence)
     // 30.8 Mray/s (no divergence, specialized shaders)
@@ -178,7 +177,7 @@ kernel void handleIntersections(
     
     float3x3 worldToShadingFrame;
     if (all(tctx.material.normal == 0)) {
-        worldToShadingFrame = buildOrthonormalBasis(tctx.normal);
+        worldToShadingFrame = buildOrthonormalBasis(tctx.trueNormal);
     } else {
         float3 normal = ensure_valid_reflection(tctx.normal, tctx.wo, tctx.material.normal);
         worldToShadingFrame = buildOrthonormalBasis(normal);
@@ -215,7 +214,7 @@ kernel void handleIntersections(
     if (sample1d(prng) < survivalProb) {
         uint nextRayIndex = atomic_fetch_add_explicit(&nextRayCount, 1, memory_order_relaxed);
         device Ray &nextRay = nextRays[nextRayIndex];
-        nextRay.origin = ipoint;
+        nextRay.origin = tctx.position;
         nextRay.direction = direction;
         nextRay.minDistance = eps;
         nextRay.maxDistance = INFINITY;
