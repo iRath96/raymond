@@ -9,6 +9,7 @@ typedef packed_float3 MPSPackedFloat3;
 #else
 #include <simd/simd.h>
 #import <Foundation/Foundation.h>
+typedef simd_float3 float3;
 typedef simd_float3x3 float3x3;
 typedef simd_float4x4 float4x4;
 typedef __fp16 half;
@@ -76,6 +77,9 @@ typedef NS_ENUM(uint8_t, ImportanceSampling) {
 typedef struct {
     uint32_t vertexOffset;
     uint32_t faceOffset;
+    
+    float3 boundsMin;
+    float3 boundsSize;
     
     float4x4 pointTransform;
     float3x3 normalTransform;
