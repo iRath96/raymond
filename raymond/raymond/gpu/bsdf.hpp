@@ -459,8 +459,6 @@ struct Transmission {
         BSDFSample result;
         
         float eta = ShadingFrame::cosTheta(wo) > 0 ? ior : 1 / ior;
-        if (eta == 1) eta = 1.01; /// @todo this is a hack to avoid singularities
-        
         const float Fr = fresnelDielectricCos(ShadingFrame::cosTheta(wo), eta);
         if (rnd.x < Fr) {
             // reflect
