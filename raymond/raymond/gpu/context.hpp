@@ -36,7 +36,7 @@ struct Material {
             return sample;
         }
         
-        float3x3 worldToShadingFrame = buildOrthonormalBasis(normal);
+        float3x3 worldToShadingFrame = buildOrthonormalBasis(shNormal);
         
         const float woDotGeoN = dot(wo, geoNormal);
         wo = wo * worldToShadingFrame;

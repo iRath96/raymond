@@ -865,12 +865,13 @@ struct kBsdfGlossy {
  * @todo not tested
  */
 template<
-    kBsdfGlass::Distribution Distribution
+    kBsdfGlossy::Distribution Distribution
 >
 struct BsdfGlossy {
     float4 color;
     float3 normal;
     float roughness;
+    float weight;
     
     Material bsdf;
     

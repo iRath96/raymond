@@ -343,7 +343,7 @@ struct Codegen {
             if kernel.distribution != "GGX" {
                 warn("BsdfGlossy: only GGX distribution supported!");
             }
-            return .init(kernel: "BsdfGlass", parameters: [
+            return .init(kernel: "BsdfGlossy", parameters: [
                 .enum("DISTRIBUTION", "GGX")
             ])
         case is BsdfDiffuseKernel:

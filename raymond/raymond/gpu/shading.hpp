@@ -135,7 +135,7 @@ kernel void handleIntersections(
         tctx.normal = normalize(tctx.normal);
         
         tctx.tu = normalize(instance.normalTransform * (P * float2(T[1][1], -T[0][1])));
-        tctx.tv = normalize(instance.normalTransform * (P * float2(T[1][0], -T[0][0])));
+        tctx.tv = normalize(instance.normalTransform * (P * float2(-T[1][0], T[0][0])));
 
         shaderIndex = materials[faceIndex];
     }
@@ -184,10 +184,12 @@ kernel void handleIntersections(
     if (all(tctx.material.normal == 0)) {
         shNormal = tctx.trueNormal;
     } else {
-        shNormal = ensure_valid_reflection(tctx.normal, tctx.wo, tctx.material.normal);
+        float3 geoNormal = tctx.trueNormal;
+        if (dot(geoNormal, tctx.wo) < 0) geoNormal *= -1;
+        shNormal = ensure_valid_reflection(geoNormal, tctx.wo, tctx.material.normal);
     }
     
-    BSDFSample sample = tctx.material.sample(tctx.rnd, -ray.direction, shNormal, tctx.normal, ray.flags);
+    BSDFSample sample = tctx.material.sample(tctx.rnd, -ray.direction, shNormal, tctx.trueNormal, ray.flags);
     
     float3 weight = ray.weight * sample.weight;
     float meanWeight = mean(weight);
