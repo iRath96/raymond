@@ -125,13 +125,13 @@ struct BSDFSample {
     float pdf;
     float3 wi;
     float3 weight;
-    Ray::Flags flags;
+    RayFlags flags;
     
     static BSDFSample invalid() {
         BSDFSample result;
         result.pdf = 0;
         result.weight = 0;
-        result.flags = Ray::TYPE_INVALID;
+        result.flags = RayFlags(0);
         return result;
     }
 };
@@ -332,6 +332,7 @@ struct Diffuse {
     float3 diffuseWeight = 0;
     float3 sheenWeight = 0;
     float roughness;
+    bool translucent = false;
     
     float3 evaluate(float3 wo, float3 wi, thread float &pdf) {
         return float3(0); /// @todo
@@ -371,6 +372,14 @@ struct Diffuse {
         
         result.weight = diffuseWeight * (lambertian + retroReflection) +
             sheenWeight * (M_PI_F * sheen);
+        
+        if (translucent) {
+            result.wi = -result.wi;
+            result.flags = RayFlags(RayFlagsTransmission | RayFlagsDiffuse);
+        } else {
+            result.flags = RayFlags(RayFlagsReflection | RayFlagsDiffuse);
+        }
+        
         return result;
     }
 };
@@ -426,6 +435,7 @@ struct Specular {
         const float3 F = fresnelReflectionColor(result.wi, wh, ior, Cspec0);
         const float Gi = anisotropicSmithG1(result.wi, wh, alphaX, alphaY);
         result.weight = weight * F * Gi;
+        result.flags = RayFlags(RayFlagsReflection | RayFlagsGlossy); /// @todo RayFlagsSingular
         return result;
     }
 };
@@ -477,6 +487,7 @@ struct Transmission {
             const float3 F = fresnelReflectionColor(result.wi, wh, eta, Cspec0);
             const float Gi = anisotropicSmithG1(result.wi, wh, alphaX, alphaY);
             result.weight = weight * F * Gi;
+            result.flags = RayFlags(RayFlagsReflection | RayFlagsGlossy); /// @todo RayFlagsSingular
             return result;
         } else {
             // refract
@@ -504,6 +515,7 @@ struct Transmission {
             //const float3 F = fresnelReflectionColor(result.wi, wh, eta, Cspec0);
             const float Gi = anisotropicSmithG1(result.wi, wh, alphaX, alphaY);
             result.weight = weight * baseColor * Gi;
+            result.flags = RayFlags(RayFlagsTransmission | RayFlagsGlossy); /// @todo RayFlagsSingular
             return result;
         }
     }
@@ -540,6 +552,7 @@ struct Clearcoat {
         const float3 F = fresnelReflectionColor(result.wi, wh, 1.5, float3(0.04));
         const float Gi = smithG1(result.wi, wh, alpha);
         result.weight = 0.25 * weight * F * Gi;
+        result.flags = RayFlags(RayFlagsReflection | RayFlagsGlossy); /// @todo RayFlagsSingular
         return result;
     }
 };

@@ -31,14 +31,14 @@ struct LightPath {
     bool isSingularRay;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        isCameraRay       = (tctx.rayFlags & Ray::TYPE) == Ray::TYPE_CAMERA;
-        isReflectionRay   = (tctx.rayFlags & Ray::TYPE) == Ray::TYPE_REFLECTION;
-        isTransmissionRay = (tctx.rayFlags & Ray::TYPE) == Ray::TYPE_TRANSMISSION;
-        isShadowRay       = (tctx.rayFlags & Ray::TYPE) == Ray::TYPE_SHADOW;
+        isCameraRay       = (tctx.rayFlags & RayFlagsCamera) > 0;
+        isReflectionRay   = (tctx.rayFlags & RayFlagsReflection) > 0;
+        isTransmissionRay = (tctx.rayFlags & RayFlagsTransmission) > 0;
+        isShadowRay       = (tctx.rayFlags & RayFlagsShadow) > 0;
         
-        isDiffuseRay  = (tctx.rayFlags & Ray::LOBE) == Ray::LOBE_DIFFUSE;
-        isGlossyRay   = (tctx.rayFlags & Ray::LOBE) == Ray::LOBE_GLOSSY;
-        isSingularRay = (tctx.rayFlags & Ray::LOBE) == Ray::LOBE_SINGULAR;
+        isDiffuseRay  = (tctx.rayFlags & RayFlagsDiffuse) > 0;
+        isGlossyRay   = (tctx.rayFlags & RayFlagsGlossy) > 0;
+        isSingularRay = (tctx.rayFlags & RayFlagsSingular) > 0;
         
         if (isSingularRay)
             /// @todo confirm
@@ -1035,6 +1035,7 @@ struct BsdfDiffuse {
             .roughness = roughness
         };
         
+        bsdf.normal = normal;
         bsdf.lobeProbabilities[0] = 1;
     }
 };
@@ -1047,8 +1048,15 @@ struct BsdfTranslucent {
     Material bsdf;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        bsdf.alpha = 0;
-        bsdf.alphaWeight = color.xyz;
+        bsdf.diffuse = (Diffuse){
+            .diffuseWeight = color.xyz,
+            .sheenWeight = 0,
+            .roughness = 1,
+            .translucent = true
+        };
+        
+        bsdf.normal = normal;
+        bsdf.lobeProbabilities[0] = 1;
     }
 };
 

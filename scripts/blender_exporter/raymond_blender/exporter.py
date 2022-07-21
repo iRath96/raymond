@@ -46,6 +46,14 @@ def export_shapes(filepath: str, depsgraph: bpy.types.Depsgraph, use_selection: 
 
             entities[object_eval.name] = {
                 "shape": shape_name,
+                "visibility": {
+                    "camera": object_eval.visible_camera,
+                    "diffuse": object_eval.visible_diffuse,
+                    "glossy": object_eval.visible_glossy,
+                    "transmission": object_eval.visible_transmission,
+                    "volume": object_eval.visible_volume_scatter,
+                    "shadow": object_eval.visible_shadow
+                },
                 "matrix": [ x for row in inst.matrix_world for x in row ]
             }
         #elif objType == "LIGHT" and export_lights:

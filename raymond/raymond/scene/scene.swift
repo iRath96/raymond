@@ -22,17 +22,29 @@ struct SceneDescription: Codable {
     }
     
     struct Entity: Codable {
+        struct Visibility: Codable {
+            var camera: Bool
+            var diffuse: Bool
+            var glossy: Bool
+            var transmission: Bool
+            var volume: Bool
+            var shadow: Bool
+        }
+        
         var shape: String
+        var visibility: Visibility
         var matrix: float4x4
         
         private enum CodingKeys: String, CodingKey {
             case shape
+            case visibility
             case matrix
         }
         
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             shape = try container.decode(String.self, forKey: .shape)
+            visibility = try container.decode(Visibility.self, forKey: .visibility)
             
             let matrixEntries = try container.decode([Float].self, forKey: .matrix)
             matrix = float4x4()
@@ -46,6 +58,7 @@ struct SceneDescription: Codable {
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(shape, forKey: .shape)
+            try container.encode(visibility, forKey: .visibility)
             
             var matrixEntries: [Float] = .init(repeating: 0, count: 16)
             for y in 0..<4 {
@@ -260,7 +273,8 @@ struct SceneLoader {
                 boundsMin: shapeInfo.boundsMin,
                 boundsSize: shapeInfo.boundsMax - shapeInfo.boundsMin,
                 pointTransform: instancing.pointTransforms[index],
-                normalTransform: instancing.normalTransforms[index]
+                normalTransform: instancing.normalTransforms[index],
+                visibility: instancing.visibility[index]
             )
         }
         

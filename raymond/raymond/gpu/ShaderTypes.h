@@ -74,6 +74,17 @@ typedef NS_ENUM(uint8_t, ImportanceSampling) {
     ImportanceSamplingMIS  = 2,
 };
 
+typedef NS_ENUM(uint8_t, RayFlags) {
+    RayFlagsCamera       = 1<<0,
+    RayFlagsReflection   = 1<<1,
+    RayFlagsTransmission = 1<<2,
+    RayFlagsShadow       = 1<<3,
+    RayFlagsVolume       = 1<<4,
+    RayFlagsDiffuse      = 1<<5,
+    RayFlagsGlossy       = 1<<6,
+    RayFlagsSingular     = 1<<7
+};
+
 typedef struct {
     uint32_t vertexOffset;
     uint32_t faceOffset;
@@ -83,6 +94,8 @@ typedef struct {
     
     float4x4 pointTransform;
     float3x3 normalTransform;
+    
+    RayFlags visibility;
 } PerInstanceData;
 
 typedef struct {
@@ -96,20 +109,6 @@ typedef struct {
 } PRNGState;
 
 typedef struct {
-    enum Flags : uint8_t {
-        TYPE = 0b00000111,
-        TYPE_INVALID      = 0,
-        TYPE_CAMERA       = 1,
-        TYPE_REFLECTION   = 2,
-        TYPE_TRANSMISSION = 3,
-        TYPE_SHADOW       = 4,
-        
-        LOBE = 0b00011000,
-        LOBE_SINGULAR = 1<<3,
-        LOBE_DIFFUSE  = 2<<3,
-        LOBE_GLOSSY   = 3<<3
-    };
-    
     MPSPackedFloat3 origin;
     float minDistance;
     MPSPackedFloat3 direction;
@@ -118,7 +117,7 @@ typedef struct {
     PRNGState prng;
     simd_float3 weight;
     uint16_t x, y;
-    Flags flags;
+    RayFlags flags;
     float bsdfPdf;
 } Ray;
 

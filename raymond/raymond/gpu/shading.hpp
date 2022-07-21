@@ -144,11 +144,15 @@ kernel void handleIntersections(
     // 30.8 Mray/s (no divergence, specialized shaders)
     //shaderIndex = simd_broadcast_first(shaderIndex);
     
+    if (instance.visibility & ray.flags) {
 #ifdef USE_FUNCTION_TABLE
-    shaders[shaderIndex](ctx, tctx);
+        shaders[shaderIndex](ctx, tctx);
 #else
-    SWITCH_SHADERS
+        SWITCH_SHADERS
 #endif
+    } else {
+        tctx.material.alpha = 0;
+    }
     
     if (mean(tctx.material.emission) != 0) {
         uint2 coordinates = uint2(ray.x, ray.y);
@@ -176,39 +180,16 @@ kernel void handleIntersections(
         return;
     }*/
     
-    float3x3 worldToShadingFrame;
+    float3 shNormal;
     if (all(tctx.material.normal == 0)) {
-        worldToShadingFrame = buildOrthonormalBasis(tctx.trueNormal);
+        shNormal = tctx.trueNormal;
     } else {
-        float3 normal = ensure_valid_reflection(tctx.normal, tctx.wo, tctx.material.normal);
-        worldToShadingFrame = buildOrthonormalBasis(normal);
+        shNormal = ensure_valid_reflection(tctx.normal, tctx.wo, tctx.material.normal);
     }
     
-    float3 weight = ray.weight;
-    float3 direction;
-    BSDFSample sample;
+    BSDFSample sample = tctx.material.sample(tctx.rnd, -ray.direction, shNormal, tctx.normal, ray.flags);
     
-    do {
-        const float3 transformedWo = tctx.wo * worldToShadingFrame;
-        const float woDotGeoN = dot(tctx.wo, tctx.normal);
-        const float woDotShN = transformedWo.z;
-        if (woDotShN * woDotGeoN < 0) {
-            weight = 0;
-            break;
-        }
-        
-        sample = tctx.material.sample(tctx.rnd, transformedWo, ray.flags);
-        weight *= sample.weight;
-        direction = sample.wi * transpose(worldToShadingFrame);
-        
-        const float wiDotGeoN = dot(direction, tctx.normal);
-        const float wiDotShN = sample.wi.z;
-        if (wiDotShN * wiDotGeoN < 0) {
-            weight = 0;
-            break;
-        }
-    } while (false);
-    
+    float3 weight = ray.weight * sample.weight;
     float meanWeight = mean(weight);
     if (!isfinite(meanWeight)) return;
     
@@ -218,10 +199,10 @@ kernel void handleIntersections(
         device Ray &nextRay = nextRays[nextRayIndex];
         nextRay.origin = tctx.position;
         nextRay.flags = sample.flags;
-        nextRay.direction = direction;
+        nextRay.direction = sample.wi;
         nextRay.minDistance = eps;
         nextRay.maxDistance = INFINITY;
-        nextRay.weight = weight / survivalProb;
+        nextRay.weight = weight * (1 / survivalProb);
         nextRay.x = ray.x;
         nextRay.y = ray.y;
         nextRay.prng = prng;

@@ -53,7 +53,7 @@ kernel void generateRays(
     ray.minDistance = 0.0f;
     ray.maxDistance = INFINITY;
     ray.weight = float3(1, 1, 1);
-    ray.flags = Ray::TYPE_CAMERA;
+    ray.flags = RayFlagsCamera;
     
     ray.bsdfPdf = INFINITY;
     

@@ -24,7 +24,7 @@ struct Material {
         return float3(0);
     }
     
-    BSDFSample sample(float3 rnd, float3 wo, Ray::Flags previousFlags) {
+    BSDFSample sample(float3 rnd, float3 wo, float3 shNormal, float3 geoNormal, RayFlags previousFlags) {
         if (rnd.x < alpha) {
             rnd.x /= alpha;
         } else {
@@ -36,34 +36,42 @@ struct Material {
             return sample;
         }
         
+        float3x3 worldToShadingFrame = buildOrthonormalBasis(normal);
+        
+        const float woDotGeoN = dot(wo, geoNormal);
+        wo = wo * worldToShadingFrame;
+        const float woDotShN = wo.z;
+        if (woDotShN * woDotGeoN < 0) {
+            return BSDFSample::invalid();
+        }
+        
+        BSDFSample sample;
         if (rnd.x < lobeProbabilities[0]) {
-            BSDFSample sample = diffuse.sample(rnd.yz, wo);
+            sample = diffuse.sample(rnd.yz, wo);
             sample.weight *= 1 / lobeProbabilities[0];
             sample.pdf *= alpha * lobeProbabilities[0];
-            sample.flags = Ray::Flags(Ray::TYPE_REFLECTION | Ray::LOBE_DIFFUSE);
-            return sample;
         } else if (rnd.x < (lobeProbabilities[0] + lobeProbabilities[1])) {
-            BSDFSample sample = specular.sample(rnd.yz, wo);
+            sample = specular.sample(rnd.yz, wo);
             sample.weight *= 1 / lobeProbabilities[1];
             sample.pdf *= alpha * lobeProbabilities[1];
-            sample.flags = Ray::Flags(Ray::TYPE_REFLECTION | Ray::LOBE_GLOSSY);
-            /// @todo SINGULAR
-            return sample;
         } else if (rnd.x < (lobeProbabilities[0] + lobeProbabilities[1] + lobeProbabilities[2])) {
-            BSDFSample sample = transmission.sample(rnd.yz, wo);
+            sample = transmission.sample(rnd.yz, wo);
             sample.weight *= 1 / lobeProbabilities[2];
             sample.pdf *= alpha * lobeProbabilities[2];
-            sample.flags = Ray::Flags(Ray::TYPE_TRANSMISSION | Ray::LOBE_GLOSSY); /// @todo reflection??
-            /// @todo SINGULAR
-            return sample;
         } else {
-            BSDFSample sample = clearcoat.sample(rnd.yz, wo);
+            sample = clearcoat.sample(rnd.yz, wo);
             sample.weight *= 1 / lobeProbabilities[3];
             sample.pdf *= alpha * lobeProbabilities[3];
-            sample.flags = Ray::Flags(Ray::TYPE_REFLECTION | Ray::LOBE_GLOSSY);
-            /// @todo SINGULAR
-            return sample;
         }
+        
+        const float wiDotShN = sample.wi.z;
+        sample.wi = sample.wi * transpose(worldToShadingFrame);
+        const float wiDotGeoN = dot(sample.wi, geoNormal);
+        if (wiDotShN * wiDotGeoN < 0) {
+            return BSDFSample::invalid();
+        }
+        
+        return sample;
     }
 };
 
@@ -77,7 +85,7 @@ struct ThreadContext {
     float3 tu, tv;
     float3 rnd;
     float3 wo;
-    Ray::Flags rayFlags;
+    RayFlags rayFlags;
     
     Material material;
 };

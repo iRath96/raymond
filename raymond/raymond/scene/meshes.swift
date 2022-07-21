@@ -22,6 +22,7 @@ struct Instancing {
     let indicesArray: [UInt32]
     let pointTransforms: [simd_float4x4]
     let normalTransforms: [simd_float3x3]
+    let visibility: [RayFlags]
 }
 
 struct InstanceLoader {
@@ -30,6 +31,7 @@ struct InstanceLoader {
     private struct Instance {
         let index: UInt32
         let transform: float4x4
+        let visibility: RayFlags
     }
     
     private var instances: [Instance] = []
@@ -45,8 +47,20 @@ struct InstanceLoader {
     }
     
     mutating func addEntity(_ entity: SceneDescription.Entity) throws {
+        var visibility: UInt8 = 0
+        if entity.visibility.camera       { visibility |= RayFlags.camera.rawValue }
+        if entity.visibility.diffuse      { visibility |= RayFlags.diffuse.rawValue }
+        if entity.visibility.glossy       { visibility |= RayFlags.glossy.rawValue }
+        if entity.visibility.transmission { visibility |= RayFlags.transmission.rawValue }
+        if entity.visibility.volume       { visibility |= RayFlags.volume.rawValue }
+        if entity.visibility.shadow       { visibility |= RayFlags.shadow.rawValue }
+        
         let shapeId = shapeId(forName: entity.shape)
-        instances.append(Instance(index: shapeId, transform: entity.matrix))
+        instances.append(Instance(
+            index: shapeId,
+            transform: entity.matrix,
+            visibility: RayFlags(rawValue: visibility)!
+        ))
     }
     
     func build(withDevice device: MTLDevice) throws -> Instancing {
@@ -73,7 +87,8 @@ struct InstanceLoader {
             pointTransforms: instances.map { $0.transform },
             normalTransforms: instances.map {
                 normalTransformFromPointTransform($0.transform)
-            }
+            },
+            visibility: instances.map { $0.visibility }
         )
     }
 }
