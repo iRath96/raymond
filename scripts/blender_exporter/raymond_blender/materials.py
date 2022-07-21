@@ -9,6 +9,36 @@ def export_material(material: bpy.types.Material):
         warn(f"Material `{material.name}' does not use nodes and can therefore not be exported.")
         return result
     
+    shortcuts = {}
+    for node in material.node_tree.nodes.values():
+        if not node.mute:
+            continue
+        
+        warn("node muting has not been tested!")
+        for output in node.outputs.values():
+            shortcut = []
+            for input in node.inputs.values():
+                if input.type == output.type and input.is_linked:
+                    shortcut = [
+                        (link.from_node.name, link.from_socket.identifier)
+                        for link in list(input.links)
+                    ]
+                    break
+            shortcuts[(node.name, output.name)] = shortcut
+
+    def resolve_shortcuts(links, max_depth=32):
+        if max_depth == 0:
+            warn("traversing muted nodes: maximum depth reached!")
+            return []
+        
+        result = []
+        for link in links:
+            if (s := shortcuts.get(link)):
+                result.extend(resolve_shortcuts(s, max_depth - 1))
+            else:
+                result.append(link)
+        return result
+
     for node in material.node_tree.nodes.values():
         result[node.name] = result_node = {
             "type": node.type,
@@ -154,10 +184,10 @@ def export_material(material: bpy.types.Material):
             }
 
             if input.is_linked:
-                result_input["links"] = [
+                result_input["links"] = resolve_shortcuts([
                     (link.from_node.name, link.from_socket.identifier)
                     for link in list(input.links)
-                ]
+                ])
             elif hasattr(input, "default_value"):
                 value = input.default_value
                 if not isinstance(value, (int, float)):
