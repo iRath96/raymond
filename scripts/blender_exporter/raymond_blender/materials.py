@@ -1,4 +1,6 @@
 import bpy
+import os
+
 from warnings import warn
 
 
@@ -185,7 +187,71 @@ class RMNodeGraph(object):
             self.delete_node(node_name)
 
 
-def export_material(material: bpy.types.Material):
+def _export_image(image: bpy.types.Image, path: str, is_f32=False, keep_format=False):
+    # Make sure the image is loaded to memory, so we can write it out
+    if not image.has_data:
+        image.pixels[0]
+
+    # Export the actual image data
+    old_path = image.filepath_raw
+    old_format = image.file_format
+    try:
+        image.filepath_raw = path
+        if not keep_format:
+            image.file_format = "PNG" if not is_f32 else "OPEN_EXR"
+        image.save()
+    finally:  # Never break the scene!
+        image.filepath_raw = old_path
+        image.file_format = old_format
+
+
+def _handle_image(image: bpy.types.Image, texturepath: str, image_cache: dict[str, str]):
+    if image.name in image_cache:
+        return image_cache[image.name]
+    
+    result = None
+    
+    if image.source == "GENERATED":
+        # @todo escape image.name, avoid filename collisions
+        extension = ".png" if not image.use_generated_float else ".exr"
+        img_path = os.path.join(texturepath, image.name + extension)
+        _export_image(image, img_path, is_f32=image.use_generated_float)
+        result = img_path
+    elif image.source == "FILE":
+        img_path = bpy.path.abspath(bpy.path.resolve_ncase(image.filepath_raw), library=image.library).replace("\\", "/")
+        if img_path.startswith("//"):
+            img_path = img_path[2:]
+
+        export_image = image.packed_file or img_path == ""
+        if export_image:
+            img_name = bpy.path.basename(img_path)
+
+            # Special case: We can not export PNG if bit depth is not 8 (or 32), for whatever reason
+            if img_name == "" or image.depth > 32 or image.depth == 16:
+                keep_format = False
+                if image.depth > 32 or image.depth == 16 or image.file_format in ["OPEN_EXR", "OPEN_EXR_MULTILAYER", "HDR"]:
+                    is_f32 = True
+                    extension = ".exr"
+                else:
+                    is_f32 = False
+                    extension = ".png"
+                img_path = os.path.join(texturepath, image.name + extension)
+            else:
+                keep_format = True
+                is_f32 = False  # Does not matter
+                img_path = os.path.join(texturepath, img_name)
+
+            _export_image(image, img_path, is_f32=is_f32, keep_format=keep_format)
+        
+        result = img_path
+    else:
+        warn(f"Image type {image.source} not supported")
+    
+    image_cache[image.name] = result
+    return result
+
+
+def export_material(material: bpy.types.Material, texturepath: str, image_cache: dict[str, str]):
     result = {}
     
     if not material.use_nodes:
@@ -205,6 +271,13 @@ def export_material(material: bpy.types.Material):
         if isinstance(node, bpy.types.ShaderNodeOutputMaterial):
             if not node.is_active_output:
                 continue
+        
+        if isinstance(node, bpy.types.ShaderNodeOutputWorld):
+            if not node.is_active_output:
+                continue
+            if node.target == "EEVEE":
+                # @todo verify this works
+                continue
 
         result[node_name] = result_node = {
             "type": node.type,
@@ -214,7 +287,7 @@ def export_material(material: bpy.types.Material):
         result_node["parameters"] = {}
         if isinstance(node, bpy.types.ShaderNodeTexImage):
             result_node["parameters"] = {
-                "filepath": node.image.filepath,
+                "filepath": _handle_image(node.image, texturepath, image_cache),
                 "interpolation": node.interpolation,
                 "projection": node.projection,
                 "extension": node.extension,
@@ -337,7 +410,9 @@ def export_material(material: bpy.types.Material):
             bpy.types.ShaderNodeHueSaturation,
             bpy.types.ShaderNodeLightPath,
             bpy.types.ShaderNodeEmission,
-            bpy.types.ShaderNodeNewGeometry
+            bpy.types.ShaderNodeNewGeometry,
+            bpy.types.ShaderNodeBackground,
+            bpy.types.ShaderNodeOutputWorld
         )):
             # no parameters
             pass

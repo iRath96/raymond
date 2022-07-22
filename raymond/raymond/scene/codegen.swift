@@ -514,7 +514,7 @@ struct Codegen {
         
         let idx = textureDescriptors.count
         textureDescriptors.append(TextureDescriptor(
-            url: URL(fileURLWithPath: String(path.dropFirst(2)), relativeTo: basePath).absoluteURL,
+            url: URL(filePath: path),
             options: options
         ))
         

@@ -1,3 +1,4 @@
+from email.mime import base
 import os
 import json
 import bpy
@@ -8,17 +9,15 @@ from .shapes import export_shape, get_shape_name_base
 from .camera import export_camera, export_render
 
 
-def export_materials():
+def export_materials(texturepath: str, image_cache: dict[str, str]):
+    # @todo only export materials (and textures) that are used
     result = {}
     for material in bpy.data.materials.values():
-        result[material.name] = export_material(material)
+        result[material.name] = export_material(material, texturepath, image_cache)
     return result
 
 
-def export_shapes(filepath: str, depsgraph: bpy.types.Depsgraph, use_selection: bool):
-    meshpath = os.path.join(os.path.dirname(filepath), "meshes")
-    os.makedirs(meshpath, exist_ok=True)
-
+def export_shapes(depsgraph: bpy.types.Depsgraph, meshpath: str, use_selection: bool):
     shapes = {}
     entities = {}
 
@@ -63,12 +62,20 @@ def export_shapes(filepath: str, depsgraph: bpy.types.Depsgraph, use_selection: 
     return (shapes, entities)
 
 
-def export_scene(filepath, context: bpy.types.Context, use_selection):
+def export_scene(filepath, context: bpy.types.Context, use_selection: bool):
     depsgraph = context.evaluated_depsgraph_get()
 
-    materials = export_materials()
-    world = export_material(depsgraph.scene.world)
-    (shapes, entities) = export_shapes(filepath, depsgraph, use_selection)
+    base_path = os.path.dirname(filepath)
+    texturepath = os.path.join(base_path, "textures")
+    meshpath = os.path.join(base_path, "meshes")
+    os.makedirs(texturepath, exist_ok=True)
+    os.makedirs(meshpath, exist_ok=True)
+
+    image_cache = {}
+
+    materials = export_materials(texturepath, image_cache)
+    world = export_material(depsgraph.scene.world, texturepath, image_cache)
+    (shapes, entities) = export_shapes(depsgraph, meshpath, use_selection)
     camera = export_camera(depsgraph.scene.camera)
     render = export_render(depsgraph.scene.render)
 
