@@ -112,9 +112,10 @@ class RMNodeGraph(object):
                 assert(len(node.bl_node.inputs) == 1)
                 assert(len(node.bl_node.outputs) == 1)
 
-                self.replace_link(
-                    (node_name, "output.001"),
-                    node.links["input.001"])
+                in_id = node.bl_node.inputs[0].identifier
+                out_id = node.bl_node.outputs[0].identifier
+
+                self.replace_link((node_name, out_id), node.links.get(in_id))
                 self.delete_node(node_name)
 
     def remove_layout_nodes(self):
