@@ -129,6 +129,7 @@ struct SeparateColorKernel: NodeKernel {
 
 struct HueSaturationKernel: NodeKernel {}
 struct BrightnessContrastKernel: NodeKernel {}
+struct GammaKernel: NodeKernel {}
 
 struct ColorCurvesKernel: NodeKernel {
     struct CurvePoint: Codable {
@@ -319,6 +320,7 @@ struct Node: Codable {
         "HUE_SAT":        HueSaturationKernel.self,
         "BLACKBODY":      BlackbodyKernel.self,
         "BRIGHTCONTRAST": BrightnessContrastKernel.self,
+        "GAMMA":          GammaKernel.self,
         
         // vector nodes
         "MAPPING":      MappingKernel.self,
