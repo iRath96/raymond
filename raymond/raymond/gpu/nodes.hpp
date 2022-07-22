@@ -53,7 +53,8 @@ struct kVectorMath {
         OPERATION_MULTIPLY,
         OPERATION_MULTIPLY_ADD,
         OPERATION_NORMALIZE,
-        OPERATION_SCALE
+        OPERATION_SCALE,
+        OPERATION_MINIMUM
     };
 };
 
@@ -80,6 +81,9 @@ struct VectorMath {
             vector = normalize(vector); break;
         case kVectorMath::OPERATION_SCALE:
             vector = vector * scale; break;
+        case kVectorMath::OPERATION_MINIMUM:
+            /// @todo verify
+            vector = min(vector, vector_001); break;
         }
     }
 };
@@ -215,7 +219,8 @@ struct kTexImage {
     enum ColorSpace {
         COLOR_SPACE_LINEAR,
         COLOR_SPACE_SRGB,
-        COLOR_SPACE_NON_COLOR
+        COLOR_SPACE_NON_COLOR,
+        COLOR_SPACE_XYZ
     };
     
     enum PixelFormat {
@@ -271,6 +276,11 @@ struct TexImage {
         
         case kTexImage::COLOR_SPACE_NON_COLOR:
             /// @todo what is this?
+            break;
+        
+        case kTexImage::COLOR_SPACE_XYZ:
+            /// @todo verify
+            color.xyz = xyz_to_rgb(color.x, color.y, color.z);
             break;
         }
     }
@@ -541,7 +551,10 @@ struct kMath {
         OPERATION_SUBTRACT,
         OPERATION_MULTIPLY,
         OPERATION_DIVIDE,
-        OPERATION_MULTIPLY_ADD
+        OPERATION_MULTIPLY_ADD,
+        OPERATION_MINIMUM,
+        OPERATION_MAXIMUM,
+        OPERATION_TANGENT
     };
 };
 
@@ -566,6 +579,15 @@ struct Math {
             value = safe_divide(value, value_001); break;
         case kMath::OPERATION_MULTIPLY_ADD:
             value = value * value_001 + value_002; break;
+        case kMath::OPERATION_MINIMUM:
+            /// @todo verify
+            value = min(value, value_001); break;
+        case kMath::OPERATION_MAXIMUM:
+            /// @todo verify
+            value = max(value, value_001); break;
+        case kMath::OPERATION_TANGENT:
+            /// @todo verify
+            value = tan(value); break;
         }
         
         if (Clamp) {
@@ -643,6 +665,18 @@ struct BrightnessContrast {
         float b = bright - contrast / 2;
         
         color = max(a * color + b, 0.f);
+    }
+};
+
+struct Gamma {
+    float4 color;
+    float gamma;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        if (gamma == 0)
+            color.xyz = 1;
+        else
+            color.xyz = select(color.xyz, pow(color.xyz, gamma), color.xyz > 0);
     }
 };
 
@@ -1116,6 +1150,7 @@ struct OutputWorld {
     }
 };
 
+float3 VECTOR(float v)  { return float3(v); } /// @todo verify
 float3 VECTOR(float2 v) { return float3(v, 0); }
 float3 VECTOR(float3 v) { return v; }
 float3 VECTOR(float4 v) { return v.xyz; }
