@@ -7,6 +7,7 @@ from warnings import warn
 from .materials import export_material
 from .shapes import export_shape, get_shape_name_base
 from .camera import export_camera, export_render
+from .utils import find_unique_name
 
 
 def export_materials(texturepath: str, image_cache: dict[str, str]):
@@ -42,8 +43,9 @@ def export_shapes(depsgraph: bpy.types.Depsgraph, meshpath: str, use_selection: 
             if len(shapes[shape_name]) == 0:
                 warn(f"Entity {object_eval.name} has no material or shape and will be ignored")
                 continue
-
-            entities[object_eval.name] = {
+            
+            name = find_unique_name(entities.keys(), object_eval.name)
+            entities[name] = {
                 "shape": shape_name,
                 "visibility": {
                     "camera": object_eval.visible_camera,
