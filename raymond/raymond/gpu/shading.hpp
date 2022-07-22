@@ -186,6 +186,8 @@ kernel void handleIntersections(
     } else {
         float3 geoNormal = tctx.trueNormal;
         if (dot(geoNormal, tctx.wo) < 0) geoNormal *= -1;
+        
+        /// @todo this should use the shading normal I think
         shNormal = ensure_valid_reflection(geoNormal, tctx.wo, tctx.material.normal);
     }
     
