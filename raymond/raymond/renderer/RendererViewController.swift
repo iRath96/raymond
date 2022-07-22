@@ -4,6 +4,7 @@ import MetalKit
 class RendererViewController: NSViewController {
     var renderer: Renderer!
     var scene: Scene!
+    var gestureAmplification: Float = 0.02
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -37,7 +38,7 @@ class RendererViewController: NSViewController {
         let zoom = float4x4([
             [ 1, 0, 0, 0 ],
             [ 0, 1, 0, 0 ],
-            [ 0, 0, 1, -Float(event.magnification) * 100 ],
+            [ 0, 0, 1, -Float(event.magnification) * 100 * gestureAmplification ],
             [ 0, 0, 0, 1 ],
         ])
         renderer.updateProjection(by: zoom)
@@ -49,8 +50,8 @@ class RendererViewController: NSViewController {
         }
         
         let shift = float4x4([
-            [ 1, 0, 0, -Float(event.scrollingDeltaX) * 0.2 ],
-            [ 0, 1, 0, Float(event.scrollingDeltaY) * 0.2 ],
+            [ 1, 0, 0, -Float(event.scrollingDeltaX) * 0.2 * gestureAmplification ],
+            [ 0, 1, 0, Float(event.scrollingDeltaY) * 0.2 * gestureAmplification ],
             [ 0, 0, 1, 0 ],
             [ 0, 0, 0, 1 ]
         ])
