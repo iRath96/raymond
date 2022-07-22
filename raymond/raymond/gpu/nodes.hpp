@@ -205,7 +205,11 @@ struct kTexImage {
     };
     
     enum Projection {
-        PROJECTION_FLAT
+        // TexImage
+        PROJECTION_FLAT,
+        
+        // TexEnvironment
+        PROJECTION_EQUIRECTANGULAR
     };
     
     enum Extension {
@@ -247,11 +251,20 @@ struct TexImage {
     float4 color;
     
     void compute(device Context &ctx, ThreadContext tctx) {
+        float2 projected;
+        switch (Projection) {
+        case kTexImage::PROJECTION_FLAT:
+            projected = float2(vector.x, 1 - vector.y);
+            break;
+        
+        case kTexImage::PROJECTION_EQUIRECTANGULAR:
+            projected.x = (atan2(vector.x, vector.y) - M_PI_F) / (2 * M_PI_F);
+            projected.y = acos(vector.z / length(vector)) / M_PI_F;
+            break;
+        }
+        
         constexpr sampler linearSampler(address::repeat, coord::normalized, filter::linear);
-        color = ctx.textures[TextureIndex].sample(
-            linearSampler,
-            float2(vector.x, 1 - vector.y) // weird blender convention??
-        );
+        color = ctx.textures[TextureIndex].sample(linearSampler, projected);
         
         switch (PixelFormat) {
         case kTexImage::PIXEL_FORMAT_R:
@@ -294,6 +307,32 @@ private:
 
         return pow((c + 0.055f) * (1.0f / 1.055f), 2.4f);
     }
+};
+
+struct kTexEnvironment {
+    enum Interpolation {
+        INTERPOLATION_LINEAR
+    };
+    
+    enum Projection {
+        PROJECTION_EQUIRECTANGULAR
+    };
+    
+    enum Alpha {
+        ALPHA_STRAIGHT
+    };
+    
+    enum ColorSpace {
+        COLOR_SPACE_LINEAR,
+        COLOR_SPACE_SRGB,
+        COLOR_SPACE_NON_COLOR,
+        COLOR_SPACE_XYZ
+    };
+    
+    enum PixelFormat {
+        PIXEL_FORMAT_R,
+        PIXEL_FORMAT_RGBA
+    };
 };
 
 template<

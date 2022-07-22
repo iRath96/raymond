@@ -278,7 +278,7 @@ struct Codegen {
             warn("SkyKernel: only Nishita supported")
             throw CodegenError.unsupportedKernel
         case let kernel as TexImageKernel:
-            let slot = try registerTexture(kernel.filepath, kernel.colorspace)
+            let slot = try registerTexture(kernel.filepath)
             if kernel.alpha != "STRAIGHT" {
                 warn("TexImage: alpha mode '\(kernel.alpha)' not supported")
             }
@@ -293,6 +293,28 @@ struct Codegen {
                 .enum("INTERPOLATION", kernel.interpolation),
                 .enum("PROJECTION", kernel.projection),
                 .enum("EXTENSION", kernel.extension),
+                .enum("ALPHA", "STRAIGHT"),
+                .enum("COLOR_SPACE", kernel.colorspace),
+                .constant("TEX\(slot)_PIXEL_FORMAT")
+            ], comments: [
+                kernel.filepath
+            ])
+        case let kernel as TexEnvironmentKernel:
+            let slot = try registerTexture(kernel.filepath)
+            if kernel.alpha != "STRAIGHT" {
+                warn("TexEnvironment: alpha mode '\(kernel.alpha)' not supported")
+            }
+            switch kernel.colorspace {
+            case "Linear": break
+            case "sRGB": break
+            default:
+                warn("TexEnvironment: colorspace '\(kernel.colorspace)' not supported")
+            }
+            return .init(kernel: "TexImage", parameters: [
+                .int(slot),
+                .enum("INTERPOLATION", kernel.interpolation),
+                .enum("PROJECTION", kernel.projection),
+                .enum("EXTENSION", "REPEAT"),
                 .enum("ALPHA", "STRAIGHT"),
                 .enum("COLOR_SPACE", kernel.colorspace),
                 .constant("TEX\(slot)_PIXEL_FORMAT")
@@ -503,7 +525,7 @@ struct Codegen {
         return idx
     }
     
-    private mutating func registerTexture(_ path: String, _ colorspace: String) throws -> Int {
+    private mutating func registerTexture(_ path: String) throws -> Int {
         if let idx = textureIndices[path] {
             return idx
         }
@@ -559,7 +581,7 @@ struct Codegen {
         switch node.kernel {
         case is TexImageKernel:
             provideDefault(name: "Vector", value: mappedUV)
-        case is TexCheckerKernel, is TexNoiseKernel:
+        case is TexCheckerKernel, is TexNoiseKernel, is TexEnvironmentKernel:
             provideDefault(name: "Vector", value: generatedUV)
         case is FresnelKernel,
              is BsdfGlassKernel,

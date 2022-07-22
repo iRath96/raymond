@@ -285,6 +285,14 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
                 "colorspace": node.image.colorspace_settings.name,
                 "alpha": node.image.alpha_mode
             }
+        elif isinstance(node, bpy.types.ShaderNodeTexEnvironment):
+            result_node["parameters"] = {
+                "filepath": _handle_image(node.image, texturepath, image_cache),
+                "interpolation": node.interpolation,
+                "projection": node.projection,
+                "colorspace": node.image.colorspace_settings.name,
+                "alpha": node.image.alpha_mode
+            }
         elif isinstance(node, bpy.types.ShaderNodeTexSky):
             result_node["parameters"] = {
                 "air_density": node.air_density,

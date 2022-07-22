@@ -44,6 +44,14 @@ struct TexImageKernel: NodeKernel {
     var alpha: String
 }
 
+struct TexEnvironmentKernel: NodeKernel {
+    var filepath: String
+    var interpolation: String
+    var projection: String
+    var colorspace: String
+    var alpha: String
+}
+
 struct TexCheckerKernel: NodeKernel {}
 
 struct TexNoiseKernel: NodeKernel {
@@ -292,10 +300,11 @@ struct Node: Codable {
     
     static let kernels: [String: NodeKernel.Type] = [
         // texture nodes
-        "TEX_IMAGE":    TexImageKernel.self,
-        "TEX_CHECKER":  TexCheckerKernel.self,
-        "TEX_NOISE":    TexNoiseKernel.self,
-        "TEX_SKY":      TexSkyKernel.self,
+        "TEX_IMAGE":       TexImageKernel.self,
+        "TEX_ENVIRONMENT": TexEnvironmentKernel.self,
+        "TEX_CHECKER":     TexCheckerKernel.self,
+        "TEX_NOISE":       TexNoiseKernel.self,
+        "TEX_SKY":         TexSkyKernel.self,
         
         // shader nodes
         "BSDF_PRINCIPLED":  BsdfPrincipledKernel.self,
