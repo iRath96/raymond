@@ -282,6 +282,12 @@ struct Codegen {
             if kernel.alpha != "STRAIGHT" {
                 warn("TexImage: alpha mode '\(kernel.alpha)' not supported")
             }
+            switch kernel.colorspace {
+            case "Linear": break
+            case "sRGB": break
+            default:
+                warn("TexImage: colorspace '\(kernel.colorspace)' not supported")
+            }
             return .init(kernel: "TexImage", parameters: [
                 .int(slot),
                 .enum("INTERPOLATION", kernel.interpolation),
@@ -314,8 +320,11 @@ struct Codegen {
                 .bool(kernel.useClamp)
             ])
         case let kernel as BsdfPrincipledKernel:
+            if kernel.distribution != "GGX" {
+                warn("BsdfPrincipled: only GGX distribution supported!")
+            }
             return .init(kernel: "BsdfPrincipled", parameters: [
-                .enum("DISTRIBUTION", kernel.distribution),
+                .enum("DISTRIBUTION", "GGX"),
                 .enum("SUBSURFACE_METHOD", kernel.subsurfaceMethod)
             ])
         case let kernel as MappingKernel:
@@ -387,6 +396,8 @@ struct Codegen {
             return .init(kernel: "HueSaturation")
         case is BrightnessContrastKernel:
             return .init(kernel: "BrightnessContrast")
+        case is GammaKernel:
+            return .init(kernel: "Gamma")
         case is LightPathKernel:
             warn("LightPath: support for this node is rudimentary")
             return .init(kernel: "LightPath")
@@ -531,6 +542,9 @@ struct Codegen {
      * Default values for some attributes do not make sense (e.g., normals being set to (0,0,0) on BSDFs).
      * There does not seem to be an elegant way to tell these attributes apart in the exporter plugin,
      * so we just fix the attributes here in the Codgen.
+     *
+     * @note This apparently also applies after inlining node groups in the exporter (for example, a 'normal' input on
+     * a BSDF will still ignore a constant value that is provided to it through a NodeGroup!)
      */
     private func provideDefaults(forNode node: inout Node, inInvocation invocation: inout KernelInvocation) {
         func provideDefault(name: String, value: String) {
