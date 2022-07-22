@@ -8,6 +8,9 @@ struct Raymond: ParsableCommand {
     @Argument(help: "Path to scene")
     var scenePath: String
     
+    @Option(name: .short, help: "Gesture amplification")
+    var gestureAmplification: Float = 0.02
+    
     mutating func run() throws {
         let sceneURL = URL(filePath: scenePath)
         let scene = try SceneLoader().loadScene(fromURL: sceneURL, onDevice: MTLCreateSystemDefaultDevice()!)
@@ -15,6 +18,7 @@ struct Raymond: ParsableCommand {
         let storyboard = NSStoryboard(name: "Main", bundle: nil)
         let windowController = storyboard.instantiateInitialController() as! NSWindowController
         let viewController = windowController.contentViewController as! RendererViewController
+        viewController.gestureAmplification = gestureAmplification
         viewController.attach(scene: scene)
         
         windowController.showWindow(nil)
