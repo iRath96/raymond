@@ -71,6 +71,10 @@ def export_shapes(depsgraph: bpy.types.Depsgraph, meshpath: str, texturepath: st
                 warn(f"Light {object_eval.name} is of unsupported type '{light.type}'")
                 continue
             
+            if light.cycles.is_portal:
+                warn(f"Light portals are not supported")
+                continue
+            
             # To export area lights, we convert them to ordinary shapes with a special kind of material:
             # 1) We generate the material for them.
             #      The rendered will treat them differently due to the use of OUTPUT_LIGHT instead of OUTPUT_MATERIAL.
