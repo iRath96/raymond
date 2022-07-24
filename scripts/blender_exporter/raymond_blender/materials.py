@@ -434,7 +434,8 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
             bpy.types.ShaderNodeNewGeometry,
             bpy.types.ShaderNodeBackground,
             bpy.types.ShaderNodeOutputWorld,
-            bpy.types.ShaderNodeOutputLight
+            bpy.types.ShaderNodeOutputLight,
+            bpy.types.ShaderNodeGamma
         )):
             # no parameters
             pass
