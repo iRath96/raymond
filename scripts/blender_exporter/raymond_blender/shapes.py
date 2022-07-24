@@ -171,7 +171,10 @@ def _export_bmesh_by_material(me: bpy.types.Mesh, name: str, meshpath: str):
     return {
         "type": "ply",
         "filepath": filepath,
-        "materials": [ mat.name for mat in me.materials ]
+        "materials": [
+            ("__DEFAULT" if mat is None else mat.name)
+            for mat in me.materials.values()
+        ]
     }
 
 

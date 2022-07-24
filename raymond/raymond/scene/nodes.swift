@@ -234,6 +234,12 @@ struct UVMapKernel: NodeKernel {
 // MARK: - Output kernels
 struct OutputMaterialKernel: NodeKernel {}
 struct OutputWorldKernel: NodeKernel {}
+struct OutputLightKernel: NodeKernel {
+    var shape: String
+    var color: [Float]
+    var irradiance: Float
+    var spread: Float
+}
 
 // MARK: - Nodes
 
@@ -350,6 +356,7 @@ struct Node: Codable {
         // output nodes
         "OUTPUT_MATERIAL": OutputMaterialKernel.self,
         "OUTPUT_WORLD":    OutputWorldKernel.self,
+        "OUTPUT_LIGHT":    OutputLightKernel.self,
     ]
     
     init(from decoder: Decoder) throws {

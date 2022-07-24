@@ -1,0 +1,42 @@
+{
+    "World Output": {
+        "type": "OUTPUT_WORLD",
+        "inputs": {
+            "Surface": {
+                "type": "SHADER",
+                "links": [
+                    [
+                        "Background",
+                        "Background"
+                    ]
+                ]
+            },
+            "Volume": {
+                "type": "SHADER"
+            }
+        },
+        "parameters": {}
+    },
+    "Background": {
+        "type": "BACKGROUND",
+        "inputs": {
+            "Color": {
+                "type": "RGBA",
+                "value": [
+                    0.051,
+                    0.051,
+                    0.051,
+                    1.0
+                ]
+            },
+            "Strength": {
+                "type": "VALUE",
+                "value": 1.0
+            },
+            "Weight": {
+                "type": "VALUE"
+            }
+        },
+        "parameters": {}
+    }
+}

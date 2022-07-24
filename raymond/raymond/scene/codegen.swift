@@ -272,7 +272,7 @@ struct Codegen {
                 var invocation: KernelInvocation = .init(kernel: "TexNishita", parameters: [
                     .int(slot)
                 ])
-                return invocation.assign(key: "data", value: "{ \(data.map { String($0) }.joined(separator: ", ")) }")
+                return invocation.assign(key: "Data", value: .vector(data))
             }
             
             warn("SkyKernel: only Nishita supported")
@@ -390,6 +390,21 @@ struct Codegen {
             return .init(kernel: "OutputMaterial")
         case is OutputWorldKernel:
             return .init(kernel: "OutputWorld")
+        case let kernel as OutputLightKernel:
+            var invocation: KernelInvocation = .init(kernel: "OutputLight", parameters: [
+                .enum("SHAPE", kernel.shape)
+            ])
+            
+            let minSpreadAngle = 1 * Float.pi / 180 // 1°
+            let spreadAngle = (Float.pi - max(kernel.spread, minSpreadAngle)) / 2
+            let tanSpread = tanf(spreadAngle)
+            let normalizeSpread = 2 / (2 + (2 * spreadAngle - Float.pi) * tanSpread)
+            
+            let norm = Float(0.25) * kernel.irradiance * (tanSpread > 0 ? normalizeSpread : 1)
+            invocation.assign(key: "Color", value: .vector(kernel.color.map { norm * $0 }))
+            invocation.assign(key: "Tan Spread", value: .scalar(tanSpread))
+            
+            return invocation
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
         case let kernel as UVMapKernel:
@@ -482,7 +497,8 @@ struct Codegen {
                     try emitNode(material, key: node.key)
                 }
             } else {
-                if node.value.kernel is OutputMaterialKernel {
+                if node.value.kernel is OutputMaterialKernel
+                || node.value.kernel is OutputLightKernel {
                     try emitNode(material, key: node.key)
                 }
             }
@@ -609,6 +625,13 @@ struct Codegen {
         invocation.name = key
         
         provideDefaults(forNode: &node, inInvocation: &invocation)
+        
+        if node.kernel is OutputLightKernel {
+            /// Light materials behave differently in terms of texture coordinates
+            /// We emit a "preamble" node before emitting any other nodes to fix this
+            /// @todo avoid name clashes
+            invocations.append(.init(name: "Output Light Preamble", kernel: "OutputLightPreamble"))
+        }
         
         for (key, value) in node.inputs.sorted(by: { $0.0 < $1.0 }) {
             if value.links == nil || value.links!.isEmpty {

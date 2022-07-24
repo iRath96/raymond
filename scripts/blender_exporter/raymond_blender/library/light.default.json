@@ -1,0 +1,40 @@
+{
+    "Emission": {
+        "type": "EMISSION",
+        "inputs": {
+            "Color": {
+                "type": "RGBA",
+                "value": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "Strength": {
+                "type": "VALUE",
+                "value": 1.0
+            },
+            "Weight": {
+                "type": "VALUE",
+                "value": 0.0
+            }
+        },
+        "parameters": {}
+    },
+    "Light Output": {
+        "type": "OUTPUT_LIGHT",
+        "inputs": {
+            "Surface": {
+                "type": "SHADER",
+                "links": [
+                    [
+                        "Emission",
+                        "Emission"
+                    ]
+                ]
+            }
+        },
+        "parameters": {}
+    }
+}

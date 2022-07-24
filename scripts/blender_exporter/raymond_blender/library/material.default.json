@@ -1,0 +1,164 @@
+{
+    "Principled BSDF": {
+        "type": "BSDF_PRINCIPLED",
+        "inputs": {
+            "Base Color": {
+                "type": "RGBA",
+                "value": [
+                    0.8,
+                    0.8,
+                    0.8,
+                    1.0
+                ]
+            },
+            "Subsurface": {
+                "type": "VALUE"
+            },
+            "Subsurface Radius": {
+                "type": "VECTOR",
+                "value": [
+                    1.0,
+                    0.2,
+                    0.1
+                ]
+            },
+            "Subsurface Color": {
+                "type": "RGBA",
+                "value": [
+                    0.8,
+                    0.8,
+                    0.8,
+                    1.0
+                ]
+            },
+            "Subsurface IOR": {
+                "type": "VALUE",
+                "value": 1.4
+            },
+            "Subsurface Anisotropy": {
+                "type": "VALUE"
+            },
+            "Metallic": {
+                "type": "VALUE"
+            },
+            "Specular": {
+                "type": "VALUE",
+                "value": 0.5
+            },
+            "Specular Tint": {
+                "type": "VALUE"
+            },
+            "Roughness": {
+                "type": "VALUE",
+                "value": 0.5
+            },
+            "Anisotropic": {
+                "type": "VALUE"
+            },
+            "Anisotropic Rotation": {
+                "type": "VALUE"
+            },
+            "Sheen": {
+                "type": "VALUE"
+            },
+            "Sheen Tint": {
+                "type": "VALUE",
+                "value": 0.5
+            },
+            "Clearcoat": {
+                "type": "VALUE"
+            },
+            "Clearcoat Roughness": {
+                "type": "VALUE",
+                "value": 0.03
+            },
+            "IOR": {
+                "type": "VALUE",
+                "value": 1.45
+            },
+            "Transmission": {
+                "type": "VALUE"
+            },
+            "Transmission Roughness": {
+                "type": "VALUE"
+            },
+            "Emission": {
+                "type": "RGBA",
+                "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "Emission Strength": {
+                "type": "VALUE",
+                "value": 1.0
+            },
+            "Alpha": {
+                "type": "VALUE",
+                "value": 1.0
+            },
+            "Normal": {
+                "type": "VECTOR",
+                "value": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "Clearcoat Normal": {
+                "type": "VECTOR",
+                "value": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "Tangent": {
+                "type": "VECTOR",
+                "value": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "Weight": {
+                "type": "VALUE"
+            }
+        },
+        "parameters": {
+            "distribution": "GGX",
+            "subsurface_method": "RANDOM_WALK"
+        }
+    },
+    "Material Output": {
+        "type": "OUTPUT_MATERIAL",
+        "inputs": {
+            "Surface": {
+                "type": "SHADER",
+                "links": [
+                    [
+                        "Principled BSDF",
+                        "BSDF"
+                    ]
+                ]
+            },
+            "Volume": {
+                "type": "SHADER"
+            },
+            "Displacement": {
+                "type": "VECTOR",
+                "value": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "Thickness": {
+                "type": "VALUE"
+            }
+        },
+        "parameters": {}
+    }
+}

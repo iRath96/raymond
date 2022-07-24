@@ -1,9 +1,20 @@
 import bpy
 import os
+import json
 
 from warnings import warn
 
 from .utils import find_unique_name
+
+
+def load_library_json(name: str):
+    library_path = os.path.join(os.path.dirname(__file__), "library")
+    with open(os.path.join(library_path, name + ".json")) as f:
+        return json.load(f)
+
+_DEFAULT_WORLD    = load_library_json("world.default")
+_DEFAULT_MATERIAL = load_library_json("material.default")
+_DEFAULT_LIGHT    = load_library_json("light.default")
 
 
 class RMNode(object):
@@ -242,12 +253,24 @@ def _handle_image(image: bpy.types.Image, texturepath: str, image_cache: dict[st
     return result
 
 
+def export_default_material():
+    return _DEFAULT_MATERIAL
+
+
+# @todo material type should be 'Material | World | Light'
 def export_material(material: bpy.types.Material, texturepath: str, image_cache: dict[str, str]):
     result = {}
     
     if not material.use_nodes:
-        warn(f"Material `{material.name}' does not use nodes and can therefore not be exported.")
-        return result
+        if isinstance(material, bpy.types.Light):
+            return _DEFAULT_LIGHT
+        elif isinstance(material, bpy.types.World):
+            return _DEFAULT_WORLD
+        elif isinstance(material, bpy.types.Material):
+            return _DEFAULT_MATERIAL
+        else:
+            warn(f"Unsupported use of node trees")
+            return result
     
     node_graph = RMNodeGraph(material.node_tree)
     node_graph.inline_node_groups_recursively()
@@ -259,13 +282,12 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
     for (node_name, rm_node) in node_graph.nodes.items():
         node = rm_node.bl_node
 
-        if isinstance(node, bpy.types.ShaderNodeOutputMaterial):
+        if isinstance(node, bpy.types.ShaderNodeOutputMaterial) \
+        or isinstance(node, bpy.types.ShaderNodeOutputWorld) \
+        or isinstance(node, bpy.types.ShaderNodeOutputLight):
             if not node.is_active_output:
                 continue
-        
-        if isinstance(node, bpy.types.ShaderNodeOutputWorld):
-            if not node.is_active_output:
-                continue
+
             if node.target == "EEVEE":
                 # @todo verify this works
                 continue
@@ -411,7 +433,8 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
             bpy.types.ShaderNodeEmission,
             bpy.types.ShaderNodeNewGeometry,
             bpy.types.ShaderNodeBackground,
-            bpy.types.ShaderNodeOutputWorld
+            bpy.types.ShaderNodeOutputWorld,
+            bpy.types.ShaderNodeOutputLight
         )):
             # no parameters
             pass
@@ -425,7 +448,19 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
 
             if (link := rm_node.links.get(input.identifier)):
                 result_input["links"] = [ link ]
-            elif (value := rm_node.values.get(input.identifier)):
+            elif (value := rm_node.values.get(input.identifier)) is not None:
                 result_input["value"] = value
+        
+        # patch incorrect output types
+        if isinstance(material, bpy.types.Material) and isinstance(node, bpy.types.ShaderNodeOutputLight):
+            result_node["type"] = "OUTPUT_MATERIAL"
+        elif isinstance(material, bpy.types.Light) and isinstance(node, bpy.types.ShaderNodeOutputMaterial):
+            result_node["type"] = "OUTPUT_LIGHT"
+            if "Surface" in result_node["inputs"]:
+                result_node["inputs"] = {
+                    "Surface": result_node["inputs"]["Surface"]
+                }
+            else:
+                result_node["inputs"] = {}
     
     return result

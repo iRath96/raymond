@@ -20,6 +20,9 @@ struct Material {
     
     float3 emission = 0;
     
+    float weight = 1;
+    float pdf = 1;
+    
     float3 evaluate(float3 wo, float3 wi, thread float &pdf) {
         return float3(0);
     }
@@ -29,7 +32,7 @@ struct Material {
             rnd.x /= alpha;
         } else {
             BSDFSample sample;
-            sample.weight = alphaWeight;
+            sample.weight = alphaWeight * weight;
             sample.wi = -wo;
             sample.pdf = 1e+8; /// @todo hack
             sample.flags = previousFlags; /// null scattering does not alter ray flags
@@ -66,6 +69,8 @@ struct Material {
         
         const float wiDotShN = sample.wi.z;
         sample.wi = sample.wi * transpose(worldToShadingFrame);
+        sample.pdf *= pdf;
+        sample.weight *= weight;
         const float wiDotGeoN = dot(sample.wi, geoNormal);
         if (wiDotShN * wiDotGeoN < 0) {
             return BSDFSample::invalid();

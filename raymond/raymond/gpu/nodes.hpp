@@ -1078,7 +1078,7 @@ struct BsdfPrincipled {
         
         bsdf.alpha = alpha;
         bsdf.normal = normal;
-        bsdf.emission = emission.xyz * emissionStrength;
+        bsdf.emission = alpha * emission.xyz * emissionStrength;
     }
 };
 
@@ -1149,6 +1149,9 @@ struct AddShader {
         } else {
             tctx.rnd.x = 2 * (tctx.rnd.x - 0.5f);
         }
+        
+        shader.weight *= 2;
+        shader.pdf /= 2;
     }
 };
 
@@ -1164,8 +1167,10 @@ struct MixShader {
         if (tctx.rnd.x < fac) {
             tctx.rnd.x /= fac;
             shader = shader_001;
+            shader.pdf *= fac;
         } else {
             tctx.rnd.x = (tctx.rnd.x - fac) / (1 - fac);
+            shader.pdf *= 1 - fac;
         }
     }
 };
@@ -1186,6 +1191,65 @@ struct OutputWorld {
     
     void compute(device Context &ctx, thread ThreadContext &tctx) {
         tctx.material = surface;
+    }
+};
+
+struct OutputLightPreamble {
+    void compute(device Context &ctx, thread ThreadContext &tctx) {
+        /// Light materials behave differently in terms of texture coordinates:
+        tctx.generated = tctx.position;
+        tctx.object = tctx.position;
+        
+        /// @todo UV coordinates should be zero, but we use them in `OutputLight` currently to render disks/ellipses
+        //tctx.uv = float3(0);
+    }
+};
+
+struct kOutputLight {
+    enum Shape {
+        SHAPE_SQUARE,
+        SHAPE_RECTANGLE,
+        SHAPE_DISK,
+        SHAPE_ELLIPSE
+    };
+};
+
+template<
+    kOutputLight::Shape Shape
+>
+struct OutputLight {
+    Material surface;
+    
+    float3 color;
+    float tanSpread;
+    
+    void compute(device Context &ctx, thread ThreadContext &tctx) {
+        thread Material &mat = tctx.material;
+        mat.alpha = 0;
+        
+        switch (Shape) {
+        case kOutputLight::SHAPE_SQUARE:
+        case kOutputLight::SHAPE_RECTANGLE:
+            break;
+        
+        case kOutputLight::SHAPE_DISK:
+        case kOutputLight::SHAPE_ELLIPSE:
+            if (length_squared(tctx.uv) > 1)
+                return;
+            break;
+        }
+        
+        const float cosTheta = -dot(tctx.normal, tctx.wo);
+        if (cosTheta < 0)
+            return;
+        
+        mat.emission = color * surface.emission;
+        
+        if (tanSpread > 0) {
+            const float sinTheta = safe_sqrtf(1 - square(cosTheta));
+            const float tanTheta = sinTheta / cosTheta;
+            mat.emission *= max(1 - (tanSpread * tanTheta), 0.0f);
+        }
     }
 };
 
