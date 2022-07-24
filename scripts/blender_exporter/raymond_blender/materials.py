@@ -426,6 +426,7 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
             bpy.types.ShaderNodeTexCoord,
             bpy.types.ShaderNodeInvert,
             bpy.types.ShaderNodeBsdfTransparent,
+            bpy.types.ShaderNodeBsdfTranslucent,
             bpy.types.ShaderNodeMixShader,
             bpy.types.ShaderNodeSeparateColor,
             bpy.types.ShaderNodeHueSaturation,
