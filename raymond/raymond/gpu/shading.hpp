@@ -67,16 +67,13 @@ kernel void handleIntersections(
     
     ThreadContext tctx;
     tctx.rayFlags = ray.flags;
-    tctx.rnd = sample3d(prng);
+    tctx.rnd = prng.sample3d();
     tctx.wo = -ray.direction;
     
     constant Intersection &isect = intersections[rayIndex];
     if (isect.distance <= 0.0f) {
         // miss
-        tctx.normal = tctx.wo;
-        tctx.uv = 0;
-        tctx.generated = -tctx.wo;
-        tctx.object = -tctx.wo;
+        tctx.setupForWorldHit(tctx.wo);
         
 #ifdef USE_FUNCTION_TABLE
         /// @todo NOT SUPPORTED!
@@ -198,7 +195,7 @@ kernel void handleIntersections(
     if (!isfinite(meanWeight)) return;
     
     float survivalProb = min(meanWeight, 1.f);
-    if (sample1d(prng) < survivalProb) {
+    if (prng.sample() < survivalProb) {
         uint nextRayIndex = atomic_fetch_add_explicit(&nextRayCount, 1, memory_order_relaxed);
         device Ray &nextRay = nextRays[nextRayIndex];
         nextRay.origin = tctx.position;

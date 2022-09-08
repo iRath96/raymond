@@ -93,6 +93,13 @@ struct ThreadContext {
     RayFlags rayFlags;
     
     Material material;
+    
+    void setupForWorldHit(float3 wo) {
+        normal = wo;
+        uv = 0;
+        generated = -wo;
+        object = -wo;
+    }
 };
 
 #ifndef JIT_COMPILED

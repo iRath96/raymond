@@ -57,33 +57,26 @@ float sample_tea_float32(uint32_t v0, uint32_t v1, int rounds = 6) {
     return v.f - 1.f;
 }
 
-float sample1d(device PRNGState &prng) {
-    return sample_tea_float32(prng.seed, prng.index++);
+float PRNGState::sample() {
+    return sample_tea_float32(seed, index++);
 }
 
-float sample1d(thread PRNGState &prng) {
-    return sample_tea_float32(prng.seed, prng.index++);
+float2 PRNGState::sample2d() {
+    return float2(sample(), sample());
 }
 
-float2 sample2d(device PRNGState &prng) {
-    return float2(
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++)
-    );
+float3 PRNGState::sample3d() {
+    return float3(sample(), sample(), sample());
 }
 
-float3 sample3d(device PRNGState &prng) {
-    return float3(
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++)
-    );
+float PRNGState::sample() device {
+    return sample_tea_float32(seed, index++);
 }
 
-float3 sample3d(thread PRNGState &prng) {
-    return float3(
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++),
-        sample_tea_float32(prng.seed, prng.index++)
-    );
+float2 PRNGState::sample2d() device {
+    return float2(sample(), sample());
+}
+
+float3 PRNGState::sample3d() device {
+    return float3(sample(), sample(), sample());
 }

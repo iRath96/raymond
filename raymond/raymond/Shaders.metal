@@ -36,7 +36,7 @@ kernel void generateRays(
     ray.x = coordinates.x;
     ray.y = coordinates.y;
     
-    const float2 jitteredCoordinates = float2(coordinates) + sample2d(ray.prng);
+    const float2 jitteredCoordinates = float2(coordinates) + ray.prng.sample2d();
     const float2 uv = jitteredCoordinates / float2(imageSize) * 2.0f - 1.0f;
 
     const float aspect = float(imageSize.x) / float(imageSize.y);
