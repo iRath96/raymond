@@ -49,12 +49,13 @@ struct LightPath {
 struct kVectorMath {
     enum Operation {
         OPERATION_ADD,
-        OPERATION_SUB,
+        OPERATION_SUBTRACT,
         OPERATION_MULTIPLY,
         OPERATION_MULTIPLY_ADD,
         OPERATION_NORMALIZE,
         OPERATION_SCALE,
-        OPERATION_MINIMUM
+        OPERATION_MINIMUM,
+        OPERATION_LENGTH
     };
 };
 
@@ -63,6 +64,8 @@ template<
 >
 struct VectorMath {
     float scale;
+    
+    float value;
     float3 vector;
     float3 vector_001;
     float3 vector_002;
@@ -71,7 +74,7 @@ struct VectorMath {
         switch (Operation) {
         case kVectorMath::OPERATION_ADD:
             vector = vector + vector_001; break;
-        case kVectorMath::OPERATION_SUB:
+        case kVectorMath::OPERATION_SUBTRACT:
             vector = vector - vector_001; break;
         case kVectorMath::OPERATION_MULTIPLY:
             vector = vector * vector_001; break;
@@ -82,8 +85,9 @@ struct VectorMath {
         case kVectorMath::OPERATION_SCALE:
             vector = vector * scale; break;
         case kVectorMath::OPERATION_MINIMUM:
-            /// @todo verify
             vector = min(vector, vector_001); break;
+        case kVectorMath::OPERATION_LENGTH:
+            value = length(vector); break;
         }
     }
 };
@@ -224,6 +228,7 @@ struct kTexImage {
         COLOR_SPACE_LINEAR,
         COLOR_SPACE_SRGB,
         COLOR_SPACE_NON_COLOR,
+        COLOR_SPACE_RAW,
         COLOR_SPACE_XYZ
     };
     
@@ -287,6 +292,7 @@ struct TexImage {
             );
             break;
         
+        case kTexImage::COLOR_SPACE_RAW:
         case kTexImage::COLOR_SPACE_NON_COLOR:
             /// @todo what is this?
             break;
