@@ -17,7 +17,6 @@ class Renderer: NSObject, MTKViewDelegate {
     var depthState: MTLDepthStencilState
     
     let pipelineState: MTLRenderPipelineState
-    let imageFillPipelineState: MTLComputePipelineState
     let rayGenerator: MTLComputePipelineState
     let makeIndirectDispatch: MTLComputePipelineState
     
@@ -74,7 +73,6 @@ class Renderer: NSObject, MTKViewDelegate {
         lastHandlerConstants.setConstantValue(ptr, type: .bool, index: 0)
         ptr.deallocate()
         
-        imageFillPipelineState = Renderer.buildComputePipelineWithDevice(device: device, name: "background")!
         rayGenerator = Renderer.buildComputePipelineWithDevice(device: device, name: "generateRays")!
         makeIndirectDispatch = Renderer.buildComputePipelineWithDevice(device: device, name: "makeIndirectDispatchArguments")!
         

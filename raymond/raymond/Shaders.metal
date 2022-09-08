@@ -12,14 +12,6 @@ using namespace metal;
 
 // MARK: - ray tracing
 
-kernel void background(
-    texture2d<float, access::write> image [[texture(0)]],
-    uint2 coordinates [[thread_position_in_grid]],
-    uint2 size [[threads_per_grid]]
-) {
-    image.write(float4(0, 0, 0, 1), coordinates);
-}
-
 kernel void generateRays(
     device Ray *rays            [[buffer(GeneratorBufferRays)]],
     device uint *rayCount       [[buffer(GeneratorBufferRayCount)]],
