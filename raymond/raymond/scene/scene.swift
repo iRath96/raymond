@@ -255,7 +255,7 @@ struct SceneLoader {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
         
-        let envmapOffset = 1
+        let envmapOffset = 0
         contextEncoder.set(at: envmapOffset + 0, resolution)
         contextEncoder.setBuffer(pdfBuffer, offset: 0, index: envmapOffset + 1)
         contextEncoder.setBuffer(mipmapBuffer, offset: 0, index: envmapOffset + 2)
@@ -415,8 +415,9 @@ struct SceneLoader {
         argumentEncoder.setArgumentBuffer(contextBuffer, offset: 0)
 
         var resourcesRead: [MTLResource] = []
+        let textureOffset = 10
         for (index, texture) in codegen.textures.enumerated() {
-            argumentEncoder.setTexture(texture, index: index)
+            argumentEncoder.setTexture(texture, index: textureOffset + index)
             resourcesRead.append(texture)
         }
 

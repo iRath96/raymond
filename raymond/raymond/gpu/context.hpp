@@ -197,6 +197,6 @@ struct EnvmapSampling {
 };
 
 struct Context {
-    array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[ id(0) ]];
-    EnvmapSampling envmap [[ id(1) ]];
+    EnvmapSampling envmap [[ id(0) ]];
+    array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[ id(10) ]];
 };
