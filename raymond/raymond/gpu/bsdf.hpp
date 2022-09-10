@@ -335,7 +335,35 @@ struct Diffuse {
     bool translucent = false;
     
     float3 evaluate(float3 wo, float3 wi, thread float &pdf) {
-        return float3(0); /// @todo
+        if (ShadingFrame::sameHemisphere(wi, wo) == translucent) {
+            pdf = 0;
+            return 0;
+        }
+        
+        const float NdotL = abs(ShadingFrame::cosTheta(wi));
+        pdf = M_1_PI_F * NdotL;
+        
+        const float NdotV = abs(ShadingFrame::cosTheta(wo));
+        const float LdotV = dot(wi, wo);
+        
+        const float FL = schlickWeight(NdotL);
+        const float FV = schlickWeight(NdotV);
+        
+        // Lambertian
+        const float lambertian = (1.0f - 0.5f * FV) * (1.0f - 0.5f * FL);
+        
+        // Retro-reflectionconst
+        const float LH2 = LdotV + 1;
+        const float RR = roughness * LH2;
+        const float retroReflection = RR * (FL + FV + FL * FV * (RR - 1.0f));
+        
+        // Sheen
+        const float3 wh = normalize(wo + wi);
+        const float LdotH = abs(dot(wh, wi));
+        const float sheen = schlickWeight(LdotH);
+        
+        return pdf * (diffuseWeight * (lambertian + retroReflection) +
+            sheenWeight * (M_PI_F * sheen));
     }
     
     BSDFSample sample(float2 rnd, float3 wo) {
@@ -452,7 +480,40 @@ struct Transmission {
     float weight = 0;
     
     float3 evaluate(float3 wo, float3 wi, thread float &pdf) {
-        return float3(0); /// @todo
+        const bool isReflection = ShadingFrame::sameHemisphere(wi, wo);
+        const float eta = ShadingFrame::cosTheta(wo) > 0 ? ior : 1 / ior;
+        
+        const float3 wh = isReflection ?
+            normalize(wi + wo) :
+            normalize(wi * eta + wo);
+        
+        const float alpha = isReflection ?
+            reflectionAlpha :
+            transmissionAlpha;
+        
+        // VNDF PDF
+        pdf = anisotropicGGX(wh, alpha, alpha) *
+            anisotropicSmithG1(wo, wh, alpha, alpha) *
+            abs(dot(wo, wh) / ShadingFrame::cosTheta(wo));
+        if (!(pdf > 0)) {
+            pdf = 0;
+            return 0;
+        }
+        
+        const float Gi = anisotropicSmithG1(wi, wh, alpha, alpha);
+        const float Fr = fresnelDielectricCos(ShadingFrame::cosTheta(wo), eta);
+        if (isReflection) {
+            pdf *= Fr;
+            pdf *= 1 / abs(4 * dot(wo, wh));
+            
+            const float3 F = fresnelReflectionColor(wi, wh, eta, Cspec0);
+            return pdf * weight * F * Gi;
+        } else {
+            pdf *= 1 - Fr;
+            pdf *= abs(dot(wi, wh) / square(dot(wi, wh) + dot(wh, wo) / eta));
+            
+            return pdf * weight * baseColor * Gi;
+        }
     }
     
     BSDFSample sample(float2 rnd, float3 wo) {
@@ -460,17 +521,20 @@ struct Transmission {
         
         float eta = ShadingFrame::cosTheta(wo) > 0 ? ior : 1 / ior;
         const float Fr = fresnelDielectricCos(ShadingFrame::cosTheta(wo), eta);
-        if (rnd.x < Fr) {
+        const bool isReflection = rnd.x < Fr;
+        
+        const float alpha = isReflection ?
+            reflectionAlpha :
+            transmissionAlpha;
+        
+        const float3 wh = sampleGGXVNDF(rnd, alpha, alpha, wo);
+        result.pdf = anisotropicGGX(wh, alpha, alpha) *
+            anisotropicSmithG1(wo, wh, alpha, alpha) *
+            abs(dot(wo, wh) / ShadingFrame::cosTheta(wo));
+        
+        if (isReflection) {
             // reflect
             rnd.x /= Fr;
-            
-            const float alphaX = reflectionAlpha;
-            const float alphaY = reflectionAlpha;
-            
-            const float3 wh = sampleGGXVNDF(rnd, alphaX, alphaY, wo);
-            result.pdf = anisotropicGGX(wh, alphaX, alphaY) *
-                anisotropicSmithG1(wo, wh, alphaX, alphaY) *
-                abs(dot(wo, wh) / ShadingFrame::cosTheta(wo));
             
             if (!(result.pdf > 0))
                 return BSDFSample::invalid();
@@ -483,21 +547,13 @@ struct Transmission {
             result.pdf *= 1 / abs(4 * dot(wo, wh));
             
             const float3 F = fresnelReflectionColor(result.wi, wh, eta, Cspec0);
-            const float Gi = anisotropicSmithG1(result.wi, wh, alphaX, alphaY);
+            const float Gi = anisotropicSmithG1(result.wi, wh, alpha, alpha);
             result.weight = weight * F * Gi;
             result.flags = RayFlags(RayFlagsReflection | RayFlagsGlossy); /// @todo RayFlagsSingular
             return result;
         } else {
             // refract
             rnd.x = (rnd.x - Fr) / (1 - Fr);
-            
-            const float alphaX = transmissionAlpha;
-            const float alphaY = transmissionAlpha;
-            
-            const float3 wh = sampleGGXVNDF(rnd, alphaX, alphaY, wo);
-            result.pdf = anisotropicGGX(wh, alphaX, alphaY) *
-                anisotropicSmithG1(wo, wh, alphaX, alphaY) *
-                abs(dot(wo, wh) / ShadingFrame::cosTheta(wo));
             
             if (!(result.pdf > 0))
                 return BSDFSample::invalid();
@@ -511,7 +567,7 @@ struct Transmission {
             result.pdf *= abs(dot(result.wi, wh) / square(dot(result.wi, wh) + dot(wh, wo) / eta));
             
             //const float3 F = fresnelReflectionColor(result.wi, wh, eta, Cspec0);
-            const float Gi = anisotropicSmithG1(result.wi, wh, alphaX, alphaY);
+            const float Gi = anisotropicSmithG1(result.wi, wh, alpha, alpha);
             result.weight = weight * baseColor * Gi;
             result.flags = RayFlags(RayFlagsTransmission | RayFlagsGlossy); /// @todo RayFlagsSingular
             return result;
@@ -527,7 +583,24 @@ struct Clearcoat {
     float weight = 0;
     
     float3 evaluate(float3 wo, float3 wi, thread float &pdf) {
-        return float3(0); /// @todo
+        const float3 wh = normalize(wi + wo);
+        
+        // VNDF PDF
+        pdf = anisotropicGGX(wh, alpha, alpha) *
+            anisotropicSmithG1(wo, wh, alpha, alpha) *
+            abs(dot(wo, wh) / ShadingFrame::cosTheta(wo));
+        if (!(pdf > 0)) {
+            pdf = 0;
+            return 0;
+        }
+        
+        pdf *= 1 / abs(4 * dot(wo, wh));
+        
+        const float3 F = fresnelReflectionColor(wi, wh, 1.5, float3(0.04));
+        const float3 G = anisotropicSmithG1(wi, wh, alpha, alpha) *
+            anisotropicSmithG1(wo, wh, alpha, alpha);
+        const float3 D = anisotropicGGX(wh, alpha, alpha);
+        return 0.25 * F * D * G / abs(4 * ShadingFrame::cosTheta(wo));
     }
     
     BSDFSample sample(float2 rnd, float3 wo) {

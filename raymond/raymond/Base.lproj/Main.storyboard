@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="21208.1" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
+<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="21223" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21208.1"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21223"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -710,10 +710,10 @@
                         <autoresizingMask key="autoresizingMask"/>
                         <subviews>
                             <box boxType="custom" cornerRadius="8" title="Sampling" id="duD-kn-rEC">
-                                <rect key="frame" x="769" y="20" width="171" height="34"/>
+                                <rect key="frame" x="769" y="20" width="171" height="77"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                                 <view key="contentView" id="ITd-6N-aw8">
-                                    <rect key="frame" x="1" y="1" width="169" height="32"/>
+                                    <rect key="frame" x="1" y="1" width="169" height="75"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="rKU-IQ-oSW">
@@ -729,6 +729,35 @@
                                                 <action selector="saveFrame:" target="XfG-lQ-9wD" id="bSH-2m-jcp"/>
                                             </connections>
                                         </button>
+                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jCi-in-aDz">
+                                            <rect key="frame" x="7" y="61" width="81" height="11"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" lineBreakMode="clipping" title="Sampling Method" id="TLU-tF-aeZ">
+                                                <font key="font" metaFont="miniSystem"/>
+                                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
+                                        <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="et9-Lu-3xA" userLabel="Sampling Method">
+                                            <rect key="frame" x="4" y="33" width="162" height="25"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <popUpButtonCell key="cell" type="push" title="MIS" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="MZA-Gy-Zbg" id="j8B-Pr-xoL">
+                                                <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="menu"/>
+                                                <menu key="menu" id="orn-m7-OwM">
+                                                    <items>
+                                                        <menuItem title="MIS" state="on" id="MZA-Gy-Zbg">
+                                                            <attributedString key="attributedTitle"/>
+                                                        </menuItem>
+                                                        <menuItem title="BSDF" id="gCq-5m-XA0"/>
+                                                        <menuItem title="NEE" id="a3U-7Y-GIS"/>
+                                                    </items>
+                                                </menu>
+                                            </popUpButtonCell>
+                                            <connections>
+                                                <action selector="selectSamplingMethod:" target="XfG-lQ-9wD" id="Ts7-aU-Okd"/>
+                                            </connections>
+                                        </popUpButton>
                                     </subviews>
                                 </view>
                                 <color key="borderColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
@@ -736,6 +765,9 @@
                             </box>
                         </subviews>
                     </view>
+                    <connections>
+                        <outlet property="samplingMethod" destination="et9-Lu-3xA" id="NQr-7j-4kQ"/>
+                    </connections>
                 </viewController>
                 <customObject id="rPt-NT-nkU" userLabel="First Responder" customClass="NSResponder" sceneMemberID="firstResponder"/>
             </objects>

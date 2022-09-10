@@ -168,6 +168,7 @@ struct Scene {
     var mesh: Mesh
     var accelerationStructure: MPSInstanceAccelerationStructure
     var intersectionHandler: MTLComputePipelineState
+    var shadowRayHandler: MTLComputePipelineState
     
     var projectionMatrix: float4x4
     var shaderFunctionTable: MTLVisibleFunctionTable
@@ -178,6 +179,127 @@ struct Scene {
 }
 
 struct SceneLoader {
+    private func prepareEnvironmentMapSampling(
+        forLibrary library: MTLLibrary,
+        withContext contextBuffer: MTLBuffer,
+        andEncoder contextEncoder: MTLArgumentEncoder,
+        resources: inout [MTLResource]
+    ) throws {
+        let exponent = 11
+        let resolution = 1 << exponent
+        let mipmapSize = (0...exponent).map { (1 << (2 * $0)) }.reduce(0, +)
+        print("Building environment map of size \(resolution)^2")
+        
+        let device = library.device
+        let mipmapBuffer = device.makeBuffer(length: mipmapSize * MemoryLayout<Float>.stride)!
+        let pdfBuffer = device.makeBuffer(length: resolution * resolution * MemoryLayout<Float>.stride)!
+        
+        let queue = device.makeCommandQueue()!
+        let commandBuffer = queue.makeCommandBuffer()!
+        
+        let lastLevelOffset = mipmapSize - resolution * resolution
+        var bufferOffset = lastLevelOffset
+        
+        // MARK: build finest level of envmap
+        
+        let buildFunction = library.makeFunction(name: "buildEnvironmentMap")!
+        let buildPipeline = try device.makeComputePipelineState(function: buildFunction)
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.setComputePipelineState(buildPipeline)
+            computeEncoder.setBuffer(contextBuffer, offset: 0, index: 0)
+            computeEncoder.setBuffer(mipmapBuffer, offset: bufferOffset * MemoryLayout<Float>.stride, index: 1)
+            computeEncoder.setBuffer(pdfBuffer, offset: 0, index: 2)
+            computeEncoder.useResources(resources, usage: .read)
+            computeEncoder.dispatchThreads(
+                MTLSize(width: resolution, height: resolution, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+            computeEncoder.endEncoding()
+        }
+        
+        // MARK: build mipmap
+        
+        let reduceFunction = library.makeFunction(name: "reduceEnvironmentMap")!
+        let reducePipeline = try device.makeComputePipelineState(function: reduceFunction)
+        for exponent in stride(from: exponent - 1, through: 0, by: -1) {
+            let currentResolution = 1 << exponent
+            bufferOffset -= currentResolution * currentResolution
+            
+            if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+                computeEncoder.setComputePipelineState(reducePipeline)
+                computeEncoder.setBuffer(mipmapBuffer, offset: bufferOffset * MemoryLayout<Float>.stride, index: 0)
+                computeEncoder.dispatchThreads(
+                    MTLSize(width: currentResolution, height: currentResolution, depth: 1),
+                    threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+                computeEncoder.endEncoding()
+            }
+        }
+        
+        assert(bufferOffset == 0)
+        
+        // MARK: normalize PDFs
+        
+        let normalizeFunction = library.makeFunction(name: "normalizeEnvironmentMap")!
+        let normalizePipeline = try device.makeComputePipelineState(function: normalizeFunction)
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.setComputePipelineState(normalizePipeline)
+            computeEncoder.setBuffer(mipmapBuffer, offset: 0, index: 0)
+            computeEncoder.setBuffer(pdfBuffer, offset: 0, index: 1)
+            computeEncoder.dispatchThreads(
+                MTLSize(width: resolution * resolution, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: normalizePipeline.threadExecutionWidth, height: 1, depth: 1))
+            computeEncoder.endEncoding()
+        }
+        
+        // MARK: write out
+        
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        
+        let envmapOffset = 1
+        contextEncoder.set(at: envmapOffset + 0, resolution)
+        contextEncoder.setBuffer(pdfBuffer, offset: 0, index: envmapOffset + 1)
+        contextEncoder.setBuffer(mipmapBuffer, offset: 0, index: envmapOffset + 2)
+        resources.append(pdfBuffer)
+        resources.append(mipmapBuffer)
+    }
+    
+    private func testEnvironmentMapSampling(
+        forLibrary library: MTLLibrary,
+        withContext contextBuffer: MTLBuffer,
+        resources: [MTLResource]
+    ) throws {
+        let device = library.device
+        let sampleGridResolution = 1024//1024
+        let histogramResolution = 256 /// @todo hardcoded
+        let histogramBuffer = device.makeBuffer(length: histogramResolution * histogramResolution * MemoryLayout<Float>.stride)!
+        
+        let queue = device.makeCommandQueue()!
+        let commandBuffer = queue.makeCommandBuffer()!
+        
+        let testFunction = library.makeFunction(name: "testEnvironmentMapSampling")!
+        let testPipeline = try device.makeComputePipelineState(function: testFunction)
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.setComputePipelineState(testPipeline)
+            computeEncoder.setBuffer(contextBuffer, offset: 0, index: 0)
+            computeEncoder.setBuffer(histogramBuffer, offset: 0, index: 1)
+            computeEncoder.useResources(resources, usage: .read)
+            computeEncoder.dispatchThreads(
+                MTLSize(width: sampleGridResolution, height: sampleGridResolution, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+            computeEncoder.endEncoding()
+        }
+        
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        
+        try histogramBuffer.saveEXR(
+            at: URL(filePath: "/Users/alex/Desktop/histogram.exr"),
+            width: histogramResolution,
+            height: histogramResolution)
+        
+        exit(0)
+    }
+    
     func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
         let sceneDescription = try SceneDescriptionLoader().makeSceneDescription(fromURL: url)
         
@@ -198,9 +320,6 @@ struct SceneLoader {
         
         NSLog("building acceleration structures")
         let mesh = try meshLoader.build(withDevice: device)
-        
-        // 15.6 FPS, 4.55 s compile time
-        // 16.8 FPS, 4.07 s compile time
         
         let codegenOptions: Codegen.Options = []
         var codegen = Codegen(basePath: url, device: device, options: codegenOptions)
@@ -235,6 +354,16 @@ struct SceneLoader {
         descriptor.linkedFunctions = linkedFunctions
         let intersectionHandler = try library.device.makeComputePipelineState(
             descriptor: descriptor,
+            options: [],
+            reflection: nil)
+        
+        let shadowDescriptor = MTLComputePipelineDescriptor()
+        shadowDescriptor.computeFunction = library.makeFunction(
+            name: "handleShadowRays")
+        shadowDescriptor.label = "handleShadowRays"
+        shadowDescriptor.linkedFunctions = linkedFunctions
+        let shadowRayHandler = try library.device.makeComputePipelineState(
+            descriptor: shadowDescriptor,
             options: [],
             reflection: nil)
         
@@ -299,7 +428,6 @@ struct SceneLoader {
         accelerationStructure.transformType = .float4x4
         accelerationStructure.transformBuffer = instancing.transforms
         accelerationStructure.rebuild()
-        
         NSLog("done!")
         
         var projectionMatrix = float4x4(rows: [
@@ -313,10 +441,24 @@ struct SceneLoader {
             projectionMatrix = camera.transform
         }
         
+        NSLog("preparing environmap sampling")
+        try prepareEnvironmentMapSampling(
+            forLibrary: library,
+            withContext: contextBuffer,
+            andEncoder: argumentEncoder,
+            resources: &resourcesRead)
+        NSLog("done!")
+        
+        /*try testEnvironmentMapSampling(
+            forLibrary: library,
+            withContext: contextBuffer,
+            resources: resourcesRead)*/
+        
         return Scene(
             mesh: mesh,
             accelerationStructure: accelerationStructure,
             intersectionHandler: intersectionHandler,
+            shadowRayHandler: shadowRayHandler,
             projectionMatrix: projectionMatrix,
             shaderFunctionTable: shaderFunctionTable,
             resourcesRead: resourcesRead,

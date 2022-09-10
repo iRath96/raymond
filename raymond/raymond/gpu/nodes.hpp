@@ -4,6 +4,7 @@
 #include "noise.hpp"
 #include "context.hpp"
 #include "sky.hpp"
+#include "warp.hpp"
 
 #include <metal_stdlib>
 using namespace metal;
@@ -263,8 +264,7 @@ struct TexImage {
             break;
         
         case kTexImage::PROJECTION_EQUIRECTANGULAR:
-            projected.x = (atan2(vector.x, vector.y) - M_PI_F) / (2 * M_PI_F);
-            projected.y = acos(vector.z / length(vector)) / M_PI_F;
+            projected = warp::equirectSphereToSquare(vector);
             break;
         }
         
@@ -350,7 +350,7 @@ struct TexNishita {
     float data[10];
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        color = float4(sky_radiance_nishita(tctx.wo.xyz * float3(1, -1, -1), data, ctx.textures[TextureIndex]), 1);
+        color = float4(sky_radiance_nishita(tctx.wo * float3(1, -1, -1), data, ctx.textures[TextureIndex]), 1);
     }
 };
 
@@ -941,7 +941,7 @@ struct kBsdfGlossy {
 };
 
 /**
- * @todo not tested
+ * @todo not tested, should probably not use Fresnel term
  */
 template<
     kBsdfGlossy::Distribution Distribution

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bsdf.hpp"
+#include "warp.hpp"
 #include "ShaderTypes.h"
 
 #include <metal_stdlib>
@@ -23,8 +24,40 @@ struct Material {
     float weight = 1;
     float pdf = 1;
     
-    float3 evaluate(float3 wo, float3 wi, thread float &pdf) {
-        return float3(0);
+    float3 evaluate(float3 wo, float3 wi, float3 shNormal, float3 geoNormal, thread float &pdf) {
+        pdf = 0;
+        
+        float3x3 worldToShadingFrame = buildOrthonormalBasis(shNormal);
+        
+        const float woDotGeoN = dot(wo, geoNormal);
+        wo = wo * worldToShadingFrame;
+        const float woDotShN = wo.z;
+        if (woDotShN * woDotGeoN < 0) {
+            return 0;
+        }
+        
+        const float wiDotGeoN = dot(wi, geoNormal);
+        wi = wi * worldToShadingFrame;
+        const float wiDotShN = wi.z;
+        if (wiDotShN * wiDotGeoN < 0) {
+            return 0;
+        }
+        
+        float3 value = 0;
+        float lobePdf;
+        if (lobeProbabilities[0] > 0) {
+            value += diffuse.evaluate(wo, wi, lobePdf); pdf += lobeProbabilities[0] * lobePdf;
+        }
+        if (lobeProbabilities[1] > 0) {
+            value += specular.evaluate(wo, wi, lobePdf); pdf += lobeProbabilities[1] * lobePdf;
+        }
+        if (lobeProbabilities[2] > 0) {
+            value += transmission.evaluate(wo, wi, lobePdf); pdf += lobeProbabilities[2] * lobePdf;
+        }
+        if (lobeProbabilities[3] > 0) {
+            value += clearcoat.evaluate(wo, wi, lobePdf); pdf += lobeProbabilities[3] * lobePdf;
+        }
+        return value;
     }
     
     BSDFSample sample(float3 rnd, float3 wo, float3 shNormal, float3 geoNormal, RayFlags previousFlags) {
@@ -94,7 +127,7 @@ struct ThreadContext {
     
     Material material;
     
-    void setupForWorldHit(float3 wo) {
+    void setupForWorldHit() {
         normal = wo;
         uv = 0;
         generated = -wo;
@@ -107,6 +140,63 @@ struct ThreadContext {
 #define USE_FUNCTION_TABLE
 #endif
 
+struct EnvmapSampling {
+    int resolution [[ id(0) ]]; // must be a power of two
+    device float *pdfs [[ id(1) ]];
+    device float *mipmap [[ id(2) ]];
+    
+    float pdf(float3 wo) const device {
+        uint2 position = uint2(resolution * warp::uniformSphereToSquare(wo)) % resolution;
+        return pdfs[position.y * resolution + position.x];
+    }
+    
+    float3 sample(float2 uv, thread float &pdf) const device {
+        int currentResolution = 1;
+        int2 shift = 0;
+        
+        device float *currentLevel = mipmap;
+        while (currentResolution < resolution) {
+            const int currentOffset = 4 * (shift.y * currentResolution + shift.x);
+            
+            currentLevel += currentResolution * currentResolution;
+            shift *= 2;
+            currentResolution *= 2;
+            
+            const float topLeft = currentLevel[currentOffset+0];
+            const float topRight = currentLevel[currentOffset+1];
+            const float bottomLeft = currentLevel[currentOffset+2];
+            
+            const float leftProb = topLeft + bottomLeft;
+            float topProb;
+            if (uv.x < leftProb) {
+                // left
+                const float invProb = 1 / leftProb;
+                uv.x *= invProb;
+                topProb = topLeft * invProb;
+            } else {
+                // right
+                const float invProb = 1 / (1 - leftProb);
+                uv.x = (uv.x - leftProb) * invProb;
+                topProb = topRight * invProb;
+                shift.x += 1;
+            }
+            
+            if (uv.y < topProb) {
+                // top
+                uv.y /= topProb;
+            } else {
+                uv.y = (uv.y - topProb) / (1 - topProb);
+                shift.y += 1;
+            }
+        }
+        
+        pdf = pdfs[shift.y * resolution + shift.x];
+        uv = (float2(shift) + uv) / resolution;
+        return warp::uniformSquareToSphere(uv);
+    }
+};
+
 struct Context {
     array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[ id(0) ]];
+    EnvmapSampling envmap [[ id(1) ]];
 };

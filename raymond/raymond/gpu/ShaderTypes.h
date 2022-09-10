@@ -68,12 +68,6 @@ typedef NS_ENUM(NSInteger, ShadowBufferIndex) {
     ShadowBufferRayCount      = 2,
 };
 
-typedef NS_ENUM(uint8_t, ImportanceSampling) {
-    ImportanceSamplingBSDF = 0,
-    ImportanceSamplingNEE  = 1,
-    ImportanceSamplingMIS  = 2,
-};
-
 typedef NS_ENUM(uint8_t, RayFlags) {
     RayFlagsCamera       = 1<<0,
     RayFlagsReflection   = 1<<1,
@@ -98,9 +92,16 @@ typedef struct {
     RayFlags visibility;
 } PerInstanceData;
 
+typedef NS_ENUM(NSInteger, SamplingMode) {
+    SamplingModeBsdf,
+    SamplingModeNee,
+    SamplingModeMis
+};
+
 typedef struct {
     uint32_t frameIndex;
     float4x4 projectionMatrix;
+    SamplingMode samplingMode;
 } Uniforms;
 
 typedef struct {

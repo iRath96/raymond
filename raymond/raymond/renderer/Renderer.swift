@@ -21,6 +21,7 @@ class Renderer: NSObject, MTKViewDelegate {
     let makeIndirectDispatch: MTLComputePipelineState
     
     let rayIntersector: MPSRayIntersector
+    let shadowRayIntersector: MPSRayIntersector
     
     let inFlightSemaphore = DispatchSemaphore(value: 1)
     var uniforms: UnsafeMutablePointer<Uniforms>
@@ -32,6 +33,8 @@ class Renderer: NSObject, MTKViewDelegate {
     
     var rayBuffer: MTLBuffer!
     var rayCountBuffer: MTLBuffer!
+    var shadowRayBuffer: MTLBuffer!
+    var shadowRayCountBuffer: MTLBuffer!
     var indirectDispatchBuffer: MTLBuffer!
     var intersectionBuffer: MTLBuffer!
     var outputImageSize: MTLSize!
@@ -60,6 +63,7 @@ class Renderer: NSObject, MTKViewDelegate {
         self.dynamicUniformBuffer.label = "UniformBuffer"
         
         uniforms = UnsafeMutableRawPointer(dynamicUniformBuffer.contents()).bindMemory(to: Uniforms.self, capacity: 1)
+        uniforms[0].samplingMode = .mis
         
         metalKitView.depthStencilPixelFormat = MTLPixelFormat.depth32Float_stencil8
         metalKitView.colorPixelFormat = .rgba16Float
@@ -87,7 +91,7 @@ class Renderer: NSObject, MTKViewDelegate {
         }
         
         rayIntersector = MPSRayIntersector(device: device)
-        //shadowRayIntersector = MPSRayIntersector(device: device)
+        shadowRayIntersector = MPSRayIntersector(device: device)
         
         let depthStateDescriptor = MTLDepthStencilDescriptor()
         depthStateDescriptor.depthCompareFunction = MTLCompareFunction.less
@@ -106,10 +110,10 @@ class Renderer: NSObject, MTKViewDelegate {
         rayIntersector.intersectionDataType = .distancePrimitiveIndexInstanceIndexCoordinates
         rayIntersector.intersectionStride = MemoryLayout<Intersection>.stride
         
-        //shadowRayIntersector.rayDataType = .originMinDistanceDirectionMaxDistance
-        //shadowRayIntersector.rayStride = MemoryLayout<ShadowRay>.stride
-        //shadowRayIntersector.intersectionDataType = .distance
-        //shadowRayIntersector.intersectionStride = MemoryLayout<Intersection>.stride
+        shadowRayIntersector.rayDataType = .originMinDistanceDirectionMaxDistance
+        shadowRayIntersector.rayStride = MemoryLayout<ShadowRay>.stride
+        shadowRayIntersector.intersectionDataType = .distance
+        shadowRayIntersector.intersectionStride = MemoryLayout<Intersection>.stride
     }
     
     class func buildComputePipelineWithDevice(
@@ -220,11 +224,11 @@ class Renderer: NSObject, MTKViewDelegate {
                 computeEncoder.endEncoding()
             }
             
-            //if let computeEncoder = commandBuffer.makeBlitCommandEncoder() {
-            //    computeEncoder.label = "Clear Shadow Ray Count"
-            //    computeEncoder.fill(buffer: shadowRayCountBuffer!, range: 0..<shadowRayCountBuffer!.length, value: 0)
-            //    computeEncoder.endEncoding()
-            //}
+            if let computeEncoder = commandBuffer.makeBlitCommandEncoder() {
+                computeEncoder.label = "Clear Shadow Ray Count"
+                computeEncoder.fill(buffer: shadowRayCountBuffer!, range: 0..<shadowRayCountBuffer!.length, value: 0)
+                computeEncoder.endEncoding()
+            }
             
             if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
                 computeEncoder.label = "Primary Ray Generation"
@@ -250,7 +254,7 @@ class Renderer: NSObject, MTKViewDelegate {
             
             for depth in 0..<maxDepth {
                 let rayCountBufferOffset = depth * MemoryLayout<UInt32>.stride
-                //let isMaxDepth = (depth+1 == maxDepth)
+                let isMaxDepth = (depth+1 == maxDepth)
                 
                 rayIntersector.encodeIntersection(
                     commandBuffer: commandBuffer,
@@ -287,9 +291,9 @@ class Renderer: NSObject, MTKViewDelegate {
                     computeEncoder.setBuffer(
                         rayBuffer, offset: nextRayBufferOffset,
                         index: ShadingBufferIndex.nextRays.rawValue)
-                    //computeEncoder.setBuffer(
-                    //    shadowRayBuffer, offset: 0,
-                    //    index: ShadingBufferIndex.shadowRays.rawValue)
+                    computeEncoder.setBuffer(
+                        shadowRayBuffer, offset: 0,
+                        index: ShadingBufferIndex.shadowRays.rawValue)
                     
                     // ray counters
                     computeEncoder.setBuffer(
@@ -298,9 +302,9 @@ class Renderer: NSObject, MTKViewDelegate {
                     computeEncoder.setBuffer(
                         rayCountBuffer,
                         offset: rayCountBufferOffset + MemoryLayout<UInt32>.stride, index: ShadingBufferIndex.nextRayCount.rawValue)
-                    //computeEncoder.setBuffer(
-                    //    shadowRayCountBuffer, offset: rayCountBufferOffset,
-                    //    index: ShadingBufferIndex.shadowRayCount.rawValue)
+                    computeEncoder.setBuffer(
+                        shadowRayCountBuffer, offset: rayCountBufferOffset,
+                        index: ShadingBufferIndex.shadowRayCount.rawValue)
                     
                     // geometry buffers
                     computeEncoder.setBuffer(
@@ -345,6 +349,52 @@ class Renderer: NSObject, MTKViewDelegate {
                     computeEncoder.endEncoding()
                 }
                 
+                if isMaxDepth {
+                    break
+                }
+                
+                shadowRayIntersector.encodeIntersection(
+                    commandBuffer: commandBuffer,
+                    intersectionType: .any,
+                    rayBuffer: shadowRayBuffer!,
+                    rayBufferOffset: 0,
+                    intersectionBuffer: intersectionBuffer!,
+                    intersectionBufferOffset: 0,
+                    rayCountBuffer: shadowRayCountBuffer!,
+                    rayCountBufferOffset: depth * MemoryLayout<UInt32>.stride,
+                    accelerationStructure: scene.accelerationStructure)
+                
+                if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+                    computeEncoder.label = "Shadow Indirect Dispatch"
+                    computeEncoder.setComputePipelineState(makeIndirectDispatch)
+                    computeEncoder.setBuffer(shadowRayCountBuffer, offset: rayCountBufferOffset, index: 0)
+                    computeEncoder.setBuffer(indirectDispatchBuffer, offset: 0, index: 1)
+                    computeEncoder.dispatchThreads(MTLSizeMake(1, 1, 1), threadsPerThreadgroup: MTLSizeMake(1, 1, 1))
+                    computeEncoder.endEncoding()
+                }
+                
+                if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+                    computeEncoder.label = "Shade Shadow Rays"
+                    computeEncoder.setTexture(outputImage, index: 0)
+                    computeEncoder.setComputePipelineState(scene.shadowRayHandler)
+                    computeEncoder.setBuffer(intersectionBuffer, offset: 0, index: ShadowBufferIndex.intersections.rawValue)
+                    computeEncoder.setBuffer(shadowRayBuffer, offset: 0, index: ShadowBufferIndex.shadowRays.rawValue)
+                    computeEncoder.setBuffer(shadowRayCountBuffer, offset: rayCountBufferOffset, index: ShadowBufferIndex.rayCount.rawValue)
+                    computeEncoder.setVisibleFunctionTable(
+                        scene.shaderFunctionTable,
+                        bufferIndex: ShadingBufferIndex.functionTable.rawValue)
+                    computeEncoder.setBuffer(
+                        scene.contextBuffer, offset: 0,
+                        index: ShadingBufferIndex.context.rawValue)
+                    computeEncoder.useResources(
+                        scene.resourcesRead, usage: .read)
+                    computeEncoder.dispatchThreadgroups(
+                        indirectBuffer: indirectDispatchBuffer!,
+                        indirectBufferOffset: 0,
+                        threadsPerThreadgroup: MTLSizeMake(64, 1, 1))
+                    computeEncoder.endEncoding()
+                }
+                
                 // ping pong
                 (currentRayBufferOffset, nextRayBufferOffset) = (nextRayBufferOffset, currentRayBufferOffset)
             }
@@ -381,15 +431,15 @@ class Renderer: NSObject, MTKViewDelegate {
     
     private func rayStatistics() -> Int {
         let counts = rayCountBuffer.contents().bindMemory(to: UInt32.self, capacity: maxDepth)
-        //let shadowCounts = shadowRayCountBuffer!.contents().bindMemory(to: UInt32.self, capacity: maxDepth)
+        let shadowCounts = shadowRayCountBuffer!.contents().bindMemory(to: UInt32.self, capacity: maxDepth)
         var totalRayCount = 0
         
         for depth in 0..<maxDepth {
-            totalRayCount += Int(counts[depth])// + shadowCounts[depth])
-            print(depth, counts[depth])//, shadowCounts[depth])
+            totalRayCount += Int(counts[depth] + shadowCounts[depth])
+            //print(depth, counts[depth], shadowCounts[depth])
         }
-        print("total", totalRayCount)
-        print()
+        //print("total", totalRayCount)
+        //print()
         
         return totalRayCount
     }
@@ -426,15 +476,15 @@ class Renderer: NSObject, MTKViewDelegate {
         rayBuffer = device.makeBuffer(
             length: 2 * rayCount * MemoryLayout<Ray>.stride,
             options: .storageModePrivate)!
-        //shadowRayBuffer = device.makeBuffer(
-        //    length: rayCount * MemoryLayout<ShadowRay>.stride,
-        //    options: .storageModePrivate)
+        shadowRayBuffer = device.makeBuffer(
+            length: rayCount * MemoryLayout<ShadowRay>.stride,
+            options: .storageModePrivate)
         rayCountBuffer = device.makeBuffer(
             length: (maxDepth+1) * MemoryLayout<UInt32>.stride,
             options: .storageModeShared)!
-        //shadowRayCountBuffer = device.makeBuffer(
-        //    length: maxDepth * MemoryLayout<UInt32>.stride,
-        //    options: .storageModeShared)
+        shadowRayCountBuffer = device.makeBuffer(
+            length: maxDepth * MemoryLayout<UInt32>.stride,
+            options: .storageModeShared)
         intersectionBuffer = device.makeBuffer(
             length: rayCount * MemoryLayout<Intersection>.stride,
             options: .storageModePrivate)!
@@ -443,76 +493,15 @@ class Renderer: NSObject, MTKViewDelegate {
             options: .storageModePrivate)!
         
         rayBuffer.label = "Rays"
-        //shadowRayBuffer!.label = "Shadow rays"
+        shadowRayBuffer!.label = "Shadow rays"
         intersectionBuffer.label = "Intersections"
         
         frameIndex = 0
     }
     
     func saveFrame() {
-        let norm = Float(1) / Float(frameIndex)
-        let img = outputImage!
-        let numComponents = 4
-        let bytesPerRow = 4 * img.width * MemoryLayout<Float>.stride // @todo hack
-        let data = UnsafeMutableRawPointer.allocate(
-            byteCount: bytesPerRow * img.height,
-            alignment: 16
-        )
-        defer {
-            data.deallocate()
-        }
-        
-        // load image data
-        img.getBytes(
-            data,
-            bytesPerRow: bytesPerRow,
-            from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
-            size: MTLSize(width: img.width, height: img.height, depth: 1)),
-            mipmapLevel: 0
-        )
-        
-        // normalize image data
-        let buffer = data.bindMemory(to: Float.self, capacity: numComponents * img.width * img.height)
-        for i in 0..<(img.width * img.height) {
-            buffer[numComponents*i + 0] *= norm
-            buffer[numComponents*i + 1] *= norm
-            buffer[numComponents*i + 2] *= norm
-            buffer[numComponents*i + 3] = 1
-        }
-        
-        for y in 0..<(img.height / 2) {
-            let y2 = img.height - (y + 1)
-            let elementsPerRow = numComponents * img.width
-            for i in 0..<elementsPerRow {
-                let tmp = buffer[y * elementsPerRow + i]
-                buffer[y * elementsPerRow + i] = buffer[y2 * elementsPerRow + i]
-                buffer[y2 * elementsPerRow + i] = tmp
-            }
-        }
-        
-        // write data out
-        let err = UnsafeMutablePointer<Optional<UnsafePointer<CChar>>>.allocate(capacity: 1)
-        err.pointee = UnsafePointer(bitPattern: 0)
-        defer {
-            err.deallocate()
-        }
-        
         let resourcesURL = URL(fileURLWithPath: "/Users/alex/Desktop", isDirectory: true)
-        let fileName = resourcesURL.appendingPathComponent("frame.exr")
-        
-        SaveEXR(
-            data.bindMemory(to: Float.self, capacity: numComponents * img.width * img.height),
-            Int32(img.width), Int32(img.height),
-            Int32(numComponents),
-            0,
-            NSString(string: fileName.path).utf8String!,
-            err
-        )
-        
-        if let p = err.pointee {
-            print(NSString(utf8String: p)!)
-        } else {
-            print("Saved to EXR file")
-        }
+        let path = resourcesURL.appendingPathComponent("frame.exr")
+        outputImage.saveEXR(at: path, normalizedBy: 1 / Float(frameIndex))
     }
 }

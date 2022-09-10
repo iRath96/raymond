@@ -98,4 +98,20 @@ class RendererViewController: NSViewController {
     @IBAction func saveFrame(_ sender: Any) {
         renderer.saveFrame()
     }
+    
+    @IBOutlet weak var samplingMethod: NSPopUpButton!
+    @IBAction func selectSamplingMethod(_ sender: Any) {
+        if let value = samplingMethod.selectedItem?.title {
+            let options: [ String: SamplingMode ] = [
+                "MIS":  .mis,
+                "BSDF": .bsdf,
+                "NEE":  .nee,
+            ]
+            
+            if let option = options[value] {
+                renderer.uniforms[0].samplingMode = option
+                renderer.reset()
+            }
+        }
+    }
 }
