@@ -373,7 +373,7 @@ struct Node: Codable {
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        guard let type = Node.kernels.first(where: { type(of: kernel) == $0.value})?.key else {
+        guard let type = Node.kernels.first(where: { type(of: kernel) == $0.value })?.key else {
             throw NodeError.unsupportedNodeType
         }
         

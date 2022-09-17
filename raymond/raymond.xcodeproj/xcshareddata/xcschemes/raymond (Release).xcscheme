@@ -54,14 +54,14 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/test-nee2.json"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/raymond-tests/test-lightout.json"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_007/AI55_007.json"
+            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_006/AI55_006.json"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
@@ -71,6 +71,10 @@
          <CommandLineArgument
             argument = "/Users/alex/Downloads/Attic_NVIDIA_725/Attic_NVIDIA/Attic.json"
             isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Downloads/bed/Bed.json"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-g"

@@ -15,6 +15,48 @@ struct SceneDescription: Codable {
         }
     }
     
+    enum LightError: Error {
+        case unsupportedLightType
+    }
+    
+    struct Light: Codable {
+        var material: String
+        var kernel: LightKernel
+        
+        private enum CodingKeys: CodingKey {
+            case type
+            case material
+            case parameters
+        }
+        
+        static let kernels: [String: LightKernel.Type] = [
+            "WORLD": WorldLight.self
+        ]
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(String.self, forKey: .type)
+            
+            guard let type = Light.kernels[type] else {
+                throw LightError.unsupportedLightType
+            }
+            
+            material = try container.decode(String.self, forKey: .material)
+            kernel = try container.decode(type, forKey: .parameters)
+        }
+        
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            guard let type = Light.kernels.first(where: { type(of: kernel) == $0.value })?.key else {
+                throw NodeError.unsupportedNodeType
+            }
+            
+            try container.encode(type, forKey: .type)
+            try container.encode(material, forKey: .material)
+            try kernel.encode(to: container.superEncoder(forKey: .parameters))
+        }
+    }
+    
     struct Shape: Codable {
         var type: String
         var filepath: URL
@@ -138,7 +180,7 @@ struct SceneDescription: Codable {
     }
 
     var materials: [String: Material]
-    var world: Material
+    var lights: [String: Light]
     var shapes: [String: Shape]
     var entities: [String: Entity]
     var camera: Camera?
@@ -327,7 +369,8 @@ struct SceneLoader {
             NSLog("generating shader for \(materialName)")
             try codegen.addMaterial(sceneDescription.materials[materialName]!)
         }
-        try codegen.setWorld(sceneDescription.world)
+        let world = sceneDescription.lights.first { type(of: $0.value.kernel) == WorldLight.self }?.value
+        try codegen.setWorld(sceneDescription.materials[world!.material]!)
         
         NSLog("generating shaders")
         let library = try codegen.build()

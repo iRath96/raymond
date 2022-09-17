@@ -3,6 +3,9 @@ from warnings import warn
 import bmesh
 import bpy
 
+from .registry import SceneRegistry
+from .materials import export_default_material, export_material
+
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -145,11 +148,7 @@ def _solidify_bmesh(bm):
             bm.faces.remove(f)
 
 
-def get_shape_name_base(obj):
-    return obj.original.data.name  # We use the original mesh name!
-
-
-def _export_bmesh_by_material(me: bpy.types.Mesh, name: str, meshpath: str):
+def _export_bmesh_by_material(registry: SceneRegistry, me: bpy.types.Mesh, name: str):
     # split bms by materials
     bm = bmesh.new()
     bm.from_mesh(me)
@@ -164,7 +163,7 @@ def _export_bmesh_by_material(me: bpy.types.Mesh, name: str, meshpath: str):
     
     bm.normal_update()
 
-    filepath = os.path.join(meshpath, f"{name}.ply")
+    filepath = os.path.join(registry.meshpath, f"{name}.ply")
     ply_save(filepath, bm)
 
     bm.free()
@@ -172,21 +171,22 @@ def _export_bmesh_by_material(me: bpy.types.Mesh, name: str, meshpath: str):
         "type": "ply",
         "filepath": filepath,
         "materials": [
-            ("__DEFAULT" if mat is None else mat.name)
+            (
+                registry.materials.internal_export("default", lambda unique_name: export_default_material()) if mat is None else
+                registry.materials.export(mat, lambda unique_name: export_material(registry, mat))
+            )
             for mat in me.materials.values()
         ]
     }
 
 
-def export_shape(obj: bpy.types.Object, depsgraph: bpy.types.Depsgraph, meshpath: str):
-    name = get_shape_name_base(obj)
-
+def export_shape(registry: SceneRegistry, obj: bpy.types.Object, depsgraph: bpy.types.Depsgraph, unique_name: str):
     try:
         me = obj.to_mesh(preserve_all_data_layers=False, depsgraph=depsgraph)
     except RuntimeError:
         return []
 
-    shapes = _export_bmesh_by_material(me, name, meshpath)
+    shapes = _export_bmesh_by_material(registry, me, unique_name)
     obj.to_mesh_clear()
 
     return shapes
