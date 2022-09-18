@@ -137,12 +137,16 @@ struct TexChecker {
     float4 color2;
     float3 vector;
     
+    float fac;
     float4 color;
     
     void compute(device Context &ctx, ThreadContext tctx) {
         float3 p = (vector * scale + 0.000001f) * 0.999999f;
         int3 idx = int3(floor(p));
-        color = select(color2, color1, (idx.x ^ idx.y ^ idx.z) & 1);
+        
+        const bool which = (idx.x ^ idx.y ^ idx.z) & 1;
+        color = select(color2, color1, which);
+        fac = select(0.f, 1.f, which);
     }
 };
 
@@ -1157,7 +1161,6 @@ struct AddShader {
         }
         
         shader.weight *= 2;
-        shader.pdf /= 2;
     }
 };
 
@@ -1173,10 +1176,8 @@ struct MixShader {
         if (tctx.rnd.x < fac) {
             tctx.rnd.x /= fac;
             shader = shader_001;
-            shader.pdf *= fac;
         } else {
             tctx.rnd.x = (tctx.rnd.x - fac) / (1 - fac);
-            shader.pdf *= 1 - fac;
         }
     }
 };

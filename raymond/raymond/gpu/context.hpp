@@ -22,7 +22,6 @@ struct Material {
     float3 emission = 0;
     
     float weight = 1;
-    float pdf = 1;
     
     float3 evaluate(float3 wo, float3 wi, float3 shNormal, float3 geoNormal, thread float &pdf) {
         /// @todo alpha? pdf and weight fields? mix/add shaders?
@@ -58,6 +57,8 @@ struct Material {
         if (lobeProbabilities[3] > 0) {
             value += clearcoat.evaluate(wo, wi, lobePdf); pdf += lobeProbabilities[3] * lobePdf;
         }
+        pdf *= alpha;
+        value *= this->weight * alpha;
         return value;
     }
     
@@ -68,7 +69,7 @@ struct Material {
             BSDFSample sample;
             sample.weight = alphaWeight * weight;
             sample.wi = -wo;
-            sample.pdf = 1e+8; /// @todo hack
+            sample.pdf = INFINITY; /// @todo hack
             sample.flags = previousFlags; /// null scattering does not alter ray flags
             return sample;
         }
@@ -103,12 +104,13 @@ struct Material {
             /// @todo the efficiency of this can probably be greatly improved by not re-evaluating the already sampled lobe
             sample.weight = evaluate(wo, sample.wi, shNormal, geoNormal, sample.pdf);
             sample.weight /= sample.pdf;
+        } else {
+            sample.pdf *= alpha;
+            sample.weight *= this->weight * alpha;
         }
         
         const float wiDotShN = sample.wi.z;
         sample.wi = sample.wi * transpose(worldToShadingFrame);
-        sample.pdf *= pdf;
-        sample.weight *= weight;
         const float wiDotGeoN = dot(sample.wi, geoNormal);
         if (wiDotShN * wiDotGeoN < 0) {
             return BSDFSample::invalid();

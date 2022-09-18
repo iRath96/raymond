@@ -202,7 +202,7 @@ kernel void handleIntersections(
     /// @todo verify that clearcoat evaluation works correctly
     if (uniforms.samplingMode != SamplingModeBsdf) {
         float neePdf;
-        float3 neeWo = ctx.envmap.sample(ray.prng.sample2d(), neePdf);
+        float3 neeWo = ctx.envmap.sample(prng.sample2d(), neePdf);
         
         ThreadContext neeTctx;
         neeTctx.rayFlags = ray.flags;
