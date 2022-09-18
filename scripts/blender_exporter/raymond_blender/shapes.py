@@ -167,15 +167,21 @@ def _export_bmesh_by_material(registry: SceneRegistry, me: bpy.types.Mesh, name:
     ply_save(filepath, bm)
 
     bm.free()
+
+    materials = me.materials.values()
+    if len(materials) == 0:
+        materials = [ None ]
+    
     return {
         "type": "ply",
         "filepath": filepath,
         "materials": [
             (
-                registry.materials.internal_export("default", lambda unique_name: export_default_material()) if mat is None else
+                registry.materials.internal_export("default",
+                    lambda unique_name: export_default_material(unique_name)) if mat is None else
                 registry.materials.export(mat, lambda unique_name: export_material(registry, mat))
             )
-            for mat in me.materials.values()
+            for mat in materials
         ]
     }
 

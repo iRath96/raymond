@@ -187,6 +187,15 @@ struct Codegen {
             }
         }
         textures = textureDescriptors.map { $0.texture! }
+        
+        if textures.isEmpty {
+            // Metal is sad when it has no textures :-(
+            let descriptor = MTLTextureDescriptor()
+            descriptor.width = 1
+            descriptor.height = 1
+            descriptor.pixelFormat = .r8Unorm
+            textures.append(textureLoader.device.makeTexture(descriptor: descriptor)!)
+        }
     }
     
     mutating func build() throws -> MTLLibrary {

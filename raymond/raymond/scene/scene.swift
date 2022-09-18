@@ -3,6 +3,15 @@ import Metal
 import MetalPerformanceShaders
 
 struct SceneDescription: Codable {
+    struct Visibility: Codable {
+        var camera: Bool
+        var diffuse: Bool
+        var glossy: Bool
+        var transmission: Bool
+        var volume: Bool
+        var shadow: Bool
+    }
+    
     struct Material: Codable {
         var nodes: [String: Node]
         
@@ -21,16 +30,24 @@ struct SceneDescription: Codable {
     
     struct Light: Codable {
         var material: String
+        var visibility: Visibility
+        var castShadows: Bool
+        var useMIS: Bool
+        
         var kernel: LightKernel
         
         private enum CodingKeys: CodingKey {
             case type
             case material
+            case visibility, cast_shadows, use_mis
             case parameters
         }
         
         static let kernels: [String: LightKernel.Type] = [
-            "WORLD": WorldLight.self
+            "WORLD": WorldLight.self,
+            "POINT": PointLight.self,
+            "SPOT":  SpotLight.self,
+            "SUN":   SunLight.self,
         ]
         
         init(from decoder: Decoder) throws {
@@ -42,6 +59,9 @@ struct SceneDescription: Codable {
             }
             
             material = try container.decode(String.self, forKey: .material)
+            visibility = try container.decode(Visibility.self, forKey: .visibility)
+            castShadows = try container.decode(Bool.self, forKey: .cast_shadows)
+            useMIS = try container.decode(Bool.self, forKey: .use_mis)
             kernel = try container.decode(type, forKey: .parameters)
         }
         
@@ -53,6 +73,9 @@ struct SceneDescription: Codable {
             
             try container.encode(type, forKey: .type)
             try container.encode(material, forKey: .material)
+            try container.encode(visibility, forKey: .visibility)
+            try container.encode(castShadows, forKey: .cast_shadows)
+            try container.encode(useMIS, forKey: .use_mis)
             try kernel.encode(to: container.superEncoder(forKey: .parameters))
         }
     }
@@ -64,15 +87,6 @@ struct SceneDescription: Codable {
     }
     
     struct Entity: Codable {
-        struct Visibility: Codable {
-            var camera: Bool
-            var diffuse: Bool
-            var glossy: Bool
-            var transmission: Bool
-            var volume: Bool
-            var shadow: Bool
-        }
-        
         var shape: String
         var visibility: Visibility
         var matrix: float4x4
