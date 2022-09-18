@@ -1,3 +1,4 @@
+from copy import deepcopy
 import bpy
 import os
 import json
@@ -266,11 +267,11 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
     
     if not material.use_nodes:
         if isinstance(material, bpy.types.Light):
-            return _DEFAULT_LIGHT
+            return deepcopy(_DEFAULT_LIGHT)
         elif isinstance(material, bpy.types.World):
-            return _DEFAULT_WORLD
+            return deepcopy(_DEFAULT_WORLD)
         elif isinstance(material, bpy.types.Material):
-            return _DEFAULT_MATERIAL
+            return deepcopy(_DEFAULT_MATERIAL)
         else:
             warn(f"Unsupported use of node trees")
             return result

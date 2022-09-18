@@ -99,6 +99,10 @@ struct Material {
             sample = clearcoat.sample(rnd.yz, wo);
         }
         
+        if (!isfinite(lobeProbabilities[selectedLobe]))
+            /// @todo why is this needed?
+            return BSDFSample::invalid();
+        
         if (lobeProbabilities[selectedLobe] < 1) {
             /// For MIS, we will need an accurate PDF and value of the entire material, not just the sampled lobe
             /// @todo the efficiency of this can probably be greatly improved by not re-evaluating the already sampled lobe
