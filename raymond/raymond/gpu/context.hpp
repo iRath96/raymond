@@ -25,6 +25,7 @@ struct Material {
     float pdf = 1;
     
     float3 evaluate(float3 wo, float3 wi, float3 shNormal, float3 geoNormal, thread float &pdf) {
+        /// @todo alpha? pdf and weight fields? mix/add shaders?
         pdf = 0;
         
         float3x3 worldToShadingFrame = buildOrthonormalBasis(shNormal);
@@ -81,23 +82,27 @@ struct Material {
             return BSDFSample::invalid();
         }
         
+        uint8_t selectedLobe;
         BSDFSample sample;
         if (rnd.x < lobeProbabilities[0]) {
+            selectedLobe = 0;
             sample = diffuse.sample(rnd.yz, wo);
-            sample.weight *= 1 / lobeProbabilities[0];
-            sample.pdf *= alpha * lobeProbabilities[0];
         } else if (rnd.x < (lobeProbabilities[0] + lobeProbabilities[1])) {
+            selectedLobe = 1;
             sample = specular.sample(rnd.yz, wo);
-            sample.weight *= 1 / lobeProbabilities[1];
-            sample.pdf *= alpha * lobeProbabilities[1];
         } else if (rnd.x < (lobeProbabilities[0] + lobeProbabilities[1] + lobeProbabilities[2])) {
+            selectedLobe = 2;
             sample = transmission.sample(rnd.yz, wo);
-            sample.weight *= 1 / lobeProbabilities[2];
-            sample.pdf *= alpha * lobeProbabilities[2];
         } else {
+            selectedLobe = 3;
             sample = clearcoat.sample(rnd.yz, wo);
-            sample.weight *= 1 / lobeProbabilities[3];
-            sample.pdf *= alpha * lobeProbabilities[3];
+        }
+        
+        if (lobeProbabilities[selectedLobe] < 1) {
+            /// For MIS, we will need an accurate PDF and value of the entire material, not just the sampled lobe
+            /// @todo the efficiency of this can probably be greatly improved by not re-evaluating the already sampled lobe
+            sample.weight = evaluate(wo, sample.wi, shNormal, geoNormal, sample.pdf);
+            sample.weight /= sample.pdf;
         }
         
         const float wiDotShN = sample.wi.z;
