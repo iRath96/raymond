@@ -1227,36 +1227,10 @@ template<
 struct OutputLight {
     Material surface;
     
-    float3 color;
-    float tanSpread;
-    
     void compute(device Context &ctx, thread ThreadContext &tctx) {
         thread Material &mat = tctx.material;
         mat.alpha = 0;
-        
-        switch (Shape) {
-        case kOutputLight::SHAPE_SQUARE:
-        case kOutputLight::SHAPE_RECTANGLE:
-            break;
-        
-        case kOutputLight::SHAPE_DISK:
-        case kOutputLight::SHAPE_ELLIPSE:
-            if (length_squared(tctx.uv) > 1)
-                return;
-            break;
-        }
-        
-        const float cosTheta = -dot(tctx.normal, tctx.wo);
-        if (cosTheta < 0)
-            return;
-        
-        mat.emission = color * surface.emission;
-        
-        if (tanSpread > 0) {
-            const float sinTheta = safe_sqrtf(1 - square(cosTheta));
-            const float tanTheta = sinTheta / cosTheta;
-            mat.emission *= max(1 - (tanSpread * tanTheta), 0.0f);
-        }
+        mat.emission = surface.emission;
     }
 };
 

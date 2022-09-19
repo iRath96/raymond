@@ -234,12 +234,7 @@ struct UVMapKernel: NodeKernel {
 // MARK: - Output kernels
 struct OutputMaterialKernel: NodeKernel {}
 struct OutputWorldKernel: NodeKernel {}
-struct OutputLightKernel: NodeKernel {
-    var shape: String
-    var color: [Float]
-    var irradiance: Float
-    var spread: Float
-}
+struct OutputLightKernel: NodeKernel {}
 
 // MARK: - Nodes
 

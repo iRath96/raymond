@@ -45,6 +45,7 @@ struct SceneDescription: Codable {
         
         static let kernels: [String: LightKernel.Type] = [
             "WORLD": WorldLight.self,
+            "AREA":  AreaLight.self,
             "POINT": PointLight.self,
             "SPOT":  SpotLight.self,
             "SUN":   SunLight.self,
@@ -239,7 +240,8 @@ struct SceneLoader {
         forLibrary library: MTLLibrary,
         withContext contextBuffer: MTLBuffer,
         andEncoder contextEncoder: MTLArgumentEncoder,
-        resources: inout [MTLResource]
+        resources: inout [MTLResource],
+        shaderIndex: Int
     ) throws {
         let exponent = 11
         let resolution = 1 << exponent
@@ -311,7 +313,7 @@ struct SceneLoader {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
         
-        let envmapOffset = 0
+        let envmapOffset = 3 /// @todo hardcoded!
         contextEncoder.set(at: envmapOffset + 0, resolution)
         contextEncoder.setBuffer(pdfBuffer, offset: 0, index: envmapOffset + 1)
         contextEncoder.setBuffer(mipmapBuffer, offset: 0, index: envmapOffset + 2)
@@ -325,7 +327,7 @@ struct SceneLoader {
         resources: [MTLResource]
     ) throws {
         let device = library.device
-        let sampleGridResolution = 1024//1024
+        let sampleGridResolution = 1024
         let histogramResolution = 256 /// @todo hardcoded
         let histogramBuffer = device.makeBuffer(length: histogramResolution * histogramResolution * MemoryLayout<Float>.stride)!
         
@@ -383,10 +385,12 @@ struct SceneLoader {
             NSLog("generating shader for \(materialName)")
             try codegen.addMaterial(sceneDescription.materials[materialName]!)
         }
-        let world = sceneDescription.lights.first { type(of: $0.value.kernel) == WorldLight.self }?.value
-        try codegen.setWorld(sceneDescription.materials[world!.material]!)
         
-        NSLog("generating shaders")
+        NSLog("generating light shaders")
+        let world = sceneDescription.lights.first { type(of: $0.value.kernel) == WorldLight.self }?.value
+        let worldShaderIndex = try codegen.addMaterial(sceneDescription.materials[world!.material]!)
+        
+        NSLog("compiling shaders")
         let library = try codegen.build()
         
         let linkedFunctions = MTLLinkedFunctions()
@@ -397,10 +401,6 @@ struct SceneLoader {
                 let function = library.makeFunction(name: "material_\(index)")!
                 linkedFunctions.functions!.append(function)
             }
-            
-            NSLog("making function world")
-            let function = library.makeFunction(name: "world")!
-            linkedFunctions.functions!.append(function)
         }
         
         NSLog("making function handleIntersections")
@@ -499,12 +499,21 @@ struct SceneLoader {
             projectionMatrix = camera.transform
         }
         
+        // MARK: next event
+        
+        let neeOffset = 0 /// @todo hardcoded!
+        argumentEncoder.set(at: neeOffset + 0, 1)
+        argumentEncoder.set(at: neeOffset + 1, 0)
+        argumentEncoder.set(at: neeOffset + 2, worldShaderIndex)
+        
         NSLog("preparing environmap sampling")
         try prepareEnvironmentMapSampling(
             forLibrary: library,
             withContext: contextBuffer,
             andEncoder: argumentEncoder,
-            resources: &resourcesRead)
+            resources: &resourcesRead,
+            shaderIndex: worldShaderIndex
+        )
         NSLog("done!")
         
         /*try testEnvironmentMapSampling(

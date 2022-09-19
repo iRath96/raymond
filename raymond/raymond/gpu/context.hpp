@@ -207,7 +207,83 @@ struct EnvmapSampling {
     }
 };
 
+struct AreaLight {
+    float3x4 transform;
+    float3 color;
+    bool isCircular;
+};
+
+struct NEESample {
+    float3 weight;
+    float pdf;
+    float3 direction;
+    float distance;
+};
+
+struct Context;
+struct NEESampling {
+    int numLightsTotal [[ id(0) ]];
+    int numAreaLights [[ id(1) ]];
+    
+    int envmapShader [[ id(2) ]];
+    EnvmapSampling envmap [[ id(3) ]];
+    device AreaLight *areaLights [[ id(6) ]];
+    
+    float envmapPdf(float3 wo) const device {
+        const float envmapSelectionProbability = 1 / float(numLightsTotal);
+        return envmap.pdf(wo) * envmapSelectionProbability;
+    }
+    
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
+        const int sampledLightSource = prng.sampleInt(numLightsTotal);
+        const float lightSelectionProbability = 1 / float(numLightsTotal);
+        if (sampledLightSource == 0) {
+            NEESample result = sampleEnvmap(ctx, tctx, prng);
+            result.pdf *= lightSelectionProbability;
+            return result;
+        }
+        
+        NEESample result = sampleAreaLights(ctx, tctx, prng);
+        result.pdf *= lightSelectionProbability;
+        return result;
+    }
+    
+    void evaluateEnvironment(device Context &ctx, thread ThreadContext &tctx) const device;
+
+private:
+    NEESample sampleEnvmap(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
+        NEESample sample;
+        sample.direction = envmap.sample(prng.sample2d(), sample.pdf);
+        sample.distance = INFINITY;
+        
+        ThreadContext neeTctx;
+        neeTctx.rayFlags = tctx.rayFlags;
+        neeTctx.rnd = prng.sample3d();
+        neeTctx.wo = sample.direction;
+        evaluateEnvironment(ctx, neeTctx);
+        
+        sample.weight = neeTctx.material.emission / sample.pdf;
+        return sample;
+    }
+    
+    NEESample sampleAreaLights(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
+        NEESample sample;
+        sample.weight = 0;
+        sample.pdf = 0;
+        return sample;
+    }
+};
+
 struct Context {
-    EnvmapSampling envmap [[ id(0) ]];
+    NEESampling nee [[ id(0) ]];
     array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[ id(10) ]];
 };
+
+void NEESampling::evaluateEnvironment(device Context &ctx, thread ThreadContext &tctx) const device {
+    tctx.setupForWorldHit();
+    
+#ifdef JIT_COMPILED
+    const int shaderIndex = envmapShader;
+    SWITCH_SHADERS
+#endif
+}

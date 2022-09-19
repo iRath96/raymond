@@ -112,10 +112,12 @@ typedef struct {
     float sample();
     float2 sample2d();
     float3 sample3d();
+    int sampleInt(int max);
     
     float sample() device;
     float2 sample2d() device;
     float3 sample3d() device;
+    int sampleInt(int max) device;
 #endif
 } PRNGState;
 

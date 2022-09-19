@@ -10,37 +10,22 @@ from .materials import export_material
 from .registry import SceneRegistry
 
 
+def _export_light(registry: SceneRegistry, light: bpy.types.Light, inst: bpy.types.DepsgraphObjectInstance, type: str):
+    material_name = registry.materials.export(light, lambda unique_name: export_material(registry, light))
+    return {
+        "type": type,
+        "material": material_name,
+
+        "visibility": describe_visibility(inst.object),
+        "cast_shadows": light.cycles.cast_shadow,
+        "use_mis": light.cycles.use_multiple_importance_sampling,
+    }
+
+
 def _export_area_light(registry: SceneRegistry, light: bpy.types.Light, inst: bpy.types.DepsgraphObjectInstance):
-    # To export area lights, we convert them to ordinary shapes with a special kind of material:
-    # 1) We generate the material for them.
-    #      The rendered will treat them differently due to the use of OUTPUT_LIGHT instead of OUTPUT_MATERIAL.
-    # 2) The OUTPUT_LIGHT node is augmented will the parameters of the light source.
-    #      This includes color, shape, strength, and spread.
-    # 3) We export simple quad geometry.
-    #      Disks/Ellipses are handled by the "shape" info on OUTPUT_LIGHT;
-    #      this allows us to have crisp analytical disk shapes without having to triangulate them or support
-    #      disk intersection in our renderer.
-
-    # STEP 1: export material
-    # @todo avoid name clashes
-    material = export_material(registry, light)
-    material_name = registry.materials.force_export(light, material)
-
-    # STEP 2: augment OUTPUT_LIGHT node with parameters
-    output_node = None
-    for node in material.values():
-        if node["type"] == "OUTPUT_LIGHT":
-            output_node = node
-            break
-    else:
-        # no OUTPUT_LIGHT node was found, so we need to create one
-        # @todo avoid name clashes
-        output_node = {
-            "type": "OUTPUT_LIGHT",
-            "inputs": {},
-            "parameters": {}
-        }
-        material["Light Output"] = output_node
+    if light.cycles.is_portal:
+        warn(f"Light portals are not supported")
+        return
     
     # Compute actual matrix
     # From my understanding, object transforms in Blender are always similarity transformations.
@@ -64,45 +49,28 @@ def _export_area_light(registry: SceneRegistry, light: bpy.types.Light, inst: bp
 
     if light.shape == "SQUARE" or light.shape == "RECTANGLE":
         area = size_x * size_y
+        is_circular = False
     else:
         area = size_x * size_y * (math.pi / 4)
+        is_circular = True
 
-    output_node["parameters"].update({
-        "cast_shadows": light.cycles.cast_shadow,
-        "use_mis": light.cycles.use_multiple_importance_sampling,
-
-        "shape": light.shape,
-        "color": list(light.color),
-        "irradiance": light.energy / area,
-        "spread": light.spread,
-    })
-
-    # STEP 3: export geometry
-    rectangle_path = os.path.join(registry.meshpath, "rectangle.ply")
-    shutil.copy(os.path.join(os.path.dirname(__file__), "library/rectangle.ply"), rectangle_path)
-    shape_name = registry.shapes.force_export(light, {
-        "type": "ply",
-        "filepath": rectangle_path,
-        "materials": [ material_name ]
-    })
-    registry.entities.force_export(light, {
-        "shape": shape_name,
-        "visibility": describe_visibility(inst.object),
-        "matrix": [ x for row in matrix_world for x in row ]
+    registry.lights.force_export(light, {
+        **_export_light(registry, light, inst, "AREA"),
+        "parameters": {
+            "transform": [ x for row in matrix_world for x in row ],
+            "irradiance": light.energy / area,
+            "color": list(light.color),
+            "spread": light.spread,
+            "is_circular": is_circular
+        }
     })
 
 
 def _export_point_light(registry: SceneRegistry, light: bpy.types.PointLight, inst: bpy.types.DepsgraphObjectInstance):
-    material_name = registry.materials.export(light, lambda unique_name: export_material(registry, light))
     registry.lights.force_export(light, {
-        "type": "POINT",
-        "material": material_name,
-
-        "visibility": describe_visibility(inst.object),
-        "cast_shadows": light.cycles.cast_shadow,
-        "use_mis": light.cycles.use_multiple_importance_sampling,
-
+        **_export_light(registry, light, inst, "POINT"),
         "parameters": {
+            "location": list(inst.object.location),
             "power": light.energy,
             "color": list(light.color),
             "radius": light.shadow_soft_size,
@@ -111,16 +79,11 @@ def _export_point_light(registry: SceneRegistry, light: bpy.types.PointLight, in
 
 
 def _export_spot_light(registry: SceneRegistry, light: bpy.types.SpotLight, inst: bpy.types.DepsgraphObjectInstance):
-    material_name = registry.materials.export(light, lambda unique_name: export_material(registry, light))
     registry.lights.force_export(light, {
-        "type": "SPOT",
-        "material": material_name,
-
-        "visibility": describe_visibility(inst.object),
-        "cast_shadows": light.cycles.cast_shadow,
-        "use_mis": light.cycles.use_multiple_importance_sampling,
-
+        **_export_light(registry, light, inst, "SPOT"),
         "parameters": {
+            "location": list(inst.object.location),
+            "direction": list(inst.matrix_world[2]),
             "power": light.energy,
             "color": list(light.color),
             "radius": light.shadow_soft_size,
@@ -131,16 +94,10 @@ def _export_spot_light(registry: SceneRegistry, light: bpy.types.SpotLight, inst
 
 
 def _export_sun_light(registry: SceneRegistry, light: bpy.types.SunLight, inst: bpy.types.DepsgraphObjectInstance):
-    material_name = registry.materials.export(light, lambda unique_name: export_material(registry, light))
     registry.lights.force_export(light, {
-        "type": "SUN",
-        "material": material_name,
-
-        "visibility": describe_visibility(inst.object),
-        "cast_shadows": light.cycles.cast_shadow,
-        "use_mis": light.cycles.use_multiple_importance_sampling,
-
+        **_export_light(registry, light, inst, "SUN"),
         "parameters": {
+            "direction": list(inst.matrix_world[2]),
             "power": light.energy,
             "color": list(light.color),
             "angle": light.angle,
@@ -149,10 +106,6 @@ def _export_sun_light(registry: SceneRegistry, light: bpy.types.SunLight, inst: 
 
 
 def export_light(registry: SceneRegistry, light: bpy.types.Light, inst: bpy.types.DepsgraphObjectInstance):
-    if light.cycles.is_portal:
-        warn(f"Light portals are not supported")
-        return
-
     if light.type == "AREA":
         _export_area_light(registry, light, inst)
     elif light.type == "POINT":

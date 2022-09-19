@@ -399,21 +399,8 @@ struct Codegen {
             return .init(kernel: "OutputMaterial")
         case is OutputWorldKernel:
             return .init(kernel: "OutputWorld")
-        case let kernel as OutputLightKernel:
-            var invocation: KernelInvocation = .init(kernel: "OutputLight", parameters: [
-                .enum("SHAPE", kernel.shape)
-            ])
-            
-            let minSpreadAngle = 1 * Float.pi / 180 // 1°
-            let spreadAngle = (Float.pi - max(kernel.spread, minSpreadAngle)) / 2
-            let tanSpread = tanf(spreadAngle)
-            let normalizeSpread = 2 / (2 + (2 * spreadAngle - Float.pi) * tanSpread)
-            
-            let norm = Float(0.25) * kernel.irradiance * (tanSpread > 0 ? normalizeSpread : 1)
-            invocation.assign(key: "Color", value: .vector(kernel.color.map { norm * $0 }))
-            invocation.assign(key: "Tan Spread", value: .scalar(tanSpread))
-            
-            return invocation
+        case is OutputLightKernel:
+            return .init(kernel: "OutputLight")
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
         case let kernel as UVMapKernel:
@@ -478,38 +465,20 @@ struct Codegen {
         }
     }
     
-    mutating func addMaterial(_ material: SceneDescription.Material) throws {
-        try emit(material, isWorld: false)
+    mutating func addMaterial(_ material: SceneDescription.Material) throws -> Int {
+        return try emit(material)
     }
     
-    mutating func setWorld(_ world: SceneDescription.Material) throws {
-        if options.contains(.useFunctionTable) {
-            warn("""
-            Function tables are not currently supported when world nodes are used.
-            Somehow the combination of the two deadlocks the GPU, but it has not yet been determined why.
-            Given that function tables are slower to compile and result in worse performance,
-            we recommend not using them anyway.
-            """)
-            throw CodegenError.unsupportedKernel
-        }
-        try emit(world, isWorld: true)
-    }
-    
-    private mutating func emit(_ material: SceneDescription.Material, isWorld: Bool) throws {
+    private mutating func emit(_ material: SceneDescription.Material) throws -> Int {
         state = [:]
         invocations = []
         
         for node in material.nodes.sorted(by: { $0.0 < $1.0 }) {
             // Only output nodes that are really needed
-            if isWorld {
-                if node.value.kernel is OutputWorldKernel {
-                    try emitNode(material, key: node.key)
-                }
-            } else {
-                if node.value.kernel is OutputMaterialKernel
-                || node.value.kernel is OutputLightKernel {
-                    try emitNode(material, key: node.key)
-                }
+            if node.value.kernel is OutputMaterialKernel
+            || node.value.kernel is OutputLightKernel
+            || node.value.kernel is OutputWorldKernel {
+                try emitNode(material, key: node.key)
             }
         }
         
@@ -523,7 +492,11 @@ struct Codegen {
             textures.append(textureLoader.device.makeTexture(descriptor: descriptor)!)
         }
         
-        let functionName = isWorld ? "world" : "material_\(materialIndex)"
+        let functionName = "material_\(materialIndex)"
+        defer {
+            materialIndex += 1
+        }
+        
         let attributes = options.contains(.useFunctionTable) ? "[[visible]] " : ""
         text.addLine("""
         \(attributes)void \(functionName)(
@@ -539,9 +512,7 @@ struct Codegen {
         text.addLine("}")
         text.addLine("")
         
-        if !isWorld {
-            materialIndex += 1
-        }
+        return materialIndex
     }
     
     private mutating func registerTexture(_ texture: MTLTexture) -> Int {

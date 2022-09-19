@@ -83,19 +83,10 @@ kernel void handleIntersections(
     if (isect.distance <= 0.0f) {
         // miss
         if (isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee) {
-            tctx.setupForWorldHit();
             const float misWeight = uniforms.samplingMode == SamplingModeBsdf ? 1 :
-                computeMisWeight(ray.bsdfPdf, ctx.envmap.pdf(tctx.wo));
+                computeMisWeight(ray.bsdfPdf, ctx.nee.envmapPdf(tctx.wo));
             
-#ifdef USE_FUNCTION_TABLE
-            /// @todo NOT SUPPORTED!
-            int worldShaderIndex = shaders.size() - 1;
-            shaders[worldShaderIndex](ctx, tctx);
-#else
-            void world(device Context &, thread ThreadContext &);
-            world(ctx, tctx);
-#endif
-
+            ctx.nee.evaluateEnvironment(ctx, tctx);
             uint2 coordinates = uint2(ray.x, ray.y);
             image.write(
                 image.read(coordinates) + float4(
@@ -201,35 +192,22 @@ kernel void handleIntersections(
     /// @todo slight inaccuracies with BsdfTranslucent
     /// @todo verify that clearcoat evaluation works correctly
     if (uniforms.samplingMode != SamplingModeBsdf) {
-        float neePdf;
-        float3 neeWo = ctx.envmap.sample(prng.sample2d(), neePdf);
-        
-        ThreadContext neeTctx;
-        neeTctx.rayFlags = ray.flags;
-        neeTctx.rnd = prng.sample3d();
-        neeTctx.wo = neeWo;
-        neeTctx.setupForWorldHit();
-        
-#ifdef JIT_COMPILED
-        /// @todo function tables not yet supported
-        void world(device Context &, thread ThreadContext &);
-        world(ctx, neeTctx);
-#endif
+        NEESample neeSample = ctx.nee.sample(ctx, tctx, prng);
         
         float bsdfPdf;
-        float3 bsdf = tctx.material.evaluate(tctx.wo, -neeTctx.wo, shNormal, tctx.trueNormal, bsdfPdf);
+        float3 bsdf = tctx.material.evaluate(tctx.wo, -neeSample.direction, shNormal, tctx.trueNormal, bsdfPdf);
         
         const float misWeight = uniforms.samplingMode == SamplingModeNee ? 1 :
-            computeMisWeight(neePdf, bsdfPdf);
+            computeMisWeight(neeSample.pdf, bsdfPdf);
         
-        const float3 neeWeight = neeTctx.material.emission * bsdf * ray.weight * (misWeight / neePdf);
+        const float3 neeWeight = misWeight * (neeSample.weight * bsdf * ray.weight);
         if (all(isfinite(neeWeight)) && any(neeWeight != 0)) {
             uint nextShadowRayIndex = atomic_fetch_add_explicit(&shadowRayCount, 1, memory_order_relaxed);
             device ShadowRay &shadowRay = shadowRays[nextShadowRayIndex];
             shadowRay.origin = tctx.position;
-            shadowRay.direction = -neeWo;
+            shadowRay.direction = -neeSample.direction;
             shadowRay.minDistance = eps;
-            shadowRay.maxDistance = INFINITY;
+            shadowRay.maxDistance = neeSample.distance;
             shadowRay.weight = neeWeight;
             shadowRay.x = ray.x;
             shadowRay.y = ray.y;
@@ -290,13 +268,7 @@ kernel void buildEnvironmentMap(
         tctx.rayFlags = RayFlags(0);
         tctx.rnd = prng.sample3d();
         tctx.wo = wo;
-        tctx.setupForWorldHit();
-        
-#ifdef JIT_COMPILED
-        /// @todo function tables not yet supported
-        void world(device Context &, thread ThreadContext &);
-        world(ctx, tctx);
-#endif
+        ctx.nee.evaluateEnvironment(ctx, tctx);
         
         float3 sampleValue = tctx.material.emission;
         if (UseSecondMoment) {
@@ -396,7 +368,7 @@ kernel void testEnvironmentMapSampling(
     //const float3 sample = warp::uniformSquareToSphere(uv);
     
     float samplePdf;
-    const float3 sample = ctx.envmap.sample(uv, samplePdf);
+    const float3 sample = ctx.nee.envmap.sample(uv, samplePdf);
     const float2 projected = warp::uniformSphereToSquare(sample);
     const float pdf = 1;//ctx.envmap.pdf(sample) * (4 * M_PI_F);
     
