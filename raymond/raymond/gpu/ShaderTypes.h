@@ -160,9 +160,29 @@ typedef uint32_t VertexIndex;
 typedef uint32_t PrimitiveIndex;
 typedef uint32_t MaterialIndex;
 
+struct NEESample;
+struct Context;
+struct ThreadContext;
+
 struct NEEAreaLight {
     int shaderIndex;
     float3x4 transform;
     float3 color;
     bool isCircular;
+    
+#ifdef __METAL_VERSION__
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+#endif
+};
+
+// not really a point light...
+struct NEEPointLight {
+    int shaderIndex;
+    float3 location;
+    float radius;
+    float3 color;
+
+#ifdef __METAL_VERSION__
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+#endif
 };

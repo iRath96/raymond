@@ -313,7 +313,7 @@ struct SceneLoader {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
         
-        let envmapOffset = 3 /// @todo hardcoded!
+        let envmapOffset = 4 /// @todo hardcoded!
         contextEncoder.set(at: envmapOffset + 0, resolution)
         contextEncoder.setBuffer(pdfBuffer, offset: 0, index: envmapOffset + 1)
         contextEncoder.setBuffer(mipmapBuffer, offset: 0, index: envmapOffset + 2)
@@ -373,18 +373,42 @@ struct SceneLoader {
         scene: SceneDescription,
         codegen: inout Codegen
     ) throws -> (Int, MTLBuffer) {
-        let areaLights = scene.lights.values.lazy.filter { $0.kernel is AreaLight }
-        let count = areaLights.count
+        let lights = scene.lights.values.lazy.filter { $0.kernel is AreaLight }
+        let count = lights.count
         let buffer = device.makeBuffer(length: max(count, 1) * MemoryLayout<NEEAreaLight>.stride)!
         var ptr = buffer.contents().assumingMemoryBound(to: NEEAreaLight.self)
         
-        for light in areaLights {
+        for light in lights {
             let kernel = light.kernel as! AreaLight
             ptr.initialize(to: .init(
                 shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
                 transform: kernel.transform,
                 color: kernel.power * kernel.color,
                 isCircular: kernel.isCirular
+            ))
+            ptr = ptr.advanced(by: 1)
+        }
+        
+        return (count, buffer)
+    }
+    
+    private func makePointLights(
+        device: MTLDevice,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> (Int, MTLBuffer) {
+        let lights = scene.lights.values.lazy.filter { $0.kernel is PointLight }
+        let count = lights.count
+        let buffer = device.makeBuffer(length: max(count, 1) * MemoryLayout<NEEPointLight>.stride)!
+        var ptr = buffer.contents().assumingMemoryBound(to: NEEPointLight.self)
+        
+        for light in lights {
+            let kernel = light.kernel as! PointLight
+            ptr.initialize(to: .init(
+                shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+                location: kernel.location,
+                radius: kernel.radius,
+                color: kernel.color * kernel.power
             ))
             ptr = ptr.advanced(by: 1)
         }
@@ -423,6 +447,7 @@ struct SceneLoader {
         NSLog("generating light shaders")
         let worldShaderIndex = try makeWorldShader(scene: sceneDescription, codegen: &codegen)
         let (areaLightCount, areaLightBuffer) = try makeAreaLights(device: device, scene: sceneDescription, codegen: &codegen)
+        let (pointLightCount, pointLightBuffer) = try makePointLights(device: device, scene: sceneDescription, codegen: &codegen)
         
         NSLog("compiling shaders")
         let library = try codegen.build()
@@ -536,10 +561,12 @@ struct SceneLoader {
         // MARK: next event
         
         let neeOffset = 0 /// @todo hardcoded!
-        argumentEncoder.set(at: neeOffset + 0, 1 + areaLightCount)
+        argumentEncoder.set(at: neeOffset + 0, 1 + areaLightCount + pointLightCount)
         argumentEncoder.set(at: neeOffset + 1, areaLightCount)
-        argumentEncoder.set(at: neeOffset + 2, worldShaderIndex)
-        argumentEncoder.setBuffer(areaLightBuffer, offset: 0, index: neeOffset + 6)
+        argumentEncoder.set(at: neeOffset + 2, pointLightCount)
+        argumentEncoder.set(at: neeOffset + 3, worldShaderIndex)
+        argumentEncoder.setBuffer(areaLightBuffer, offset: 0, index: neeOffset + 7)
+        argumentEncoder.setBuffer(pointLightBuffer, offset: 0, index: neeOffset + 8)
         
         NSLog("preparing environmap sampling")
         try prepareEnvironmentMapSampling(

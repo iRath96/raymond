@@ -29,4 +29,13 @@ float uniformSquareToSpherePdf() {
     return 1 / (4 * M_PI_F);
 }
 
+/// @todo not a nice mapping
+float2 uniformSquareToDisk(float2 uv) {
+    float cos;
+    float sin = sincos(2 * M_PI_F * uv.x, cos);
+    float r = sqrt(uv.y);
+    
+    return float2(r * cos, r * sin);
+}
+
 }
