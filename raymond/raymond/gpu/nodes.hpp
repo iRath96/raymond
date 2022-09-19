@@ -1201,29 +1201,6 @@ struct OutputWorld {
     }
 };
 
-struct OutputLightPreamble {
-    void compute(device Context &ctx, thread ThreadContext &tctx) {
-        /// Light materials behave differently in terms of texture coordinates:
-        tctx.generated = tctx.position;
-        tctx.object = tctx.position;
-        
-        /// @todo UV coordinates should be zero, but we use them in `OutputLight` currently to render disks/ellipses
-        //tctx.uv = float3(0);
-    }
-};
-
-struct kOutputLight {
-    enum Shape {
-        SHAPE_SQUARE,
-        SHAPE_RECTANGLE,
-        SHAPE_DISK,
-        SHAPE_ELLIPSE
-    };
-};
-
-template<
-    kOutputLight::Shape Shape
->
 struct OutputLight {
     Material surface;
     

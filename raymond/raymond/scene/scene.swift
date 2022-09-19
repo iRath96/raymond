@@ -246,7 +246,7 @@ struct SceneLoader {
         let exponent = 11
         let resolution = 1 << exponent
         let mipmapSize = (0...exponent).map { (1 << (2 * $0)) }.reduce(0, +)
-        print("Building environment map of size \(resolution)^2")
+        NSLog("Building environment map of size \(resolution)^2")
         
         let device = library.device
         let mipmapBuffer = device.makeBuffer(length: mipmapSize * MemoryLayout<Float>.stride)!
@@ -358,6 +358,40 @@ struct SceneLoader {
         exit(0)
     }
     
+    private func makeWorldShader(
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> Int {
+        NSLog("generating world shader")
+        let world = scene.lights.first { type(of: $0.value.kernel) == WorldLight.self }?.value
+        let worldShaderIndex = try codegen.addMaterial(scene.materials[world!.material]!)
+        return worldShaderIndex
+    }
+    
+    private func makeAreaLights(
+        device: MTLDevice,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> (Int, MTLBuffer) {
+        let areaLights = scene.lights.values.lazy.filter { $0.kernel is AreaLight }
+        let count = areaLights.count
+        let buffer = device.makeBuffer(length: max(count, 1) * MemoryLayout<NEEAreaLight>.stride)!
+        var ptr = buffer.contents().assumingMemoryBound(to: NEEAreaLight.self)
+        
+        for light in areaLights {
+            let kernel = light.kernel as! AreaLight
+            ptr.initialize(to: .init(
+                shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+                transform: kernel.transform,
+                color: kernel.power * kernel.color,
+                isCircular: kernel.isCirular
+            ))
+            ptr = ptr.advanced(by: 1)
+        }
+        
+        return (count, buffer)
+    }
+    
     func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
         let sceneDescription = try SceneDescriptionLoader().makeSceneDescription(fromURL: url)
         
@@ -387,8 +421,8 @@ struct SceneLoader {
         }
         
         NSLog("generating light shaders")
-        let world = sceneDescription.lights.first { type(of: $0.value.kernel) == WorldLight.self }?.value
-        let worldShaderIndex = try codegen.addMaterial(sceneDescription.materials[world!.material]!)
+        let worldShaderIndex = try makeWorldShader(scene: sceneDescription, codegen: &codegen)
+        let (areaLightCount, areaLightBuffer) = try makeAreaLights(device: device, scene: sceneDescription, codegen: &codegen)
         
         NSLog("compiling shaders")
         let library = try codegen.build()
@@ -502,9 +536,10 @@ struct SceneLoader {
         // MARK: next event
         
         let neeOffset = 0 /// @todo hardcoded!
-        argumentEncoder.set(at: neeOffset + 0, 1)
-        argumentEncoder.set(at: neeOffset + 1, 0)
+        argumentEncoder.set(at: neeOffset + 0, 1 + areaLightCount)
+        argumentEncoder.set(at: neeOffset + 1, areaLightCount)
         argumentEncoder.set(at: neeOffset + 2, worldShaderIndex)
+        argumentEncoder.setBuffer(areaLightBuffer, offset: 0, index: neeOffset + 6)
         
         NSLog("preparing environmap sampling")
         try prepareEnvironmentMapSampling(

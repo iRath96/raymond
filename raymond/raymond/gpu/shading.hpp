@@ -84,7 +84,7 @@ kernel void handleIntersections(
         // miss
         if (isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee) {
             const float misWeight = uniforms.samplingMode == SamplingModeBsdf ? 1 :
-                computeMisWeight(ray.bsdfPdf, ctx.nee.envmapPdf(tctx.wo));
+                computeMisWeight(ray.bsdfPdf, ctx.nee.envmapPdf(ray.direction));
             
             ctx.nee.evaluateEnvironment(ctx, tctx);
             uint2 coordinates = uint2(ray.x, ray.y);
@@ -195,9 +195,9 @@ kernel void handleIntersections(
         NEESample neeSample = ctx.nee.sample(ctx, tctx, prng);
         
         float bsdfPdf;
-        float3 bsdf = tctx.material.evaluate(tctx.wo, -neeSample.direction, shNormal, tctx.trueNormal, bsdfPdf);
+        float3 bsdf = tctx.material.evaluate(tctx.wo, neeSample.direction, shNormal, tctx.trueNormal, bsdfPdf);
         
-        const float misWeight = uniforms.samplingMode == SamplingModeNee ? 1 :
+        const float misWeight = uniforms.samplingMode == SamplingModeNee || !neeSample.canBeHit ? 1 :
             computeMisWeight(neeSample.pdf, bsdfPdf);
         
         const float3 neeWeight = misWeight * (neeSample.weight * bsdf * ray.weight);
@@ -205,7 +205,7 @@ kernel void handleIntersections(
             uint nextShadowRayIndex = atomic_fetch_add_explicit(&shadowRayCount, 1, memory_order_relaxed);
             device ShadowRay &shadowRay = shadowRays[nextShadowRayIndex];
             shadowRay.origin = tctx.position;
-            shadowRay.direction = -neeSample.direction;
+            shadowRay.direction = neeSample.direction;
             shadowRay.minDistance = eps;
             shadowRay.maxDistance = neeSample.distance;
             shadowRay.weight = neeWeight;
@@ -267,7 +267,7 @@ kernel void buildEnvironmentMap(
         ThreadContext tctx;
         tctx.rayFlags = RayFlags(0);
         tctx.rnd = prng.sample3d();
-        tctx.wo = wo;
+        tctx.wo = -wo;
         ctx.nee.evaluateEnvironment(ctx, tctx);
         
         float3 sampleValue = tctx.material.emission;
@@ -282,6 +282,7 @@ kernel void buildEnvironmentMap(
     if (UseSecondMoment) {
         value = sqrt(value);
     }
+    value += 1e-8;
     
     const uint2 quadPosition = threadIndex / 2;
     const uint2 quadGridSize = imageSize / 2;

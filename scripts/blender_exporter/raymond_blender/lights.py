@@ -44,24 +44,15 @@ def _export_area_light(registry: SceneRegistry, light: bpy.types.Light, inst: bp
     for i in range(3):
         matrix_world[i][0] *= scale_x
         matrix_world[i][1] *= scale_y
-    size_x = math.sqrt(sum([ matrix_world[i][0]**2 for i in range(3) ]))
-    size_y = math.sqrt(sum([ matrix_world[i][1]**2 for i in range(3) ]))
-
-    if light.shape == "SQUARE" or light.shape == "RECTANGLE":
-        area = size_x * size_y
-        is_circular = False
-    else:
-        area = size_x * size_y * (math.pi / 4)
-        is_circular = True
-
+    
     registry.lights.force_export(light, {
         **_export_light(registry, light, inst, "AREA"),
         "parameters": {
             "transform": [ x for row in matrix_world for x in row ],
-            "irradiance": light.energy / area,
+            "power": light.energy,
             "color": list(light.color),
             "spread": light.spread,
-            "is_circular": is_circular
+            "is_circular": light.shape in [ "DISK", "ELLIPSE" ]
         }
     })
 

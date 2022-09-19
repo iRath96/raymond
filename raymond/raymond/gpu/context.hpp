@@ -23,24 +23,27 @@ struct Material {
     
     float weight = 1;
     
+    template<bool IsLocal = false>
     float3 evaluate(float3 wo, float3 wi, float3 shNormal, float3 geoNormal, thread float &pdf) {
         /// @todo alpha? pdf and weight fields? mix/add shaders?
         pdf = 0;
         
-        float3x3 worldToShadingFrame = buildOrthonormalBasis(shNormal);
-        
-        const float woDotGeoN = dot(wo, geoNormal);
-        wo = wo * worldToShadingFrame;
-        const float woDotShN = wo.z;
-        if (woDotShN * woDotGeoN < 0) {
-            return 0;
-        }
-        
-        const float wiDotGeoN = dot(wi, geoNormal);
-        wi = wi * worldToShadingFrame;
-        const float wiDotShN = wi.z;
-        if (wiDotShN * wiDotGeoN < 0) {
-            return 0;
+        if (!IsLocal) {
+            float3x3 worldToShadingFrame = buildOrthonormalBasis(shNormal);
+            
+            const float woDotGeoN = dot(wo, geoNormal);
+            wo = wo * worldToShadingFrame;
+            const float woDotShN = wo.z;
+            if (woDotShN * woDotGeoN < 0) {
+                return 0;
+            }
+            
+            const float wiDotGeoN = dot(wi, geoNormal);
+            wi = wi * worldToShadingFrame;
+            const float wiDotShN = wi.z;
+            if (wiDotShN * wiDotGeoN < 0) {
+                return 0;
+            }
         }
         
         float3 value = 0;
@@ -106,7 +109,7 @@ struct Material {
         if (lobeProbabilities[selectedLobe] < 1) {
             /// For MIS, we will need an accurate PDF and value of the entire material, not just the sampled lobe
             /// @todo the efficiency of this can probably be greatly improved by not re-evaluating the already sampled lobe
-            sample.weight = evaluate(wo, sample.wi, shNormal, geoNormal, sample.pdf);
+            sample.weight = evaluate<true>(wo, sample.wi, shNormal, geoNormal, sample.pdf);
             sample.weight /= sample.pdf;
         } else {
             sample.pdf *= alpha;
@@ -133,7 +136,7 @@ struct ThreadContext {
     float3 trueNormal;
     float3 tu, tv;
     float3 rnd;
-    float3 wo;
+    float3 wo; // pointing away from the hitpoint
     RayFlags rayFlags;
     
     Material material;
@@ -207,17 +210,19 @@ struct EnvmapSampling {
     }
 };
 
-struct AreaLight {
-    float3x4 transform;
-    float3 color;
-    bool isCircular;
-};
-
 struct NEESample {
+    bool canBeHit;
     float3 weight;
     float pdf;
     float3 direction;
     float distance;
+    
+    static NEESample invalid() {
+        NEESample result;
+        result.pdf = 0;
+        result.weight = 0;
+        return result;
+    }
 };
 
 struct Context;
@@ -227,7 +232,7 @@ struct NEESampling {
     
     int envmapShader [[ id(2) ]];
     EnvmapSampling envmap [[ id(3) ]];
-    device AreaLight *areaLights [[ id(6) ]];
+    device NEEAreaLight *neeAreaLights [[ id(6) ]];
     
     float envmapPdf(float3 wo) const device {
         const float envmapSelectionProbability = 1 / float(numLightsTotal);
@@ -235,16 +240,21 @@ struct NEESampling {
     }
     
     NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
-        const int sampledLightSource = prng.sampleInt(numLightsTotal);
-        const float lightSelectionProbability = 1 / float(numLightsTotal);
+        int sampledLightSource = prng.sampleInt(numLightsTotal);
+        NEESample result;
         if (sampledLightSource == 0) {
-            NEESample result = sampleEnvmap(ctx, tctx, prng);
-            result.pdf *= lightSelectionProbability;
-            return result;
+            result = sampleEnvmap(ctx, tctx, prng);
+            result.canBeHit = true;
+        } else if ((sampledLightSource -= 1) < numAreaLights) {
+            const device NEEAreaLight &light = neeAreaLights[sampledLightSource];
+            result = sampleAreaLights(ctx, tctx, prng, light);
+            result.canBeHit = false;
+        } else {
+            result = NEESample::invalid();
         }
         
-        NEESample result = sampleAreaLights(ctx, tctx, prng);
-        result.pdf *= lightSelectionProbability;
+        result.weight *= numLightsTotal;
+        result.pdf /= numLightsTotal;
         return result;
     }
     
@@ -259,17 +269,51 @@ private:
         ThreadContext neeTctx;
         neeTctx.rayFlags = tctx.rayFlags;
         neeTctx.rnd = prng.sample3d();
-        neeTctx.wo = sample.direction;
+        neeTctx.wo = -sample.direction;
         evaluateEnvironment(ctx, neeTctx);
         
         sample.weight = neeTctx.material.emission / sample.pdf;
         return sample;
     }
     
-    NEESample sampleAreaLights(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
+    void evaluateAreaLight(
+        device Context &ctx,
+        thread ThreadContext &tctx,
+        const device NEEAreaLight &light
+    ) const device {
+#ifdef JIT_COMPILED
+        const int shaderIndex = light.shaderIndex;
+        SWITCH_SHADERS
+#endif
+    }
+    
+    NEESample sampleAreaLights(
+        device Context &ctx,
+        thread ThreadContext &tctx,
+        thread PRNGState &prng,
+        const device NEEAreaLight &light
+    ) const device {
+        const float3 point = float4(prng.sample2d() - 0.5, 0, 1) * light.transform;
+        const float3 normal = normalize(float4(0, 0, 1, 0) * light.transform);
+        
         NEESample sample;
-        sample.weight = 0;
-        sample.pdf = 0;
+        sample.direction = point - tctx.position;
+        
+        const float lensqr = length_squared(sample.direction);
+        sample.distance = sqrt(lensqr);
+        
+        ThreadContext neeTctx;
+        neeTctx.rayFlags = tctx.rayFlags;
+        neeTctx.wo = -sample.direction;
+        neeTctx.position = point;
+        neeTctx.generated = point;
+        neeTctx.position = point;
+        evaluateAreaLight(ctx, neeTctx, light);
+        
+        const float G = saturate(dot(normal, sample.direction)) / lensqr;
+        sample.direction /= sample.distance;
+        sample.weight = light.color * neeTctx.material.emission * G / 2; /// @todo why this random division by 2???
+        sample.pdf = 1;
         return sample;
     }
 };

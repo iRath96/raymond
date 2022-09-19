@@ -606,13 +606,6 @@ struct Codegen {
         
         provideDefaults(forNode: &node, inInvocation: &invocation)
         
-        if node.kernel is OutputLightKernel {
-            /// Light materials behave differently in terms of texture coordinates
-            /// We emit a "preamble" node before emitting any other nodes to fix this
-            /// @todo avoid name clashes
-            invocations.append(.init(name: "Output Light Preamble", kernel: "OutputLightPreamble"))
-        }
-        
         for (key, value) in node.inputs.sorted(by: { $0.0 < $1.0 }) {
             if value.links == nil || value.links!.isEmpty {
                 if let v = value.value {

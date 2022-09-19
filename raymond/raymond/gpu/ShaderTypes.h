@@ -11,6 +11,7 @@ typedef packed_float3 MPSPackedFloat3;
 #import <Foundation/Foundation.h>
 typedef simd_float3 float3;
 typedef simd_float3x3 float3x3;
+typedef simd_float3x4 float3x4;
 typedef simd_float4x4 float4x4;
 typedef __fp16 half;
 typedef __attribute__((__ext_vector_type__(3))) half half3;
@@ -158,3 +159,10 @@ typedef struct {
 typedef uint32_t VertexIndex;
 typedef uint32_t PrimitiveIndex;
 typedef uint32_t MaterialIndex;
+
+struct NEEAreaLight {
+    int shaderIndex;
+    float3x4 transform;
+    float3 color;
+    bool isCircular;
+};
