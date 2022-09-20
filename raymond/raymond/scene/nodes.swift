@@ -94,6 +94,9 @@ struct TexSkyKernel: NodeKernel {
     }
 }
 
+/// @todo
+struct TexIESKernel: NodeKernel {}
+
 // MARK: - Color kernels
 
 struct ColorRampKernel: NodeKernel {
@@ -306,6 +309,7 @@ struct Node: Codable {
         "TEX_CHECKER":     TexCheckerKernel.self,
         "TEX_NOISE":       TexNoiseKernel.self,
         "TEX_SKY":         TexSkyKernel.self,
+        "TEX_IES":         TexIESKernel.self,
         
         // shader nodes
         "BSDF_PRINCIPLED":  BsdfPrincipledKernel.self,

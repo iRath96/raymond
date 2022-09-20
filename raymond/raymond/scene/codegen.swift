@@ -336,6 +336,9 @@ struct Codegen {
             return .init(kernel: "TexNoise", parameters: [
                 .enum("DIMENSION", kernel.dimension)
             ])
+        case is TexIESKernel:
+            warn("TexIES: not supported yet")
+            return .init(kernel: "TexIES")
         case let kernel as ColorRampKernel:
             let elementStrings = kernel.elements.map { element in
                 "\t{ \(element.position), { \(element.color.map { String($0) }.joined(separator: ", ")) } }"

@@ -321,6 +321,17 @@ private:
     }
 };
 
+struct TexIES {
+    float3 vector;
+    float strength;
+    float fac;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        /// @todo
+        fac = strength;
+    }
+};
+
 struct kTexEnvironment {
     enum Interpolation {
         INTERPOLATION_LINEAR
