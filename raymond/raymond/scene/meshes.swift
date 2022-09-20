@@ -214,7 +214,7 @@ struct MeshLoader {
         
         let (vertexBuffer, vertices)    = device.makeBufferAndPointer(type: Float.self, count: 3 * totalVertexCount)
         let (indexBuffer, indices)      = device.makeBufferAndPointer(type: UInt32.self, count: totalIndexCount)
-        let (normalBuffer, normals)     = device.makeBufferAndPointer(type: Float.self, count: totalVertexCount)
+        let (normalBuffer, normals)     = device.makeBufferAndPointer(type: Float.self, count: 3 * totalVertexCount)
         let (texCoordBuffer, texCoords) = device.makeBufferAndPointer(type: Float.self, count: 2 * totalVertexCount)
         let (materialBuffer, materials) = device.makeBufferAndPointer(type: UInt32.self, count: totalFaceCount)
         
