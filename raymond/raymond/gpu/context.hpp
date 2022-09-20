@@ -228,12 +228,14 @@ struct NEESampling {
     int numAreaLights [[ id(1) ]];
     int numPointLights [[ id(2) ]];
     int numSunLights [[ id(3) ]];
+    int numSpotLights [[ id(4) ]];
     
-    int envmapShader [[ id(4) ]];
-    EnvmapSampling envmap [[ id(5) ]];
-    device NEEAreaLight *neeAreaLights [[ id(8) ]];
-    device NEEPointLight *neePointLights [[ id(9) ]];
-    device NEESunLight *neeSunLights [[ id(10) ]];
+    int envmapShader [[ id(5) ]];
+    EnvmapSampling envmap [[ id(6) ]];
+    device NEEAreaLight *neeAreaLights [[ id(9) ]];
+    device NEEPointLight *neePointLights [[ id(10) ]];
+    device NEESunLight *neeSunLights [[ id(11) ]];
+    device NEESpotLight *neeSpotLights [[ id(12) ]];
     
     float envmapPdf(float3 wo) const device {
         const float envmapSelectionProbability = 1 / float(numLightsTotal);
@@ -254,6 +256,9 @@ struct NEESampling {
             result.canBeHit = false;
         } else if ((sampledLightSource -= numPointLights) < numSunLights) {
             result = neeSunLights[sampledLightSource].sample(ctx, tctx, prng);
+            result.canBeHit = false;
+        } else if ((sampledLightSource -= numSunLights) < numSpotLights) {
+            result = neeSpotLights[sampledLightSource].sample(ctx, tctx, prng);
             result.canBeHit = false;
         } else {
             result = NEESample::invalid();
@@ -399,6 +404,57 @@ NEESample NEESunLight::sample(
     runShader(ctx, neeTctx, shaderIndex);
     
     sample.weight = color * neeTctx.material.emission;
+    sample.pdf = 1;
+    return sample;
+}
+
+float spotLightAttenuation(float3 dir, float spotAngle, float spotSmooth, float3 N) {
+    float attenuation = dot(dir, N);
+    if (attenuation <= spotAngle) {
+        attenuation = 0.0f;
+    } else {
+        float t = attenuation - spotAngle;
+        if (t < spotSmooth && spotSmooth != 0.0f)
+            attenuation *= smoothstep(0, spotSmooth, t);
+    }
+
+    return attenuation;
+}
+
+NEESample NEESpotLight::sample(
+    device Context &ctx,
+    thread ThreadContext &tctx,
+    thread PRNGState &prng
+) const device {
+    const float3 lightN = normalize(tctx.position - location);
+    float3 point = location;
+    
+    if (radius > 0) {
+        float3x3 basis = buildOrthonormalBasis(lightN);
+        point += radius * (basis * float3(warp::uniformSquareToDisk(prng.sample2d()), 0));
+    }
+    
+    NEESample sample;
+    sample.direction = point - tctx.position;
+    
+    const float lensqr = length_squared(sample.direction);
+    sample.distance = sqrt(lensqr);
+    sample.direction /= sample.distance;
+    
+    ThreadContext neeTctx;
+    neeTctx.rayFlags = tctx.rayFlags;
+    neeTctx.wo = -sample.direction;
+    neeTctx.normal = -sample.direction;
+    neeTctx.trueNormal = -sample.direction;
+    neeTctx.position = point;
+    neeTctx.generated = point;
+    neeTctx.position = point;
+    neeTctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
+    runShader(ctx, neeTctx, shaderIndex);
+    
+    const float G = 1 / lensqr;
+    const float attenuation = spotLightAttenuation(direction, spotSize, spotBlend, sample.direction);
+    sample.weight = attenuation * color * neeTctx.material.emission * G * (M_1_PI_F * 0.25f);
     sample.pdf = 1;
     return sample;
 }
