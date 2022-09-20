@@ -5,7 +5,20 @@
 #include <metal_stdlib>
 using namespace metal;
 
+/// "Building an Orthonormal Basis, Revisited"
 float3x3 buildOrthonormalBasis(float3 n) {
+  const float sign = copysign(1.0f, n.z);
+  const float a = -1.0f / (sign + n.z);
+  const float b = n.x * n.y * a;
+  
+  float3x3 frame;
+  frame[0] = float3(1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x);
+  frame[1] = float3(b, sign + n.y * n.y * a, -n.y);
+  frame[2] = n;
+  return frame;
+}
+
+/*float3x3 buildOrthonormalBasis(float3 n) {
     float3x3 frame;
     frame[0] = (abs(n.y) < 0.9999f) ?
         normalize(cross(n, float3(0, 1, 0))) :
@@ -13,7 +26,7 @@ float3x3 buildOrthonormalBasis(float3 n) {
     frame[1] = cross(frame[0], n);
     frame[2] = n;
     return frame;
-}
+}*/
 
 float safe_sqrtf(float f) { return sqrt(max(f, 0.0f)); }
 float sqr(float f) { return f * f; }
