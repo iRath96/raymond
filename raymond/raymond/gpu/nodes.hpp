@@ -98,6 +98,7 @@ struct NewGeometry {
     float3 trueNormal;
     float3 tangent;
     float3 position;
+    float3 parametric;
     bool backfacing;
     
     void compute(device Context &ctx, ThreadContext tctx) {
@@ -105,6 +106,7 @@ struct NewGeometry {
         trueNormal = tctx.trueNormal;
         tangent = tctx.tu;
         position = tctx.position;
+        parametric = tctx.uv;
         backfacing = dot(tctx.wo, tctx.normal) < 0;
     }
 };

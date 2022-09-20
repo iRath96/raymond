@@ -144,13 +144,6 @@ struct ThreadContext {
     RayFlags rayFlags;
     
     Material material;
-    
-    void setupForWorldHit() {
-        normal = wo;
-        uv = 0;
-        generated = -wo;
-        object = -wo;
-    }
 };
 
 #ifndef JIT_COMPILED
@@ -291,7 +284,11 @@ struct Context {
 };
 
 void NEESampling::evaluateEnvironment(device Context &ctx, thread ThreadContext &tctx) const device {
-    tctx.setupForWorldHit();
+    tctx.normal = tctx.wo;
+    tctx.generated = -tctx.wo;
+    tctx.object = -tctx.wo;
+    tctx.uv = 0;
+    
     runShader(ctx, tctx, envmapShader);
 }
 
@@ -342,17 +339,20 @@ NEESample NEEPointLight::sample(
     
     const float lensqr = length_squared(sample.direction);
     sample.distance = sqrt(lensqr);
+    sample.direction /= sample.distance;
     
     ThreadContext neeTctx;
     neeTctx.rayFlags = tctx.rayFlags;
     neeTctx.wo = -sample.direction;
+    neeTctx.normal = -sample.direction;
+    neeTctx.trueNormal = -sample.direction;
     neeTctx.position = point;
     neeTctx.generated = point;
     neeTctx.position = point;
+    neeTctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
     runShader(ctx, neeTctx, shaderIndex);
     
     const float G = 1 / lensqr;
-    sample.direction /= sample.distance;
     sample.weight = color * neeTctx.material.emission * G * (M_1_PI_F * 0.25f);
     sample.pdf = 1;
     return sample;
