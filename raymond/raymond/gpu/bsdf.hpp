@@ -491,9 +491,15 @@ struct Transmission {
     float3 Cspec0;
     float ior;
     float weight = 0;
+    bool onlyRefract = false;
     
     float3 evaluate(float3 wo, float3 wi, thread float &pdf) {
         const bool isReflection = ShadingFrame::sameHemisphere(wi, wo);
+        if (onlyRefract && isReflection) {
+            pdf = 0;
+            return 0;
+        }
+        
         const float eta = ShadingFrame::cosTheta(wo) > 0 ? ior : 1 / ior;
         
         const float3 wh = isReflection ?
@@ -514,7 +520,7 @@ struct Transmission {
         }
         
         const float Gi = anisotropicSmithG1(wi, wh, alpha, alpha);
-        const float Fr = fresnelDielectricCos(ShadingFrame::cosTheta(wo), eta);
+        const float Fr = onlyRefract ? 0 : fresnelDielectricCos(ShadingFrame::cosTheta(wo), eta);
         if (isReflection) {
             pdf *= Fr;
             pdf *= 1 / abs(4 * dot(wo, wh));
@@ -533,7 +539,7 @@ struct Transmission {
         BSDFSample result;
         
         float eta = ShadingFrame::cosTheta(wo) > 0 ? ior : 1 / ior;
-        const float Fr = fresnelDielectricCos(ShadingFrame::cosTheta(wo), eta);
+        const float Fr = onlyRefract ? 0 : fresnelDielectricCos(ShadingFrame::cosTheta(wo), eta);
         const bool isReflection = rnd.x < Fr;
         
         const float alpha = isReflection ?

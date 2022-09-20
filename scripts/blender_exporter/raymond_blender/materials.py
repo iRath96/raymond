@@ -349,6 +349,10 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             result_node["parameters"] = {
                 "space": node.space
             }
+        elif isinstance(node, bpy.types.ShaderNodeValue):
+            result_node["parameters"] = {
+                "value": node.outputs[0].default_value
+            }
         elif isinstance(node, bpy.types.ShaderNodeTexNoise):
             result_node["parameters"] = {
                 "noise_dimensions": node.noise_dimensions

@@ -410,8 +410,9 @@ struct Codegen {
         case is AttributeKernel:
             warn("Attribute: not yet supported")
             return .init(kernel: "Attribute")
-        case is ValueKernel:
-            return .init(kernel: "Value")
+        case let kernel as ValueKernel:
+            var invocation: KernelInvocation = .init(kernel: "Value")
+            return invocation.assign(key: "value", value: .scalar(kernel.value))
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
         case let kernel as UVMapKernel:
@@ -465,7 +466,6 @@ struct Codegen {
         case is FresnelKernel:
             return .init(kernel: "Fresnel")
         case is LayerWeightKernel:
-            warn("LayerWeight: not yet supported")
             return .init(kernel: "LayerWeight")
         case is CombineVectorKernel:
             return .init(kernel: "CombineVector")

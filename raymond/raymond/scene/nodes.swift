@@ -224,7 +224,11 @@ struct VectorMathKernel: NodeKernel {
 
 // MARK: - Input kernels
 struct AttributeKernel: NodeKernel {}
-struct ValueKernel: NodeKernel {}
+
+struct ValueKernel: NodeKernel {
+    var value: Float
+}
+
 struct TexCoordKernel: NodeKernel {}
 struct LightPathKernel: NodeKernel {}
 struct NewGeometryKernel: NodeKernel {}

@@ -1156,18 +1156,32 @@ struct LayerWeight {
     float blend;
     float3 normal;
     
+    float fresnel;
     float facing;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        facing = dot(tctx.wo, tctx.normal) > 0;
+        const bool backfacing = dot(tctx.wo, normal) < 0;
+        
+        const float cosI = dot(tctx.wo, normal);
+        float eta = max(1 - blend, 1e-5);
+        eta = backfacing ? eta : 1 / eta;
+        
+        fresnel = fresnelDielectricCos(cosI, eta);
+        facing = abs(cosI);
+        
+        if (blend != 0.5) {
+            float b = clamp(blend, float(0), float(1 - 1e-5));
+            b = (b < 0.5) ? 2 * b : 0.5 / (1 - b);
+            facing = pow(facing, b);
+        }
+        
+        facing = 1 - facing;
     }
 };
 
 struct Value {
     float value;
-    void compute(device Context &ctx, ThreadContext tctx) {
-        value = 0.5;
-    }
+    void compute(device Context &ctx, ThreadContext tctx) {}
 };
 
 struct Attribute {
@@ -1217,11 +1231,12 @@ struct BsdfRefraction {
         const float r2 = square(roughness);
         bsdf.transmission = (Transmission){
             .reflectionAlpha = r2,
-            .transmissionAlpha = 1,
+            .transmissionAlpha = r2,
             .baseColor = color.xyz,
-            .Cspec0 = color.xyz,
+            .Cspec0 = 0,
             .ior = ior,
-            .weight = 1
+            .weight = 1,
+            .onlyRefract = true
         };
         bsdf.lobeProbabilities[2] = 1;
         bsdf.normal = normal;
