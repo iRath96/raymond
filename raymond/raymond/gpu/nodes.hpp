@@ -99,6 +99,7 @@ struct NewGeometry {
     float3 tangent;
     float3 position;
     float3 parametric; /// @todo apparently this is different to "Texture"."UV"
+    float3 incoming; /// @todo not tested
     bool backfacing;
     
     void compute(device Context &ctx, ThreadContext tctx) {
@@ -107,6 +108,7 @@ struct NewGeometry {
         tangent = tctx.tu;
         position = tctx.position;
         parametric = tctx.uv;
+        incoming = tctx.wo;
         backfacing = dot(tctx.wo, tctx.normal) < 0;
     }
 };
@@ -329,6 +331,19 @@ struct TexIES {
     void compute(device Context &ctx, ThreadContext tctx) {
         /// @todo
         fac = strength;
+    }
+};
+
+struct TexMagic {
+    float distortion;
+    float scale;
+    float3 vector;
+    
+    float4 color;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        /// @todo
+        color = 1;
     }
 };
 
@@ -614,6 +629,7 @@ struct kMath {
         OPERATION_MULTIPLY,
         OPERATION_DIVIDE,
         OPERATION_MULTIPLY_ADD,
+        OPERATION_POWER,
         OPERATION_MINIMUM,
         OPERATION_MAXIMUM,
         OPERATION_TANGENT
@@ -641,6 +657,9 @@ struct Math {
             value = safe_divide(value, value_001); break;
         case kMath::OPERATION_MULTIPLY_ADD:
             value = value * value_001 + value_002; break;
+        case kMath::OPERATION_POWER:
+            /// @todo verify
+            value = pow(value, value_001); break;
         case kMath::OPERATION_MINIMUM:
             /// @todo verify
             value = min(value, value_001); break;
@@ -660,7 +679,8 @@ struct Math {
 
 struct kSeparateColor {
     enum Mode {
-        MODE_RGB
+        MODE_RGB,
+        MODE_HSV
     };
 };
 
@@ -674,9 +694,23 @@ struct SeparateColor {
     float blue;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        red = color.x;
-        green = color.y;
-        blue = color.z;
+        switch (Mode) {
+        case kSeparateColor::MODE_RGB: {
+            red = color.x;
+            green = color.y;
+            blue = color.z;
+            break;
+        }
+        
+        case kSeparateColor::MODE_HSV: {
+            /// @todo verify
+            float3 hsv = rgb2hsv(color.xyz);
+            red = hsv.x;
+            green = hsv.y;
+            blue = hsv.z;
+            break;
+        }
+        }
     }
 };
 
@@ -748,6 +782,7 @@ struct kColorMix {
         BLEND_TYPE_ADD,
         BLEND_TYPE_MULTIPLY,
         BLEND_TYPE_SCREEN,
+        BLEND_TYPE_OVERLAY,
         BLEND_TYPE_SUB,
         BLEND_TYPE_COLOR,
         BLEND_TYPE_LIGHTEN,
@@ -778,6 +813,18 @@ struct ColorMix {
             color = color1 * lerp(float4(1), color2, fac); break;
         case kColorMix::BLEND_TYPE_SCREEN:
             color = 1 - (1 - fac * color1) * (1 - color1); break;
+        case kColorMix::BLEND_TYPE_OVERLAY: {
+            color = color1;
+            
+            for (int dim = 0; dim < 3; dim++) {
+                if (color[dim] < 0.5)
+                    color[dim] *= 1 - fac + 2 * fac * color2[dim];
+                else
+                    color[dim] = 1 - (1 - fac + 2 * fac * (1 - color2[dim])) * (1 - color[dim]);
+            }
+            
+            break;
+        }
         case kColorMix::BLEND_TYPE_COLOR: {
             color = color1;
             float3 hsv2 = rgb2hsv(color2.xyz);
@@ -1102,6 +1149,82 @@ struct BsdfPrincipled {
         bsdf.alpha = alpha;
         bsdf.normal = normal;
         bsdf.emission = alpha * emission.xyz * emissionStrength;
+    }
+};
+
+struct LayerWeight {
+    float blend;
+    float3 normal;
+    
+    float facing;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        facing = dot(tctx.wo, tctx.normal) > 0;
+    }
+};
+
+struct Value {
+    float value;
+    void compute(device Context &ctx, ThreadContext tctx) {
+        value = 0.5;
+    }
+};
+
+struct Attribute {
+    float3 vector;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        vector = tctx.generated;
+    }
+};
+
+struct BsdfAnisotropic {
+    float anisotropy;
+    float4 color;
+    float3 normal;
+    float rotation;
+    float3 tangent;
+    float roughness;
+    float weight;
+    
+    Material bsdf;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        const float alpha = square(max(roughness, 1e-4));
+        bsdf.specular = (Specular){
+            .alphaX = alpha,
+            .alphaY = alpha,
+            .Cspec0 = color.xyz,
+            .ior = 1.45,
+            .weight = 1
+        };
+        
+        bsdf.lobeProbabilities[1] = 1;
+        bsdf.normal = normal;
+    }
+};
+
+struct BsdfRefraction {
+    float4 color;
+    float ior;
+    float3 normal;
+    float roughness;
+    float weight;
+    
+    Material bsdf;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        const float r2 = square(roughness);
+        bsdf.transmission = (Transmission){
+            .reflectionAlpha = r2,
+            .transmissionAlpha = 1,
+            .baseColor = color.xyz,
+            .Cspec0 = color.xyz,
+            .ior = ior,
+            .weight = 1
+        };
+        bsdf.lobeProbabilities[2] = 1;
+        bsdf.normal = normal;
     }
 };
 

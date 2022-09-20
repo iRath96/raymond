@@ -339,6 +339,9 @@ struct Codegen {
         case is TexIESKernel:
             warn("TexIES: not supported yet")
             return .init(kernel: "TexIES")
+        case is TexMagicKernel:
+            warn("TexMagic: not supported yet")
+            return .init(kernel: "TexMagic")
         case let kernel as ColorRampKernel:
             let elementStrings = kernel.elements.map { element in
                 "\t{ \(element.position), { \(element.color.map { String($0) }.joined(separator: ", ")) } }"
@@ -396,7 +399,7 @@ struct Codegen {
             warn("BsdfTranslucent: not implemented")
             return .init(kernel: "BsdfTranslucent")
         case is BumpKernel:
-            warn("Bump: bump mapping not supported")
+            warn("Bump: not yet supported")
             return .init(kernel: "Bump")
         case is OutputMaterialKernel:
             return .init(kernel: "OutputMaterial")
@@ -404,6 +407,11 @@ struct Codegen {
             return .init(kernel: "OutputWorld")
         case is OutputLightKernel:
             return .init(kernel: "OutputLight")
+        case is AttributeKernel:
+            warn("Attribute: not yet supported")
+            return .init(kernel: "Attribute")
+        case is ValueKernel:
+            return .init(kernel: "Value")
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
         case let kernel as UVMapKernel:
@@ -416,6 +424,12 @@ struct Codegen {
             return .init(kernel: "ColorInvert")
         case is BsdfTransparentKernel:
             return .init(kernel: "BsdfTransparent")
+        case is BsdfRefractionKernel:
+            warn("BsdfRefraction: not yet supported")
+            return .init(kernel: "BsdfRefraction")
+        case is BsdfAnisotropicKernel:
+            warn("BsdfAnisotropic: not yet supported")
+            return .init(kernel: "BsdfAnisotropic")
         case is AddShaderKernel:
             return .init(kernel: "AddShader")
         case is MixShaderKernel:
@@ -450,6 +464,9 @@ struct Codegen {
             return .init(kernel: "ColorCurves")
         case is FresnelKernel:
             return .init(kernel: "Fresnel")
+        case is LayerWeightKernel:
+            warn("LayerWeight: not yet supported")
+            return .init(kernel: "LayerWeight")
         case is CombineVectorKernel:
             return .init(kernel: "CombineVector")
         case is SeparateVectorKernel:
@@ -583,11 +600,14 @@ struct Codegen {
         case is TexCheckerKernel, is TexNoiseKernel, is TexEnvironmentKernel:
             provideDefault(name: "Vector", value: generatedUV)
         case is FresnelKernel,
+             is LayerWeightKernel,
              is BsdfGlassKernel,
              is BsdfGlossyKernel,
              is BsdfDiffuseKernel,
              is BsdfPrincipledKernel,
              is BsdfTranslucentKernel,
+             is BsdfRefractionKernel,
+             is BsdfAnisotropicKernel,
              is BumpKernel:
             provideDefault(name: "Normal", value: normal)
         default: break
