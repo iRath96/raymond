@@ -245,24 +245,34 @@ struct NEESampling {
     NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
         int sampledLightSource = prng.sampleInt(numLightsTotal);
         NEESample result;
+        
+        ThreadContext neeTctx;
+        neeTctx.rayFlags = tctx.rayFlags;
+        neeTctx.position = tctx.position;
+        
+        int shaderIndex;
         if (sampledLightSource == 0) {
-            result = sampleEnvmap(ctx, tctx, prng);
+            result = sampleEnvmap(ctx, neeTctx, prng, shaderIndex);
             result.canBeHit = true;
         } else if ((sampledLightSource -= 1) < numAreaLights) {
-            result = neeAreaLights[sampledLightSource].sample(ctx, tctx, prng);
+            result = neeAreaLights[sampledLightSource].sample(ctx, neeTctx, prng, shaderIndex);
             result.canBeHit = false;
         } else if ((sampledLightSource -= numAreaLights) < numPointLights) {
-            result = neePointLights[sampledLightSource].sample(ctx, tctx, prng);
+            result = neePointLights[sampledLightSource].sample(ctx, neeTctx, prng, shaderIndex);
             result.canBeHit = false;
         } else if ((sampledLightSource -= numPointLights) < numSunLights) {
-            result = neeSunLights[sampledLightSource].sample(ctx, tctx, prng);
+            result = neeSunLights[sampledLightSource].sample(ctx, neeTctx, prng, shaderIndex);
             result.canBeHit = false;
         } else if ((sampledLightSource -= numSunLights) < numSpotLights) {
-            result = neeSpotLights[sampledLightSource].sample(ctx, tctx, prng);
+            result = neeSpotLights[sampledLightSource].sample(ctx, neeTctx, prng, shaderIndex);
             result.canBeHit = false;
         } else {
-            result = NEESample::invalid();
+            return NEESample::invalid();
         }
+        
+        neeTctx.wo = -result.direction;
+        runShader(ctx, neeTctx, shaderIndex);
+        result.weight *= neeTctx.material.emission;
         
         result.weight *= numLightsTotal;
         result.pdf /= numLightsTotal;
@@ -272,18 +282,20 @@ struct NEESampling {
     void evaluateEnvironment(device Context &ctx, thread ThreadContext &tctx) const device;
 
 private:
-    NEESample sampleEnvmap(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
+    NEESample sampleEnvmap(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng, thread int &shaderIndex) const device {
         NEESample sample;
         sample.direction = envmap.sample(prng.sample2d(), sample.pdf);
         sample.distance = INFINITY;
         
-        ThreadContext neeTctx;
-        neeTctx.rayFlags = tctx.rayFlags;
-        neeTctx.rnd = prng.sample3d();
-        neeTctx.wo = -sample.direction;
-        evaluateEnvironment(ctx, neeTctx);
+        tctx.position = -sample.direction;
+        tctx.normal = -sample.direction;
+        tctx.trueNormal = -sample.direction; /// @todo ???
+        tctx.generated = sample.direction;
+        tctx.object = sample.direction;
+        tctx.uv = 0;
+        shaderIndex = envmapShader;
         
-        sample.weight = neeTctx.material.emission / sample.pdf;
+        sample.weight = 1 / sample.pdf;
         return sample;
     }
 };
@@ -307,7 +319,8 @@ void NEESampling::evaluateEnvironment(device Context &ctx, thread ThreadContext 
 NEESample NEEAreaLight::sample(
     device Context &ctx,
     thread ThreadContext &tctx,
-    thread PRNGState &prng
+    thread PRNGState &prng,
+    thread int &shaderIndex
 ) const device {
     const float2 uv = prng.sample2d();
     const float3 point = float4(uv - 0.5, 0, 1) * transform;
@@ -319,20 +332,17 @@ NEESample NEEAreaLight::sample(
     const float lensqr = length_squared(sample.direction);
     sample.distance = sqrt(lensqr);
     
-    ThreadContext neeTctx;
-    neeTctx.rayFlags = tctx.rayFlags;
-    neeTctx.wo = -sample.direction;
-    neeTctx.normal = -normal;
-    neeTctx.trueNormal = -normal;
-    neeTctx.position = point;
-    neeTctx.generated = point;
-    neeTctx.position = point;
-    neeTctx.uv = float3(uv, 0);
-    runShader(ctx, neeTctx, shaderIndex);
+    tctx.normal = -normal;
+    tctx.trueNormal = -normal;
+    tctx.position = point;
+    tctx.generated = point;
+    tctx.position = point;
+    tctx.uv = float3(uv, 0);
+    shaderIndex = this->shaderIndex;
     
     const float G = saturate(dot(normal, sample.direction)) / lensqr;
     sample.direction /= sample.distance;
-    sample.weight = color * neeTctx.material.emission * G * 0.25f;
+    sample.weight = color * G * 0.25f;
     sample.pdf = 1;
     return sample;
 }
@@ -340,7 +350,8 @@ NEESample NEEAreaLight::sample(
 NEESample NEEPointLight::sample(
     device Context &ctx,
     thread ThreadContext &tctx,
-    thread PRNGState &prng
+    thread PRNGState &prng,
+    thread int &shaderIndex
 ) const device {
     const float3 lightN = normalize(tctx.position - location);
     float3 point = location;
@@ -357,19 +368,16 @@ NEESample NEEPointLight::sample(
     sample.distance = sqrt(lensqr);
     sample.direction /= sample.distance;
     
-    ThreadContext neeTctx;
-    neeTctx.rayFlags = tctx.rayFlags;
-    neeTctx.wo = -sample.direction;
-    neeTctx.normal = -sample.direction;
-    neeTctx.trueNormal = -sample.direction;
-    neeTctx.position = point;
-    neeTctx.generated = point;
-    neeTctx.position = point;
-    neeTctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
-    runShader(ctx, neeTctx, shaderIndex);
+    tctx.normal = -sample.direction;
+    tctx.trueNormal = -sample.direction;
+    tctx.position = point;
+    tctx.generated = point;
+    tctx.position = point;
+    tctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
+    shaderIndex = this->shaderIndex;
     
     const float G = 1 / lensqr;
-    sample.weight = color * neeTctx.material.emission * G * (M_1_PI_F * 0.25f);
+    sample.weight = color * G * (M_1_PI_F * 0.25f);
     sample.pdf = 1;
     return sample;
 }
@@ -377,7 +385,8 @@ NEESample NEEPointLight::sample(
 NEESample NEESunLight::sample(
     device Context &ctx,
     thread ThreadContext &tctx,
-    thread PRNGState &prng
+    thread PRNGState &prng,
+    thread int &shaderIndex
 ) const device {
     const float2 rnd = prng.sample2d();
     const float cosTheta = 1 - rnd.y * (1 - cosAngle);
@@ -392,18 +401,15 @@ NEESample NEESunLight::sample(
     sample.direction = point;
     sample.distance = INFINITY;
     
-    ThreadContext neeTctx;
-    neeTctx.rayFlags = tctx.rayFlags;
-    neeTctx.wo = -sample.direction;
-    neeTctx.normal = -sample.direction;
-    neeTctx.trueNormal = -sample.direction;
-    neeTctx.position = -sample.direction;
-    neeTctx.generated = -sample.direction;
-    neeTctx.position = -sample.direction;
-    neeTctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
-    runShader(ctx, neeTctx, shaderIndex);
+    tctx.normal = -sample.direction;
+    tctx.trueNormal = -sample.direction;
+    tctx.position = -sample.direction;
+    tctx.generated = -sample.direction;
+    tctx.position = -sample.direction;
+    tctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
+    shaderIndex = this->shaderIndex;
     
-    sample.weight = color * neeTctx.material.emission;
+    sample.weight = color;
     sample.pdf = 1;
     return sample;
 }
@@ -424,7 +430,8 @@ float spotLightAttenuation(float3 dir, float spotAngle, float spotSmooth, float3
 NEESample NEESpotLight::sample(
     device Context &ctx,
     thread ThreadContext &tctx,
-    thread PRNGState &prng
+    thread PRNGState &prng,
+    thread int &shaderIndex
 ) const device {
     const float3 lightN = normalize(tctx.position - location);
     float3 point = location;
@@ -441,20 +448,17 @@ NEESample NEESpotLight::sample(
     sample.distance = sqrt(lensqr);
     sample.direction /= sample.distance;
     
-    ThreadContext neeTctx;
-    neeTctx.rayFlags = tctx.rayFlags;
-    neeTctx.wo = -sample.direction;
-    neeTctx.normal = -sample.direction;
-    neeTctx.trueNormal = -sample.direction;
-    neeTctx.position = point;
-    neeTctx.generated = point;
-    neeTctx.position = point;
-    neeTctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
-    runShader(ctx, neeTctx, shaderIndex);
+    tctx.normal = -sample.direction;
+    tctx.trueNormal = -sample.direction;
+    tctx.position = point;
+    tctx.generated = point;
+    tctx.position = point;
+    tctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
+    shaderIndex = this->shaderIndex;
     
     const float G = 1 / lensqr;
     const float attenuation = spotLightAttenuation(direction, spotSize, spotBlend, sample.direction);
-    sample.weight = attenuation * color * neeTctx.material.emission * G * (M_1_PI_F * 0.25f);
+    sample.weight = attenuation * color * G * (M_1_PI_F * 0.25f);
     sample.pdf = 1;
     return sample;
 }

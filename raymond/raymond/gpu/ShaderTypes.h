@@ -171,7 +171,7 @@ struct NEEAreaLight {
     bool isCircular;
     
 #ifdef __METAL_VERSION__
-    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng, thread int &shaderIndex) const device;
 #endif
 };
 
@@ -183,7 +183,7 @@ struct NEEPointLight {
     float3 color;
 
 #ifdef __METAL_VERSION__
-    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng, thread int &shaderIndex) const device;
 #endif
 };
 
@@ -194,7 +194,7 @@ struct NEESunLight {
     float3 color;
     
 #ifdef __METAL_VERSION__
-    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng, thread int &shaderIndex) const device;
 #endif
 };
 
@@ -208,6 +208,6 @@ struct NEESpotLight {
     float spotBlend;
     
 #ifdef __METAL_VERSION__
-    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng, thread int &shaderIndex) const device;
 #endif
 };
