@@ -6,6 +6,18 @@ extension MTLArgumentEncoder {
     }
 }
 
+extension MTLDevice {
+    func makeBuffer<T>(type: T.Type, count: Int, options: MTLResourceOptions = []) -> MTLBuffer? {
+        return makeBuffer(length: max(count, 1) * MemoryLayout<T>.stride, options: options)
+    }
+    
+    func makeBufferAndPointer<T>(type: T.Type, count: Int, options: MTLResourceOptions = []) -> (MTLBuffer, UnsafeMutablePointer<T>) {
+        let buffer = makeBuffer(length: max(count, 1) * MemoryLayout<T>.stride, options: options)!
+        let pointer = buffer.contents().assumingMemoryBound(to: type)
+        return (buffer, pointer)
+    }
+}
+
 extension MTLBuffer {
     func saveBinary(at url: URL) throws {
         let data = Data(bytesNoCopy: contents(), count: length, deallocator: .none)

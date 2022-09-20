@@ -249,8 +249,8 @@ struct SceneLoader {
         NSLog("Building environment map of size \(resolution)^2")
         
         let device = library.device
-        let mipmapBuffer = device.makeBuffer(length: mipmapSize * MemoryLayout<Float>.stride)!
-        let pdfBuffer = device.makeBuffer(length: resolution * resolution * MemoryLayout<Float>.stride)!
+        let mipmapBuffer = device.makeBuffer(type: Float.self, count: mipmapSize)!
+        let pdfBuffer = device.makeBuffer(type: Float.self, count: resolution * resolution)!
         
         let queue = device.makeCommandQueue()!
         let commandBuffer = queue.makeCommandBuffer()!
@@ -329,7 +329,7 @@ struct SceneLoader {
         let device = library.device
         let sampleGridResolution = 1024
         let histogramResolution = 256 /// @todo hardcoded
-        let histogramBuffer = device.makeBuffer(length: histogramResolution * histogramResolution * MemoryLayout<Float>.stride)!
+        let histogramBuffer = device.makeBuffer(type: Float.self, count: histogramResolution * histogramResolution)!
         
         let queue = device.makeCommandQueue()!
         let commandBuffer = queue.makeCommandBuffer()!
@@ -375,8 +375,7 @@ struct SceneLoader {
     ) throws -> (Int, MTLBuffer) {
         let lights = scene.lights.values.lazy.filter { $0.kernel is AreaLight }
         let count = lights.count
-        let buffer = device.makeBuffer(length: max(count, 1) * MemoryLayout<NEEAreaLight>.stride)!
-        var ptr = buffer.contents().assumingMemoryBound(to: NEEAreaLight.self)
+        var (buffer, ptr) = device.makeBufferAndPointer(type: NEEAreaLight.self, count: count)
         
         for light in lights {
             let kernel = light.kernel as! AreaLight
@@ -399,8 +398,7 @@ struct SceneLoader {
     ) throws -> (Int, MTLBuffer) {
         let lights = scene.lights.values.lazy.filter { $0.kernel is PointLight }
         let count = lights.count
-        let buffer = device.makeBuffer(length: max(count, 1) * MemoryLayout<NEEPointLight>.stride)!
-        var ptr = buffer.contents().assumingMemoryBound(to: NEEPointLight.self)
+        var (buffer, ptr) = device.makeBufferAndPointer(type: NEEPointLight.self, count: count)
         
         for light in lights {
             let kernel = light.kernel as! PointLight
@@ -505,8 +503,7 @@ struct SceneLoader {
             }
         }
         
-        let instanceBuffer = device.makeBuffer(
-            length: MemoryLayout<PerInstanceData>.stride * Int(instancing.instanceCount))!
+        let instanceBuffer = device.makeBuffer(type: PerInstanceData.self, count: Int(instancing.instanceCount))!
         instanceBuffer.label = "Per instance data"
         let instances = instanceBuffer.contents().assumingMemoryBound(to: PerInstanceData.self)
         for index in 0..<Int(instancing.instanceCount) {
