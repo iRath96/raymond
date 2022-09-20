@@ -297,7 +297,8 @@ NEESample NEEAreaLight::sample(
     thread ThreadContext &tctx,
     thread PRNGState &prng
 ) const device {
-    const float3 point = float4(prng.sample2d() - 0.5, 0, 1) * transform;
+    const float2 uv = prng.sample2d();
+    const float3 point = float4(uv - 0.5, 0, 1) * transform;
     const float3 normal = normalize(float4(0, 0, 1, 0) * transform);
     
     NEESample sample;
@@ -309,9 +310,12 @@ NEESample NEEAreaLight::sample(
     ThreadContext neeTctx;
     neeTctx.rayFlags = tctx.rayFlags;
     neeTctx.wo = -sample.direction;
+    neeTctx.normal = -normal;
+    neeTctx.trueNormal = -normal;
     neeTctx.position = point;
     neeTctx.generated = point;
     neeTctx.position = point;
+    neeTctx.uv = float3(uv, 0);
     runShader(ctx, neeTctx, shaderIndex);
     
     const float G = saturate(dot(normal, sample.direction)) / lensqr;

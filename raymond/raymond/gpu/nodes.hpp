@@ -98,7 +98,7 @@ struct NewGeometry {
     float3 trueNormal;
     float3 tangent;
     float3 position;
-    float3 parametric;
+    float3 parametric; /// @todo apparently this is different to "Texture"."UV"
     bool backfacing;
     
     void compute(device Context &ctx, ThreadContext tctx) {
