@@ -313,7 +313,7 @@ struct SceneLoader {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
         
-        let envmapOffset = 4 /// @todo hardcoded!
+        let envmapOffset = 5 /// @todo hardcoded!
         contextEncoder.set(at: envmapOffset + 0, resolution)
         contextEncoder.setBuffer(pdfBuffer, offset: 0, index: envmapOffset + 1)
         contextEncoder.setBuffer(mipmapBuffer, offset: 0, index: envmapOffset + 2)
@@ -414,6 +414,29 @@ struct SceneLoader {
         return (count, buffer)
     }
     
+    private func makeSunLights(
+        device: MTLDevice,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> (Int, MTLBuffer) {
+        let lights = scene.lights.values.lazy.filter { $0.kernel is SunLight }
+        let count = lights.count
+        var (buffer, ptr) = device.makeBufferAndPointer(type: NEESunLight.self, count: count)
+        
+        for light in lights {
+            let kernel = light.kernel as! SunLight
+            ptr.initialize(to: .init(
+                shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+                direction: normalize(kernel.direction),
+                cosAngle: cos(kernel.angle / 2),
+                color: kernel.color * kernel.power
+            ))
+            ptr = ptr.advanced(by: 1)
+        }
+        
+        return (count, buffer)
+    }
+    
     func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
         let sceneDescription = try SceneDescriptionLoader().makeSceneDescription(fromURL: url)
         
@@ -446,6 +469,7 @@ struct SceneLoader {
         let worldShaderIndex = try makeWorldShader(scene: sceneDescription, codegen: &codegen)
         let (areaLightCount, areaLightBuffer) = try makeAreaLights(device: device, scene: sceneDescription, codegen: &codegen)
         let (pointLightCount, pointLightBuffer) = try makePointLights(device: device, scene: sceneDescription, codegen: &codegen)
+        let (sunLightCount, sunLightBuffer) = try makeSunLights(device: device, scene: sceneDescription, codegen: &codegen)
         
         NSLog("compiling shaders")
         let library = try codegen.build()
@@ -528,7 +552,7 @@ struct SceneLoader {
         argumentEncoder.setArgumentBuffer(contextBuffer, offset: 0)
 
         var resourcesRead: [MTLResource] = []
-        let textureOffset = 10
+        let textureOffset = 20
         for (index, texture) in codegen.textures.enumerated() {
             argumentEncoder.setTexture(texture, index: textureOffset + index)
             resourcesRead.append(texture)
@@ -558,12 +582,14 @@ struct SceneLoader {
         // MARK: next event
         
         let neeOffset = 0 /// @todo hardcoded!
-        argumentEncoder.set(at: neeOffset + 0, 1 + areaLightCount + pointLightCount)
+        argumentEncoder.set(at: neeOffset + 0, 1 + areaLightCount + pointLightCount + sunLightCount)
         argumentEncoder.set(at: neeOffset + 1, areaLightCount)
         argumentEncoder.set(at: neeOffset + 2, pointLightCount)
-        argumentEncoder.set(at: neeOffset + 3, worldShaderIndex)
-        argumentEncoder.setBuffer(areaLightBuffer, offset: 0, index: neeOffset + 7)
-        argumentEncoder.setBuffer(pointLightBuffer, offset: 0, index: neeOffset + 8)
+        argumentEncoder.set(at: neeOffset + 3, sunLightCount)
+        argumentEncoder.set(at: neeOffset + 4, worldShaderIndex)
+        argumentEncoder.setBuffer(areaLightBuffer, offset: 0, index: neeOffset + 8)
+        argumentEncoder.setBuffer(pointLightBuffer, offset: 0, index: neeOffset + 9)
+        argumentEncoder.setBuffer(sunLightBuffer, offset: 0, index: neeOffset + 10)
         
         NSLog("preparing environmap sampling")
         try prepareEnvironmentMapSampling(

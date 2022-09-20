@@ -227,11 +227,13 @@ struct NEESampling {
     int numLightsTotal [[ id(0) ]];
     int numAreaLights [[ id(1) ]];
     int numPointLights [[ id(2) ]];
+    int numSunLights [[ id(3) ]];
     
-    int envmapShader [[ id(3) ]];
-    EnvmapSampling envmap [[ id(4) ]];
-    device NEEAreaLight *neeAreaLights [[ id(7) ]];
-    device NEEPointLight *neePointLights [[ id(8) ]];
+    int envmapShader [[ id(4) ]];
+    EnvmapSampling envmap [[ id(5) ]];
+    device NEEAreaLight *neeAreaLights [[ id(8) ]];
+    device NEEPointLight *neePointLights [[ id(9) ]];
+    device NEESunLight *neeSunLights [[ id(10) ]];
     
     float envmapPdf(float3 wo) const device {
         const float envmapSelectionProbability = 1 / float(numLightsTotal);
@@ -249,6 +251,9 @@ struct NEESampling {
             result.canBeHit = false;
         } else if ((sampledLightSource -= numAreaLights) < numPointLights) {
             result = neePointLights[sampledLightSource].sample(ctx, tctx, prng);
+            result.canBeHit = false;
+        } else if ((sampledLightSource -= numPointLights) < numSunLights) {
+            result = neeSunLights[sampledLightSource].sample(ctx, tctx, prng);
             result.canBeHit = false;
         } else {
             result = NEESample::invalid();
@@ -280,11 +285,13 @@ private:
 
 struct Context {
     NEESampling nee [[ id(0) ]];
-    array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[ id(10) ]];
+    array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[ id(20) ]];
 };
 
 void NEESampling::evaluateEnvironment(device Context &ctx, thread ThreadContext &tctx) const device {
+    tctx.position = tctx.wo;
     tctx.normal = tctx.wo;
+    tctx.trueNormal = tctx.wo; /// @todo ???
     tctx.generated = -tctx.wo;
     tctx.object = -tctx.wo;
     tctx.uv = 0;
@@ -358,6 +365,40 @@ NEESample NEEPointLight::sample(
     
     const float G = 1 / lensqr;
     sample.weight = color * neeTctx.material.emission * G * (M_1_PI_F * 0.25f);
+    sample.pdf = 1;
+    return sample;
+}
+
+NEESample NEESunLight::sample(
+    device Context &ctx,
+    thread ThreadContext &tctx,
+    thread PRNGState &prng
+) const device {
+    const float2 rnd = prng.sample2d();
+    const float cosTheta = 1 - rnd.y * (1 - cosAngle);
+    const float sinTheta = sqrt(saturate(1 - cosTheta * cosTheta));
+    float cosPhi;
+    float sinPhi = sincos(2 * M_PI_F * rnd.x, cosPhi);
+    
+    const float3x3 frame = buildOrthonormalBasis(direction);
+    const float3 point = frame * float3(sinTheta * sinPhi, sinTheta * cosPhi, cosTheta);
+
+    NEESample sample;
+    sample.direction = point;
+    sample.distance = INFINITY;
+    
+    ThreadContext neeTctx;
+    neeTctx.rayFlags = tctx.rayFlags;
+    neeTctx.wo = -sample.direction;
+    neeTctx.normal = -sample.direction;
+    neeTctx.trueNormal = -sample.direction;
+    neeTctx.position = -sample.direction;
+    neeTctx.generated = -sample.direction;
+    neeTctx.position = -sample.direction;
+    neeTctx.uv = float3(warp::uniformSphereToSquare(-sample.direction), 0);
+    runShader(ctx, neeTctx, shaderIndex);
+    
+    sample.weight = color * neeTctx.material.emission;
     sample.pdf = 1;
     return sample;
 }

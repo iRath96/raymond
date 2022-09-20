@@ -186,3 +186,14 @@ struct NEEPointLight {
     NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
 #endif
 };
+
+struct NEESunLight {
+    int shaderIndex;
+    float3 direction;
+    float cosAngle;
+    float3 color;
+    
+#ifdef __METAL_VERSION__
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+#endif
+};

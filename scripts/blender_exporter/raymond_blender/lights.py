@@ -74,7 +74,7 @@ def _export_spot_light(registry: SceneRegistry, light: bpy.types.SpotLight, inst
         **_export_light(registry, light, inst, "SPOT"),
         "parameters": {
             "location": list(inst.object.location),
-            "direction": list(inst.matrix_world[2]),
+            "direction": [ inst.matrix_world[i][2] for i in range(3) ],
             "power": light.energy,
             "color": list(light.color),
             "radius": light.shadow_soft_size,
@@ -88,7 +88,7 @@ def _export_sun_light(registry: SceneRegistry, light: bpy.types.SunLight, inst: 
     registry.lights.force_export(light, {
         **_export_light(registry, light, inst, "SUN"),
         "parameters": {
-            "direction": list(inst.matrix_world[2]),
+            "direction": [ inst.matrix_world[i][2] for i in range(3) ],
             "power": light.energy,
             "color": list(light.color),
             "angle": light.angle,
