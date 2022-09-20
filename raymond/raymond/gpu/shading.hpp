@@ -197,20 +197,31 @@ kernel void handleIntersections(
         float bsdfPdf;
         float3 bsdf = tctx.material.evaluate(tctx.wo, neeSample.direction, shNormal, tctx.trueNormal, bsdfPdf);
         
-        const float misWeight = uniforms.samplingMode == SamplingModeNee || !neeSample.canBeHit ? 1 :
-            computeMisWeight(neeSample.pdf, bsdfPdf);
-        
-        const float3 neeWeight = misWeight * (neeSample.weight * bsdf * ray.weight);
-        if (all(isfinite(neeWeight)) && any(neeWeight != 0)) {
-            uint nextShadowRayIndex = atomic_fetch_add_explicit(&shadowRayCount, 1, memory_order_relaxed);
-            device ShadowRay &shadowRay = shadowRays[nextShadowRayIndex];
-            shadowRay.origin = tctx.position;
-            shadowRay.direction = neeSample.direction;
-            shadowRay.minDistance = eps;
-            shadowRay.maxDistance = neeSample.distance;
-            shadowRay.weight = neeWeight;
-            shadowRay.x = ray.x;
-            shadowRay.y = ray.y;
+        float3 contribution = neeSample.weight * bsdf * ray.weight;
+        if (neeSample.usesVisibility) {
+            const float misWeight = uniforms.samplingMode == SamplingModeNee || !neeSample.canBeHit ? 1 :
+                computeMisWeight(neeSample.pdf, bsdfPdf);
+            
+            const float3 neeWeight = misWeight * contribution;
+            if (all(isfinite(neeWeight)) && any(neeWeight != 0)) {
+                uint nextShadowRayIndex = atomic_fetch_add_explicit(&shadowRayCount, 1, memory_order_relaxed);
+                device ShadowRay &shadowRay = shadowRays[nextShadowRayIndex];
+                shadowRay.origin = tctx.position;
+                shadowRay.direction = neeSample.direction;
+                shadowRay.minDistance = eps;
+                shadowRay.maxDistance = neeSample.distance;
+                shadowRay.weight = neeWeight;
+                shadowRay.x = ray.x;
+                shadowRay.y = ray.y;
+            }
+        } else {
+            uint2 coordinates = uint2(ray.x, ray.y);
+            image.write(
+                image.read(coordinates) + float4(
+                    ray.weight * contribution,
+                    1),
+                coordinates
+            );
         }
     }
     

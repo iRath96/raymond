@@ -368,6 +368,22 @@ struct SceneLoader {
         return worldShaderIndex
     }
     
+    private func makeLightInfo(
+        light: SceneDescription.Light,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> NEELightInfo {
+        if light.useMIS {
+            print("MIS not supported for lights yet")
+        }
+        
+        return .init(
+            shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+            usesVisibility: light.castShadows,
+            usesMIS: false // light.useMIS
+        )
+    }
+    
     private func makeAreaLights(
         device: MTLDevice,
         scene: SceneDescription,
@@ -381,7 +397,7 @@ struct SceneLoader {
             let kernel = light.kernel as! AreaLight
             let normalization = kernel.isCirular ? 4 / Float.pi : 1
             ptr.initialize(to: .init(
-                shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+                info: try makeLightInfo(light: light, scene: scene, codegen: &codegen),
                 transform: kernel.transform,
                 color: kernel.power * kernel.color * normalization,
                 isCircular: kernel.isCirular
@@ -404,7 +420,7 @@ struct SceneLoader {
         for light in lights {
             let kernel = light.kernel as! PointLight
             ptr.initialize(to: .init(
-                shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+                info: try makeLightInfo(light: light, scene: scene, codegen: &codegen),
                 location: kernel.location,
                 radius: kernel.radius,
                 color: kernel.color * kernel.power
@@ -427,7 +443,7 @@ struct SceneLoader {
         for light in lights {
             let kernel = light.kernel as! SunLight
             ptr.initialize(to: .init(
-                shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+                info: try makeLightInfo(light: light, scene: scene, codegen: &codegen),
                 direction: normalize(kernel.direction),
                 cosAngle: cos(kernel.angle / 2),
                 color: kernel.color * kernel.power
@@ -452,7 +468,7 @@ struct SceneLoader {
             let spotAngle = cos(kernel.spotSize / 2)
             let spotBlend = (1 - spotAngle) * kernel.spotBlend
             ptr.initialize(to: .init(
-                shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+                info: try makeLightInfo(light: light, scene: scene, codegen: &codegen),
                 location: kernel.location,
                 direction: normalize(kernel.direction),
                 radius: kernel.radius,
