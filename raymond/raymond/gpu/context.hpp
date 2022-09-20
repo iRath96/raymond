@@ -322,7 +322,11 @@ NEESample NEEAreaLight::sample(
     thread PRNGState &prng,
     thread int &shaderIndex
 ) const device {
-    const float2 uv = prng.sample2d();
+    float2 uv = prng.sample2d();
+    if (isCircular) {
+        uv = warp::uniformSquareToDisk(uv) / 2 + 0.5;
+    }
+    
     const float3 point = float4(uv - 0.5, 0, 1) * transform;
     const float3 normal = normalize(float4(0, 0, 1, 0) * transform);
     

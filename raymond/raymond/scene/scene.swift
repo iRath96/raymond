@@ -379,10 +379,11 @@ struct SceneLoader {
         
         for light in lights {
             let kernel = light.kernel as! AreaLight
+            let normalization = kernel.isCirular ? 4 / Float.pi : 1
             ptr.initialize(to: .init(
                 shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
                 transform: kernel.transform,
-                color: kernel.power * kernel.color,
+                color: kernel.power * kernel.color * normalization,
                 isCircular: kernel.isCirular
             ))
             ptr = ptr.advanced(by: 1)
