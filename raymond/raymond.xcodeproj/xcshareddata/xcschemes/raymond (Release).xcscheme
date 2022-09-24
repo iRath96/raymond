@@ -53,11 +53,35 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/untitled.json"
-            isEnabled = "YES">
+            argument = "/Users/alex/Desktop/test-nee2.json"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Desktop/raymond-tests/test-lightout.json"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_006/AI55_006.json"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Downloads/normal_test.json"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Downloads/Attic_NVIDIA_725/Attic_NVIDIA/Attic.json"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Downloads/bed/Bed.json"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-g"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "1.0"
             isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>

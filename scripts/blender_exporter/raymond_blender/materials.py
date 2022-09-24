@@ -1,9 +1,11 @@
+from copy import deepcopy
 import bpy
 import os
 import json
 
 from warnings import warn
 
+from .registry import SceneRegistry
 from .utils import find_unique_name
 
 
@@ -189,7 +191,7 @@ class RMNodeGraph(object):
             self.delete_node(node_name)
 
 
-def _export_image(image: bpy.types.Image, path: str, is_f32=False, keep_format=False):
+def _save_image(image: bpy.types.Image, path: str, is_f32=False, keep_format=False):
     # Make sure the image is loaded to memory, so we can write it out
     if not image.has_data:
         image.pixels[0]
@@ -207,16 +209,17 @@ def _export_image(image: bpy.types.Image, path: str, is_f32=False, keep_format=F
         image.file_format = old_format
 
 
-def _handle_image(image: bpy.types.Image, texturepath: str, image_cache: dict[str, str]):
-    if image.name in image_cache:
-        return image_cache[image.name]
-    
+def _handle_image(registry: SceneRegistry, image: bpy.types.Image):
+    image_name = registry.images.export(image, lambda unique_name: _export_image(registry, image, unique_name))
+    return registry.images.converted[image_name]
+
+def _export_image(registry: SceneRegistry, image: bpy.types.Image, unique_name: str):
     result = None
     
     if image.source == "GENERATED":
         # @todo escape image.name, avoid filename collisions
         extension = ".png" if not image.use_generated_float else ".exr"
-        img_path = os.path.join(texturepath, image.name + extension)
+        img_path = os.path.join(registry.texturepath, unique_name + extension)
         _export_image(image, img_path, is_f32=image.use_generated_float)
         result = img_path
     elif image.source == "FILE":
@@ -226,10 +229,10 @@ def _handle_image(image: bpy.types.Image, texturepath: str, image_cache: dict[st
 
         export_image = image.packed_file or img_path == ""
         if export_image:
-            img_name = bpy.path.basename(img_path)
+            img_basename = bpy.path.basename(img_path)
 
             # Special case: We can not export PNG if bit depth is not 8 (or 32), for whatever reason
-            if img_name == "" or image.depth > 32 or image.depth == 16:
+            if img_basename == "" or image.depth > 32 or image.depth == 16:
                 keep_format = False
                 if image.depth > 32 or image.depth == 16 or image.file_format in ["OPEN_EXR", "OPEN_EXR_MULTILAYER", "HDR"]:
                     is_f32 = True
@@ -237,37 +240,38 @@ def _handle_image(image: bpy.types.Image, texturepath: str, image_cache: dict[st
                 else:
                     is_f32 = False
                     extension = ".png"
-                img_path = os.path.join(texturepath, image.name + extension)
+                img_path = os.path.join(registry.texturepath, unique_name + extension)
             else:
                 keep_format = True
                 is_f32 = False  # Does not matter
-                img_path = os.path.join(texturepath, img_name)
+                parts = img_basename.split(".")
+                extension = ".png" if len(parts) == 1 else parts[-1]
+                img_path = os.path.join(registry.texturepath, unique_name + extension)
 
-            _export_image(image, img_path, is_f32=is_f32, keep_format=keep_format)
+            _save_image(image, img_path, is_f32=is_f32, keep_format=keep_format)
         
         result = img_path
     else:
         warn(f"Image type {image.source} not supported")
     
-    image_cache[image.name] = result
     return result
 
 
-def export_default_material():
+def export_default_material(unique_name):
     return _DEFAULT_MATERIAL
 
 
 # @todo material type should be 'Material | World | Light'
-def export_material(material: bpy.types.Material, texturepath: str, image_cache: dict[str, str]):
+def export_material(registry: SceneRegistry, material: bpy.types.Material):
     result = {}
     
     if not material.use_nodes:
         if isinstance(material, bpy.types.Light):
-            return _DEFAULT_LIGHT
+            return deepcopy(_DEFAULT_LIGHT)
         elif isinstance(material, bpy.types.World):
-            return _DEFAULT_WORLD
+            return deepcopy(_DEFAULT_WORLD)
         elif isinstance(material, bpy.types.Material):
-            return _DEFAULT_MATERIAL
+            return deepcopy(_DEFAULT_MATERIAL)
         else:
             warn(f"Unsupported use of node trees")
             return result
@@ -300,7 +304,7 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
         result_node["parameters"] = {}
         if isinstance(node, bpy.types.ShaderNodeTexImage):
             result_node["parameters"] = {
-                "filepath": _handle_image(node.image, texturepath, image_cache),
+                "filepath": _handle_image(registry, node.image),
                 "interpolation": node.interpolation,
                 "projection": node.projection,
                 "extension": node.extension,
@@ -310,7 +314,7 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
             }
         elif isinstance(node, bpy.types.ShaderNodeTexEnvironment):
             result_node["parameters"] = {
-                "filepath": _handle_image(node.image, texturepath, image_cache),
+                "filepath": _handle_image(registry, node.image),
                 "interpolation": node.interpolation,
                 "projection": node.projection,
                 "colorspace": node.image.colorspace_settings.name,
@@ -344,6 +348,10 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
         elif isinstance(node, bpy.types.ShaderNodeDisplacement):
             result_node["parameters"] = {
                 "space": node.space
+            }
+        elif isinstance(node, bpy.types.ShaderNodeValue):
+            result_node["parameters"] = {
+                "value": node.outputs[0].default_value
             }
         elif isinstance(node, bpy.types.ShaderNodeTexNoise):
             result_node["parameters"] = {
@@ -439,7 +447,9 @@ def export_material(material: bpy.types.Material, texturepath: str, image_cache:
             bpy.types.ShaderNodeGamma,
             bpy.types.ShaderNodeTexChecker,
             bpy.types.ShaderNodeBrightContrast,
-            bpy.types.ShaderNodeFresnel
+            bpy.types.ShaderNodeFresnel,
+            bpy.types.ShaderNodeBlackbody,
+            bpy.types.ShaderNodeBsdfDiffuse
         )):
             # no parameters
             pass

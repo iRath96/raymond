@@ -6,6 +6,8 @@ protocol NodeKernel: Codable {}
 
 struct BsdfTransparentKernel: NodeKernel {}
 struct BsdfTranslucentKernel: NodeKernel {}
+struct BsdfRefractionKernel: NodeKernel {}
+struct BsdfAnisotropicKernel: NodeKernel {}
 struct BsdfDiffuseKernel: NodeKernel {}
 
 struct BsdfGlassKernel: NodeKernel {
@@ -31,6 +33,7 @@ struct MixShaderKernel: NodeKernel {}
 struct EmissionKernel: NodeKernel {}
 struct BackgroundKernel: NodeKernel {}
 struct FresnelKernel: NodeKernel {}
+struct LayerWeightKernel: NodeKernel {}
 
 // MARK: - Texture kernels
 
@@ -93,6 +96,9 @@ struct TexSkyKernel: NodeKernel {
         case turbidity
     }
 }
+
+struct TexIESKernel: NodeKernel {}
+struct TexMagicKernel: NodeKernel {}
 
 // MARK: - Color kernels
 
@@ -217,6 +223,12 @@ struct VectorMathKernel: NodeKernel {
 }
 
 // MARK: - Input kernels
+struct AttributeKernel: NodeKernel {}
+
+struct ValueKernel: NodeKernel {
+    var value: Float
+}
+
 struct TexCoordKernel: NodeKernel {}
 struct LightPathKernel: NodeKernel {}
 struct NewGeometryKernel: NodeKernel {}
@@ -234,12 +246,7 @@ struct UVMapKernel: NodeKernel {
 // MARK: - Output kernels
 struct OutputMaterialKernel: NodeKernel {}
 struct OutputWorldKernel: NodeKernel {}
-struct OutputLightKernel: NodeKernel {
-    var shape: String
-    var color: [Float]
-    var irradiance: Float
-    var spread: Float
-}
+struct OutputLightKernel: NodeKernel {}
 
 // MARK: - Nodes
 
@@ -311,6 +318,8 @@ struct Node: Codable {
         "TEX_CHECKER":     TexCheckerKernel.self,
         "TEX_NOISE":       TexNoiseKernel.self,
         "TEX_SKY":         TexSkyKernel.self,
+        "TEX_IES":         TexIESKernel.self,
+        "TEX_MAGIC":       TexMagicKernel.self,
         
         // shader nodes
         "BSDF_PRINCIPLED":  BsdfPrincipledKernel.self,
@@ -319,10 +328,13 @@ struct Node: Codable {
         "BSDF_GLOSSY":      BsdfGlossyKernel.self,
         "BSDF_TRANSPARENT": BsdfTransparentKernel.self,
         "BSDF_TRANSLUCENT": BsdfTranslucentKernel.self,
+        "BSDF_REFRACTION":  BsdfRefractionKernel.self,
+        "BSDF_ANISOTROPIC": BsdfAnisotropicKernel.self,
         "EMISSION":         EmissionKernel.self,
         "ADD_SHADER":       AddShaderKernel.self,
         "MIX_SHADER":       MixShaderKernel.self,
         "FRESNEL":          FresnelKernel.self,
+        "LAYER_WEIGHT":     LayerWeightKernel.self,
         "BACKGROUND":       BackgroundKernel.self,
         
         // color nodes
@@ -348,6 +360,8 @@ struct Node: Codable {
         "MATH":         MathKernel.self,
         
         // input nodes
+        "ATTRIBUTE":    AttributeKernel.self,
+        "VALUE":        ValueKernel.self,
         "LIGHT_PATH":   LightPathKernel.self,
         "NEW_GEOMETRY": NewGeometryKernel.self,
         "TEX_COORD":    TexCoordKernel.self,
@@ -373,7 +387,7 @@ struct Node: Codable {
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        guard let type = Node.kernels.first(where: { type(of: kernel) == $0.value})?.key else {
+        guard let type = Node.kernels.first(where: { type(of: kernel) == $0.value })?.key else {
             throw NodeError.unsupportedNodeType
         }
         

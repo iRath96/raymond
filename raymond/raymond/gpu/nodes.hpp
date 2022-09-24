@@ -4,6 +4,7 @@
 #include "noise.hpp"
 #include "context.hpp"
 #include "sky.hpp"
+#include "warp.hpp"
 
 #include <metal_stdlib>
 using namespace metal;
@@ -97,6 +98,8 @@ struct NewGeometry {
     float3 trueNormal;
     float3 tangent;
     float3 position;
+    float3 parametric; /// @todo apparently this is different to "Texture"."UV"
+    float3 incoming; /// @todo not tested
     bool backfacing;
     
     void compute(device Context &ctx, ThreadContext tctx) {
@@ -104,6 +107,8 @@ struct NewGeometry {
         trueNormal = tctx.trueNormal;
         tangent = tctx.tu;
         position = tctx.position;
+        parametric = tctx.uv;
+        incoming = tctx.wo;
         backfacing = dot(tctx.wo, tctx.normal) < 0;
     }
 };
@@ -136,12 +141,16 @@ struct TexChecker {
     float4 color2;
     float3 vector;
     
+    float fac;
     float4 color;
     
     void compute(device Context &ctx, ThreadContext tctx) {
         float3 p = (vector * scale + 0.000001f) * 0.999999f;
         int3 idx = int3(floor(p));
-        color = select(color2, color1, (idx.x ^ idx.y ^ idx.z) & 1);
+        
+        const bool which = (idx.x ^ idx.y ^ idx.z) & 1;
+        color = select(color2, color1, which);
+        fac = select(0.f, 1.f, which);
     }
 };
 
@@ -263,8 +272,7 @@ struct TexImage {
             break;
         
         case kTexImage::PROJECTION_EQUIRECTANGULAR:
-            projected.x = (atan2(vector.x, vector.y) - M_PI_F) / (2 * M_PI_F);
-            projected.y = acos(vector.z / length(vector)) / M_PI_F;
+            projected = warp::equirectSphereToSquare(vector);
             break;
         }
         
@@ -315,6 +323,30 @@ private:
     }
 };
 
+struct TexIES {
+    float3 vector;
+    float strength;
+    float fac;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        /// @todo
+        fac = strength;
+    }
+};
+
+struct TexMagic {
+    float distortion;
+    float scale;
+    float3 vector;
+    
+    float4 color;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        /// @todo
+        color = 1;
+    }
+};
+
 struct kTexEnvironment {
     enum Interpolation {
         INTERPOLATION_LINEAR
@@ -350,7 +382,7 @@ struct TexNishita {
     float data[10];
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        color = float4(sky_radiance_nishita(tctx.wo.xyz * float3(1, -1, -1), data, ctx.textures[TextureIndex]), 1);
+        color = float4(sky_radiance_nishita(tctx.wo * float3(1, -1, -1), data, ctx.textures[TextureIndex]), 1);
     }
 };
 
@@ -597,6 +629,7 @@ struct kMath {
         OPERATION_MULTIPLY,
         OPERATION_DIVIDE,
         OPERATION_MULTIPLY_ADD,
+        OPERATION_POWER,
         OPERATION_MINIMUM,
         OPERATION_MAXIMUM,
         OPERATION_TANGENT
@@ -624,6 +657,9 @@ struct Math {
             value = safe_divide(value, value_001); break;
         case kMath::OPERATION_MULTIPLY_ADD:
             value = value * value_001 + value_002; break;
+        case kMath::OPERATION_POWER:
+            /// @todo verify
+            value = pow(value, value_001); break;
         case kMath::OPERATION_MINIMUM:
             /// @todo verify
             value = min(value, value_001); break;
@@ -643,7 +679,8 @@ struct Math {
 
 struct kSeparateColor {
     enum Mode {
-        MODE_RGB
+        MODE_RGB,
+        MODE_HSV
     };
 };
 
@@ -657,9 +694,23 @@ struct SeparateColor {
     float blue;
     
     void compute(device Context &ctx, ThreadContext tctx) {
-        red = color.x;
-        green = color.y;
-        blue = color.z;
+        switch (Mode) {
+        case kSeparateColor::MODE_RGB: {
+            red = color.x;
+            green = color.y;
+            blue = color.z;
+            break;
+        }
+        
+        case kSeparateColor::MODE_HSV: {
+            /// @todo verify
+            float3 hsv = rgb2hsv(color.xyz);
+            red = hsv.x;
+            green = hsv.y;
+            blue = hsv.z;
+            break;
+        }
+        }
     }
 };
 
@@ -731,6 +782,7 @@ struct kColorMix {
         BLEND_TYPE_ADD,
         BLEND_TYPE_MULTIPLY,
         BLEND_TYPE_SCREEN,
+        BLEND_TYPE_OVERLAY,
         BLEND_TYPE_SUB,
         BLEND_TYPE_COLOR,
         BLEND_TYPE_LIGHTEN,
@@ -761,6 +813,18 @@ struct ColorMix {
             color = color1 * lerp(float4(1), color2, fac); break;
         case kColorMix::BLEND_TYPE_SCREEN:
             color = 1 - (1 - fac * color1) * (1 - color1); break;
+        case kColorMix::BLEND_TYPE_OVERLAY: {
+            color = color1;
+            
+            for (int dim = 0; dim < 3; dim++) {
+                if (color[dim] < 0.5)
+                    color[dim] *= 1 - fac + 2 * fac * color2[dim];
+                else
+                    color[dim] = 1 - (1 - fac + 2 * fac * (1 - color2[dim])) * (1 - color[dim]);
+            }
+            
+            break;
+        }
         case kColorMix::BLEND_TYPE_COLOR: {
             color = color1;
             float3 hsv2 = rgb2hsv(color2.xyz);
@@ -941,7 +1005,7 @@ struct kBsdfGlossy {
 };
 
 /**
- * @todo not tested
+ * @todo not tested, should probably not use Fresnel term
  */
 template<
     kBsdfGlossy::Distribution Distribution
@@ -1088,6 +1152,97 @@ struct BsdfPrincipled {
     }
 };
 
+struct LayerWeight {
+    float blend;
+    float3 normal;
+    
+    float fresnel;
+    float facing;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        const bool backfacing = dot(tctx.wo, normal) < 0;
+        
+        const float cosI = dot(tctx.wo, normal);
+        float eta = max(1 - blend, 1e-5);
+        eta = backfacing ? eta : 1 / eta;
+        
+        fresnel = fresnelDielectricCos(cosI, eta);
+        facing = abs(cosI);
+        
+        if (blend != 0.5) {
+            float b = clamp(blend, float(0), float(1 - 1e-5));
+            b = (b < 0.5) ? 2 * b : 0.5 / (1 - b);
+            facing = pow(facing, b);
+        }
+        
+        facing = 1 - facing;
+    }
+};
+
+struct Value {
+    float value;
+    void compute(device Context &ctx, ThreadContext tctx) {}
+};
+
+struct Attribute {
+    float3 vector;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        vector = tctx.generated;
+    }
+};
+
+struct BsdfAnisotropic {
+    float anisotropy;
+    float4 color;
+    float3 normal;
+    float rotation;
+    float3 tangent;
+    float roughness;
+    float weight;
+    
+    Material bsdf;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        const float alpha = square(max(roughness, 1e-4));
+        bsdf.specular = (Specular){
+            .alphaX = alpha,
+            .alphaY = alpha,
+            .Cspec0 = color.xyz,
+            .ior = 1.45,
+            .weight = 1
+        };
+        
+        bsdf.lobeProbabilities[1] = 1;
+        bsdf.normal = normal;
+    }
+};
+
+struct BsdfRefraction {
+    float4 color;
+    float ior;
+    float3 normal;
+    float roughness;
+    float weight;
+    
+    Material bsdf;
+    
+    void compute(device Context &ctx, ThreadContext tctx) {
+        const float r2 = square(roughness);
+        bsdf.transmission = (Transmission){
+            .reflectionAlpha = r2,
+            .transmissionAlpha = r2,
+            .baseColor = color.xyz,
+            .Cspec0 = 0,
+            .ior = ior,
+            .weight = 1,
+            .onlyRefract = true
+        };
+        bsdf.lobeProbabilities[2] = 1;
+        bsdf.normal = normal;
+    }
+};
+
 struct BsdfTransparent {
     float4 color;
     float weight;
@@ -1157,7 +1312,6 @@ struct AddShader {
         }
         
         shader.weight *= 2;
-        shader.pdf /= 2;
     }
 };
 
@@ -1173,10 +1327,8 @@ struct MixShader {
         if (tctx.rnd.x < fac) {
             tctx.rnd.x /= fac;
             shader = shader_001;
-            shader.pdf *= fac;
         } else {
             tctx.rnd.x = (tctx.rnd.x - fac) / (1 - fac);
-            shader.pdf *= 1 - fac;
         }
     }
 };
@@ -1200,62 +1352,13 @@ struct OutputWorld {
     }
 };
 
-struct OutputLightPreamble {
-    void compute(device Context &ctx, thread ThreadContext &tctx) {
-        /// Light materials behave differently in terms of texture coordinates:
-        tctx.generated = tctx.position;
-        tctx.object = tctx.position;
-        
-        /// @todo UV coordinates should be zero, but we use them in `OutputLight` currently to render disks/ellipses
-        //tctx.uv = float3(0);
-    }
-};
-
-struct kOutputLight {
-    enum Shape {
-        SHAPE_SQUARE,
-        SHAPE_RECTANGLE,
-        SHAPE_DISK,
-        SHAPE_ELLIPSE
-    };
-};
-
-template<
-    kOutputLight::Shape Shape
->
 struct OutputLight {
     Material surface;
-    
-    float3 color;
-    float tanSpread;
     
     void compute(device Context &ctx, thread ThreadContext &tctx) {
         thread Material &mat = tctx.material;
         mat.alpha = 0;
-        
-        switch (Shape) {
-        case kOutputLight::SHAPE_SQUARE:
-        case kOutputLight::SHAPE_RECTANGLE:
-            break;
-        
-        case kOutputLight::SHAPE_DISK:
-        case kOutputLight::SHAPE_ELLIPSE:
-            if (length_squared(tctx.uv) > 1)
-                return;
-            break;
-        }
-        
-        const float cosTheta = -dot(tctx.normal, tctx.wo);
-        if (cosTheta < 0)
-            return;
-        
-        mat.emission = color * surface.emission;
-        
-        if (tanSpread > 0) {
-            const float sinTheta = safe_sqrtf(1 - square(cosTheta));
-            const float tanTheta = sinTheta / cosTheta;
-            mat.emission *= max(1 - (tanSpread * tanTheta), 0.0f);
-        }
+        mat.emission = surface.emission;
     }
 };
 

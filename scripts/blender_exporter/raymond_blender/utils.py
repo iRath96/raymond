@@ -1,5 +1,4 @@
 import bpy
-import mathutils
 
 
 def flat_matrix(matrix):
@@ -7,12 +6,33 @@ def flat_matrix(matrix):
 
 
 def find_unique_name(used: set[str], name: str):
-    if not name in used:
-        return name
+    unique_name = name
+    index = 0
+
+    while unique_name in used:
+        unique_name = f"{name}.{index:03d}"
+        index += 1
     
-    i = 1
-    while True:
-        candidate = f"{name}.{i:03d}"
-        if not candidate in used:
-            return candidate
-        i += 1
+    return unique_name
+
+
+def describe_visibility(object: bpy.types.Object):
+    return {
+        "camera": object.visible_camera,
+        "diffuse": object.visible_diffuse,
+        "glossy": object.visible_glossy,
+        "transmission": object.visible_transmission,
+        "volume": object.visible_volume_scatter,
+        "shadow": object.visible_shadow
+    }
+
+
+def describe_cycles_visibility(object):
+    return {
+        "camera": object.camera,
+        "diffuse": object.diffuse,
+        "glossy": object.glossy,
+        "transmission": object.transmission,
+        "volume": object.scatter,
+        "shadow": object.shadow
+    }

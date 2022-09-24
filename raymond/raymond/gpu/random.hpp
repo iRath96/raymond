@@ -69,6 +69,10 @@ float3 PRNGState::sample3d() {
     return float3(sample(), sample(), sample());
 }
 
+int PRNGState::sampleInt(int max) {
+    return sample_tea_32(seed, index++) % max;
+}
+
 float PRNGState::sample() device {
     return sample_tea_float32(seed, index++);
 }
@@ -79,4 +83,8 @@ float2 PRNGState::sample2d() device {
 
 float3 PRNGState::sample3d() device {
     return float3(sample(), sample(), sample());
+}
+
+int PRNGState::sampleInt(int max) device {
+    return sample_tea_32(seed, index++) % max;
 }

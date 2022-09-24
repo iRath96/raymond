@@ -3,6 +3,15 @@ import Metal
 import MetalPerformanceShaders
 
 struct SceneDescription: Codable {
+    struct Visibility: Codable {
+        var camera: Bool
+        var diffuse: Bool
+        var glossy: Bool
+        var transmission: Bool
+        var volume: Bool
+        var shadow: Bool
+    }
+    
     struct Material: Codable {
         var nodes: [String: Node]
         
@@ -15,6 +24,63 @@ struct SceneDescription: Codable {
         }
     }
     
+    enum LightError: Error {
+        case unsupportedLightType
+    }
+    
+    struct Light: Codable {
+        var material: String
+        var visibility: Visibility
+        var castShadows: Bool
+        var useMIS: Bool
+        
+        var kernel: LightKernel
+        
+        private enum CodingKeys: CodingKey {
+            case type
+            case material
+            case visibility, cast_shadows, use_mis
+            case parameters
+        }
+        
+        static let kernels: [String: LightKernel.Type] = [
+            "WORLD": WorldLight.self,
+            "AREA":  AreaLight.self,
+            "POINT": PointLight.self,
+            "SPOT":  SpotLight.self,
+            "SUN":   SunLight.self,
+        ]
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(String.self, forKey: .type)
+            
+            guard let type = Light.kernels[type] else {
+                throw LightError.unsupportedLightType
+            }
+            
+            material = try container.decode(String.self, forKey: .material)
+            visibility = try container.decode(Visibility.self, forKey: .visibility)
+            castShadows = try container.decode(Bool.self, forKey: .cast_shadows)
+            useMIS = try container.decode(Bool.self, forKey: .use_mis)
+            kernel = try container.decode(type, forKey: .parameters)
+        }
+        
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            guard let type = Light.kernels.first(where: { type(of: kernel) == $0.value })?.key else {
+                throw NodeError.unsupportedNodeType
+            }
+            
+            try container.encode(type, forKey: .type)
+            try container.encode(material, forKey: .material)
+            try container.encode(visibility, forKey: .visibility)
+            try container.encode(castShadows, forKey: .cast_shadows)
+            try container.encode(useMIS, forKey: .use_mis)
+            try kernel.encode(to: container.superEncoder(forKey: .parameters))
+        }
+    }
+    
     struct Shape: Codable {
         var type: String
         var filepath: URL
@@ -22,15 +88,6 @@ struct SceneDescription: Codable {
     }
     
     struct Entity: Codable {
-        struct Visibility: Codable {
-            var camera: Bool
-            var diffuse: Bool
-            var glossy: Bool
-            var transmission: Bool
-            var volume: Bool
-            var shadow: Bool
-        }
-        
         var shape: String
         var visibility: Visibility
         var matrix: float4x4
@@ -138,7 +195,7 @@ struct SceneDescription: Codable {
     }
 
     var materials: [String: Material]
-    var world: Material
+    var lights: [String: Light]
     var shapes: [String: Shape]
     var entities: [String: Entity]
     var camera: Camera?
@@ -168,6 +225,7 @@ struct Scene {
     var mesh: Mesh
     var accelerationStructure: MPSInstanceAccelerationStructure
     var intersectionHandler: MTLComputePipelineState
+    var shadowRayHandler: MTLComputePipelineState
     
     var projectionMatrix: float4x4
     var shaderFunctionTable: MTLVisibleFunctionTable
@@ -178,6 +236,252 @@ struct Scene {
 }
 
 struct SceneLoader {
+    private func prepareEnvironmentMapSampling(
+        forLibrary library: MTLLibrary,
+        withContext contextBuffer: MTLBuffer,
+        andEncoder contextEncoder: MTLArgumentEncoder,
+        resources: inout [MTLResource],
+        shaderIndex: Int
+    ) throws {
+        let exponent = 11
+        let resolution = 1 << exponent
+        let mipmapSize = (0...exponent).map { (1 << (2 * $0)) }.reduce(0, +)
+        NSLog("Building environment map of size \(resolution)^2")
+        
+        let device = library.device
+        let mipmapBuffer = device.makeBuffer(type: Float.self, count: mipmapSize)!
+        let pdfBuffer = device.makeBuffer(type: Float.self, count: resolution * resolution)!
+        
+        let queue = device.makeCommandQueue()!
+        let commandBuffer = queue.makeCommandBuffer()!
+        
+        let lastLevelOffset = mipmapSize - resolution * resolution
+        var bufferOffset = lastLevelOffset
+        
+        // MARK: build finest level of envmap
+        
+        let buildFunction = library.makeFunction(name: "buildEnvironmentMap")!
+        let buildPipeline = try device.makeComputePipelineState(function: buildFunction)
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.setComputePipelineState(buildPipeline)
+            computeEncoder.setBuffer(contextBuffer, offset: 0, index: 0)
+            computeEncoder.setBuffer(mipmapBuffer, offset: bufferOffset * MemoryLayout<Float>.stride, index: 1)
+            computeEncoder.setBuffer(pdfBuffer, offset: 0, index: 2)
+            computeEncoder.useResources(resources, usage: .read)
+            computeEncoder.dispatchThreads(
+                MTLSize(width: resolution, height: resolution, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+            computeEncoder.endEncoding()
+        }
+        
+        // MARK: build mipmap
+        
+        let reduceFunction = library.makeFunction(name: "reduceEnvironmentMap")!
+        let reducePipeline = try device.makeComputePipelineState(function: reduceFunction)
+        for exponent in stride(from: exponent - 1, through: 0, by: -1) {
+            let currentResolution = 1 << exponent
+            bufferOffset -= currentResolution * currentResolution
+            
+            if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+                computeEncoder.setComputePipelineState(reducePipeline)
+                computeEncoder.setBuffer(mipmapBuffer, offset: bufferOffset * MemoryLayout<Float>.stride, index: 0)
+                computeEncoder.dispatchThreads(
+                    MTLSize(width: currentResolution, height: currentResolution, depth: 1),
+                    threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+                computeEncoder.endEncoding()
+            }
+        }
+        
+        assert(bufferOffset == 0)
+        
+        // MARK: normalize PDFs
+        
+        let normalizeFunction = library.makeFunction(name: "normalizeEnvironmentMap")!
+        let normalizePipeline = try device.makeComputePipelineState(function: normalizeFunction)
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.setComputePipelineState(normalizePipeline)
+            computeEncoder.setBuffer(mipmapBuffer, offset: 0, index: 0)
+            computeEncoder.setBuffer(pdfBuffer, offset: 0, index: 1)
+            computeEncoder.dispatchThreads(
+                MTLSize(width: resolution * resolution, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: normalizePipeline.threadExecutionWidth, height: 1, depth: 1))
+            computeEncoder.endEncoding()
+        }
+        
+        // MARK: write out
+        
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        
+        let envmapOffset = 6 /// @todo hardcoded!
+        contextEncoder.set(at: envmapOffset + 0, resolution)
+        contextEncoder.setBuffer(pdfBuffer, offset: 0, index: envmapOffset + 1)
+        contextEncoder.setBuffer(mipmapBuffer, offset: 0, index: envmapOffset + 2)
+        resources.append(pdfBuffer)
+        resources.append(mipmapBuffer)
+    }
+    
+    private func testEnvironmentMapSampling(
+        forLibrary library: MTLLibrary,
+        withContext contextBuffer: MTLBuffer,
+        resources: [MTLResource]
+    ) throws {
+        let device = library.device
+        let sampleGridResolution = 1024
+        let histogramResolution = 256 /// @todo hardcoded
+        let histogramBuffer = device.makeBuffer(type: Float.self, count: histogramResolution * histogramResolution)!
+        
+        let queue = device.makeCommandQueue()!
+        let commandBuffer = queue.makeCommandBuffer()!
+        
+        let testFunction = library.makeFunction(name: "testEnvironmentMapSampling")!
+        let testPipeline = try device.makeComputePipelineState(function: testFunction)
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.setComputePipelineState(testPipeline)
+            computeEncoder.setBuffer(contextBuffer, offset: 0, index: 0)
+            computeEncoder.setBuffer(histogramBuffer, offset: 0, index: 1)
+            computeEncoder.useResources(resources, usage: .read)
+            computeEncoder.dispatchThreads(
+                MTLSize(width: sampleGridResolution, height: sampleGridResolution, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+            computeEncoder.endEncoding()
+        }
+        
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        
+        try histogramBuffer.saveEXR(
+            at: URL(filePath: "/Users/alex/Desktop/histogram.exr"),
+            width: histogramResolution,
+            height: histogramResolution)
+        
+        exit(0)
+    }
+    
+    private func makeWorldShader(
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> Int {
+        NSLog("generating world shader")
+        let world = scene.lights.first { type(of: $0.value.kernel) == WorldLight.self }?.value
+        let worldShaderIndex = try codegen.addMaterial(scene.materials[world!.material]!)
+        return worldShaderIndex
+    }
+    
+    private func makeLightInfo(
+        light: SceneDescription.Light,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> NEELightInfo {
+        if light.useMIS {
+            print("MIS not supported for lights yet")
+        }
+        
+        return .init(
+            shaderIndex: Int32(try codegen.addMaterial(scene.materials[light.material]!)),
+            usesVisibility: light.castShadows,
+            usesMIS: false // light.useMIS
+        )
+    }
+    
+    private func makeAreaLights(
+        device: MTLDevice,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> (Int, MTLBuffer) {
+        let lights = scene.lights.values.lazy.filter { $0.kernel is AreaLight }
+        let count = lights.count
+        var (buffer, ptr) = device.makeBufferAndPointer(type: NEEAreaLight.self, count: count)
+        
+        for light in lights {
+            let kernel = light.kernel as! AreaLight
+            let normalization = kernel.isCirular ? 4 / Float.pi : 1
+            ptr.initialize(to: .init(
+                info: try makeLightInfo(light: light, scene: scene, codegen: &codegen),
+                transform: kernel.transform,
+                color: kernel.power * kernel.color * normalization,
+                isCircular: kernel.isCirular
+            ))
+            ptr = ptr.advanced(by: 1)
+        }
+        
+        return (count, buffer)
+    }
+    
+    private func makePointLights(
+        device: MTLDevice,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> (Int, MTLBuffer) {
+        let lights = scene.lights.values.lazy.filter { $0.kernel is PointLight }
+        let count = lights.count
+        var (buffer, ptr) = device.makeBufferAndPointer(type: NEEPointLight.self, count: count)
+        
+        for light in lights {
+            let kernel = light.kernel as! PointLight
+            ptr.initialize(to: .init(
+                info: try makeLightInfo(light: light, scene: scene, codegen: &codegen),
+                location: kernel.location,
+                radius: kernel.radius,
+                color: kernel.color * kernel.power
+            ))
+            ptr = ptr.advanced(by: 1)
+        }
+        
+        return (count, buffer)
+    }
+    
+    private func makeSunLights(
+        device: MTLDevice,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> (Int, MTLBuffer) {
+        let lights = scene.lights.values.lazy.filter { $0.kernel is SunLight }
+        let count = lights.count
+        var (buffer, ptr) = device.makeBufferAndPointer(type: NEESunLight.self, count: count)
+        
+        for light in lights {
+            let kernel = light.kernel as! SunLight
+            ptr.initialize(to: .init(
+                info: try makeLightInfo(light: light, scene: scene, codegen: &codegen),
+                direction: normalize(kernel.direction),
+                cosAngle: cos(kernel.angle / 2),
+                color: kernel.color * kernel.power
+            ))
+            ptr = ptr.advanced(by: 1)
+        }
+        
+        return (count, buffer)
+    }
+    
+    private func makeSpotLights(
+        device: MTLDevice,
+        scene: SceneDescription,
+        codegen: inout Codegen
+    ) throws -> (Int, MTLBuffer) {
+        let lights = scene.lights.values.lazy.filter { $0.kernel is SpotLight }
+        let count = lights.count
+        var (buffer, ptr) = device.makeBufferAndPointer(type: NEESpotLight.self, count: count)
+        
+        for light in lights {
+            let kernel = light.kernel as! SpotLight
+            let spotAngle = cos(kernel.spotSize / 2)
+            let spotBlend = (1 - spotAngle) * kernel.spotBlend
+            ptr.initialize(to: .init(
+                info: try makeLightInfo(light: light, scene: scene, codegen: &codegen),
+                location: kernel.location,
+                direction: normalize(kernel.direction),
+                radius: kernel.radius,
+                color: kernel.color * kernel.power,
+                spotSize: spotAngle,
+                spotBlend: spotBlend
+            ))
+            ptr = ptr.advanced(by: 1)
+        }
+        
+        return (count, buffer)
+    }
+    
     func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
         let sceneDescription = try SceneDescriptionLoader().makeSceneDescription(fromURL: url)
         
@@ -199,18 +503,21 @@ struct SceneLoader {
         NSLog("building acceleration structures")
         let mesh = try meshLoader.build(withDevice: device)
         
-        // 15.6 FPS, 4.55 s compile time
-        // 16.8 FPS, 4.07 s compile time
-        
         let codegenOptions: Codegen.Options = []
         var codegen = Codegen(basePath: url, device: device, options: codegenOptions)
         for materialName in mesh.materialNames {
             NSLog("generating shader for \(materialName)")
             try codegen.addMaterial(sceneDescription.materials[materialName]!)
         }
-        try codegen.setWorld(sceneDescription.world)
         
-        NSLog("generating shaders")
+        NSLog("generating light shaders")
+        let worldShaderIndex = try makeWorldShader(scene: sceneDescription, codegen: &codegen)
+        let (areaLightCount, areaLightBuffer) = try makeAreaLights(device: device, scene: sceneDescription, codegen: &codegen)
+        let (pointLightCount, pointLightBuffer) = try makePointLights(device: device, scene: sceneDescription, codegen: &codegen)
+        let (sunLightCount, sunLightBuffer) = try makeSunLights(device: device, scene: sceneDescription, codegen: &codegen)
+        let (spotLightCount, spotLightBuffer) = try makeSpotLights(device: device, scene: sceneDescription, codegen: &codegen)
+        
+        NSLog("compiling shaders")
         let library = try codegen.build()
         
         let linkedFunctions = MTLLinkedFunctions()
@@ -221,10 +528,6 @@ struct SceneLoader {
                 let function = library.makeFunction(name: "material_\(index)")!
                 linkedFunctions.functions!.append(function)
             }
-            
-            NSLog("making function world")
-            let function = library.makeFunction(name: "world")!
-            linkedFunctions.functions!.append(function)
         }
         
         NSLog("making function handleIntersections")
@@ -235,6 +538,16 @@ struct SceneLoader {
         descriptor.linkedFunctions = linkedFunctions
         let intersectionHandler = try library.device.makeComputePipelineState(
             descriptor: descriptor,
+            options: [],
+            reflection: nil)
+        
+        let shadowDescriptor = MTLComputePipelineDescriptor()
+        shadowDescriptor.computeFunction = library.makeFunction(
+            name: "handleShadowRays")
+        shadowDescriptor.label = "handleShadowRays"
+        shadowDescriptor.linkedFunctions = linkedFunctions
+        let shadowRayHandler = try library.device.makeComputePipelineState(
+            descriptor: shadowDescriptor,
             options: [],
             reflection: nil)
         
@@ -260,8 +573,7 @@ struct SceneLoader {
             }
         }
         
-        let instanceBuffer = device.makeBuffer(
-            length: MemoryLayout<PerInstanceData>.stride * Int(instancing.instanceCount))!
+        let instanceBuffer = device.makeBuffer(type: PerInstanceData.self, count: Int(instancing.instanceCount))!
         instanceBuffer.label = "Per instance data"
         let instances = instanceBuffer.contents().assumingMemoryBound(to: PerInstanceData.self)
         for index in 0..<Int(instancing.instanceCount) {
@@ -286,8 +598,9 @@ struct SceneLoader {
         argumentEncoder.setArgumentBuffer(contextBuffer, offset: 0)
 
         var resourcesRead: [MTLResource] = []
+        let textureOffset = 20
         for (index, texture) in codegen.textures.enumerated() {
-            argumentEncoder.setTexture(texture, index: index)
+            argumentEncoder.setTexture(texture, index: textureOffset + index)
             resourcesRead.append(texture)
         }
 
@@ -299,7 +612,6 @@ struct SceneLoader {
         accelerationStructure.transformType = .float4x4
         accelerationStructure.transformBuffer = instancing.transforms
         accelerationStructure.rebuild()
-        
         NSLog("done!")
         
         var projectionMatrix = float4x4(rows: [
@@ -313,10 +625,40 @@ struct SceneLoader {
             projectionMatrix = camera.transform
         }
         
+        // MARK: next event
+        
+        let neeOffset = 0 /// @todo hardcoded!
+        argumentEncoder.set(at: neeOffset + 0, 1 + areaLightCount + pointLightCount + sunLightCount + spotLightCount)
+        argumentEncoder.set(at: neeOffset + 1, areaLightCount)
+        argumentEncoder.set(at: neeOffset + 2, pointLightCount)
+        argumentEncoder.set(at: neeOffset + 3, sunLightCount)
+        argumentEncoder.set(at: neeOffset + 4, spotLightCount)
+        argumentEncoder.set(at: neeOffset + 5, worldShaderIndex)
+        argumentEncoder.setBuffer(areaLightBuffer, offset: 0, index: neeOffset + 9)
+        argumentEncoder.setBuffer(pointLightBuffer, offset: 0, index: neeOffset + 10)
+        argumentEncoder.setBuffer(sunLightBuffer, offset: 0, index: neeOffset + 11)
+        argumentEncoder.setBuffer(spotLightBuffer, offset: 0, index: neeOffset + 12)
+        
+        NSLog("preparing environmap sampling")
+        try prepareEnvironmentMapSampling(
+            forLibrary: library,
+            withContext: contextBuffer,
+            andEncoder: argumentEncoder,
+            resources: &resourcesRead,
+            shaderIndex: worldShaderIndex
+        )
+        NSLog("done!")
+        
+        /*try testEnvironmentMapSampling(
+            forLibrary: library,
+            withContext: contextBuffer,
+            resources: resourcesRead)*/
+        
         return Scene(
             mesh: mesh,
             accelerationStructure: accelerationStructure,
             intersectionHandler: intersectionHandler,
+            shadowRayHandler: shadowRayHandler,
             projectionMatrix: projectionMatrix,
             shaderFunctionTable: shaderFunctionTable,
             resourcesRead: resourcesRead,

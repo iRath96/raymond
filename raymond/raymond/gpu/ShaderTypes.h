@@ -11,6 +11,7 @@ typedef packed_float3 MPSPackedFloat3;
 #import <Foundation/Foundation.h>
 typedef simd_float3 float3;
 typedef simd_float3x3 float3x3;
+typedef simd_float3x4 float3x4;
 typedef simd_float4x4 float4x4;
 typedef __fp16 half;
 typedef __attribute__((__ext_vector_type__(3))) half half3;
@@ -68,12 +69,6 @@ typedef NS_ENUM(NSInteger, ShadowBufferIndex) {
     ShadowBufferRayCount      = 2,
 };
 
-typedef NS_ENUM(uint8_t, ImportanceSampling) {
-    ImportanceSamplingBSDF = 0,
-    ImportanceSamplingNEE  = 1,
-    ImportanceSamplingMIS  = 2,
-};
-
 typedef NS_ENUM(uint8_t, RayFlags) {
     RayFlagsCamera       = 1<<0,
     RayFlagsReflection   = 1<<1,
@@ -98,9 +93,16 @@ typedef struct {
     RayFlags visibility;
 } PerInstanceData;
 
+typedef NS_ENUM(NSInteger, SamplingMode) {
+    SamplingModeBsdf,
+    SamplingModeNee,
+    SamplingModeMis
+};
+
 typedef struct {
     uint32_t frameIndex;
     float4x4 projectionMatrix;
+    SamplingMode samplingMode;
 } Uniforms;
 
 typedef struct {
@@ -111,10 +113,12 @@ typedef struct {
     float sample();
     float2 sample2d();
     float3 sample3d();
+    int sampleInt(int max);
     
     float sample() device;
     float2 sample2d() device;
     float3 sample3d() device;
+    int sampleInt(int max) device;
 #endif
 } PRNGState;
 
@@ -155,3 +159,65 @@ typedef struct {
 typedef uint32_t VertexIndex;
 typedef uint32_t PrimitiveIndex;
 typedef uint32_t MaterialIndex;
+
+struct NEESample;
+struct Context;
+struct ThreadContext;
+
+typedef struct {
+    int shaderIndex;
+    bool usesVisibility;
+    bool usesMIS;
+} NEELightInfo;
+
+struct NEEAreaLight {
+    NEELightInfo info;
+    
+    float3x4 transform;
+    float3 color;
+    bool isCircular;
+    
+#ifdef __METAL_VERSION__
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+#endif
+};
+
+// not really a point light...
+struct NEEPointLight {
+    NEELightInfo info;
+    
+    float3 location;
+    float radius;
+    float3 color;
+
+#ifdef __METAL_VERSION__
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+#endif
+};
+
+struct NEESunLight {
+    NEELightInfo info;
+    
+    float3 direction;
+    float cosAngle;
+    float3 color;
+    
+#ifdef __METAL_VERSION__
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+#endif
+};
+
+struct NEESpotLight {
+    NEELightInfo info;
+    
+    float3 location;
+    float3 direction;
+    float radius;
+    float3 color;
+    float spotSize;
+    float spotBlend;
+    
+#ifdef __METAL_VERSION__
+    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+#endif
+};

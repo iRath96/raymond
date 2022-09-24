@@ -187,6 +187,15 @@ struct Codegen {
             }
         }
         textures = textureDescriptors.map { $0.texture! }
+        
+        if textures.isEmpty {
+            // Metal is sad when it has no textures :-(
+            let descriptor = MTLTextureDescriptor()
+            descriptor.width = 1
+            descriptor.height = 1
+            descriptor.pixelFormat = .r8Unorm
+            textures.append(textureLoader.device.makeTexture(descriptor: descriptor)!)
+        }
     }
     
     mutating func build() throws -> MTLLibrary {
@@ -327,6 +336,12 @@ struct Codegen {
             return .init(kernel: "TexNoise", parameters: [
                 .enum("DIMENSION", kernel.dimension)
             ])
+        case is TexIESKernel:
+            warn("TexIES: not supported yet")
+            return .init(kernel: "TexIES")
+        case is TexMagicKernel:
+            warn("TexMagic: not supported yet")
+            return .init(kernel: "TexMagic")
         case let kernel as ColorRampKernel:
             let elementStrings = kernel.elements.map { element in
                 "\t{ \(element.position), { \(element.color.map { String($0) }.joined(separator: ", ")) } }"
@@ -384,27 +399,20 @@ struct Codegen {
             warn("BsdfTranslucent: not implemented")
             return .init(kernel: "BsdfTranslucent")
         case is BumpKernel:
-            warn("Bump: bump mapping not supported")
+            warn("Bump: not yet supported")
             return .init(kernel: "Bump")
         case is OutputMaterialKernel:
             return .init(kernel: "OutputMaterial")
         case is OutputWorldKernel:
             return .init(kernel: "OutputWorld")
-        case let kernel as OutputLightKernel:
-            var invocation: KernelInvocation = .init(kernel: "OutputLight", parameters: [
-                .enum("SHAPE", kernel.shape)
-            ])
-            
-            let minSpreadAngle = 1 * Float.pi / 180 // 1°
-            let spreadAngle = (Float.pi - max(kernel.spread, minSpreadAngle)) / 2
-            let tanSpread = tanf(spreadAngle)
-            let normalizeSpread = 2 / (2 + (2 * spreadAngle - Float.pi) * tanSpread)
-            
-            let norm = Float(0.25) * kernel.irradiance * (tanSpread > 0 ? normalizeSpread : 1)
-            invocation.assign(key: "Color", value: .vector(kernel.color.map { norm * $0 }))
-            invocation.assign(key: "Tan Spread", value: .scalar(tanSpread))
-            
-            return invocation
+        case is OutputLightKernel:
+            return .init(kernel: "OutputLight")
+        case is AttributeKernel:
+            warn("Attribute: not yet supported")
+            return .init(kernel: "Attribute")
+        case let kernel as ValueKernel:
+            var invocation: KernelInvocation = .init(kernel: "Value")
+            return invocation.assign(key: "value", value: .scalar(kernel.value))
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
         case let kernel as UVMapKernel:
@@ -417,6 +425,12 @@ struct Codegen {
             return .init(kernel: "ColorInvert")
         case is BsdfTransparentKernel:
             return .init(kernel: "BsdfTransparent")
+        case is BsdfRefractionKernel:
+            warn("BsdfRefraction: not yet supported")
+            return .init(kernel: "BsdfRefraction")
+        case is BsdfAnisotropicKernel:
+            warn("BsdfAnisotropic: not yet supported")
+            return .init(kernel: "BsdfAnisotropic")
         case is AddShaderKernel:
             return .init(kernel: "AddShader")
         case is MixShaderKernel:
@@ -451,6 +465,8 @@ struct Codegen {
             return .init(kernel: "ColorCurves")
         case is FresnelKernel:
             return .init(kernel: "Fresnel")
+        case is LayerWeightKernel:
+            return .init(kernel: "LayerWeight")
         case is CombineVectorKernel:
             return .init(kernel: "CombineVector")
         case is SeparateVectorKernel:
@@ -469,38 +485,20 @@ struct Codegen {
         }
     }
     
-    mutating func addMaterial(_ material: SceneDescription.Material) throws {
-        try emit(material, isWorld: false)
+    mutating func addMaterial(_ material: SceneDescription.Material) throws -> Int {
+        return try emit(material)
     }
     
-    mutating func setWorld(_ world: SceneDescription.Material) throws {
-        if options.contains(.useFunctionTable) {
-            warn("""
-            Function tables are not currently supported when world nodes are used.
-            Somehow the combination of the two deadlocks the GPU, but it has not yet been determined why.
-            Given that function tables are slower to compile and result in worse performance,
-            we recommend not using them anyway.
-            """)
-            throw CodegenError.unsupportedKernel
-        }
-        try emit(world, isWorld: true)
-    }
-    
-    private mutating func emit(_ material: SceneDescription.Material, isWorld: Bool) throws {
+    private mutating func emit(_ material: SceneDescription.Material) throws -> Int {
         state = [:]
         invocations = []
         
         for node in material.nodes.sorted(by: { $0.0 < $1.0 }) {
             // Only output nodes that are really needed
-            if isWorld {
-                if node.value.kernel is OutputWorldKernel {
-                    try emitNode(material, key: node.key)
-                }
-            } else {
-                if node.value.kernel is OutputMaterialKernel
-                || node.value.kernel is OutputLightKernel {
-                    try emitNode(material, key: node.key)
-                }
+            if node.value.kernel is OutputMaterialKernel
+            || node.value.kernel is OutputLightKernel
+            || node.value.kernel is OutputWorldKernel {
+                try emitNode(material, key: node.key)
             }
         }
         
@@ -514,7 +512,11 @@ struct Codegen {
             textures.append(textureLoader.device.makeTexture(descriptor: descriptor)!)
         }
         
-        let functionName = isWorld ? "world" : "material_\(materialIndex)"
+        let functionName = "material_\(materialIndex)"
+        defer {
+            materialIndex += 1
+        }
+        
         let attributes = options.contains(.useFunctionTable) ? "[[visible]] " : ""
         text.addLine("""
         \(attributes)void \(functionName)(
@@ -530,9 +532,7 @@ struct Codegen {
         text.addLine("}")
         text.addLine("")
         
-        if !isWorld {
-            materialIndex += 1
-        }
+        return materialIndex
     }
     
     private mutating func registerTexture(_ texture: MTLTexture) -> Int {
@@ -600,11 +600,14 @@ struct Codegen {
         case is TexCheckerKernel, is TexNoiseKernel, is TexEnvironmentKernel:
             provideDefault(name: "Vector", value: generatedUV)
         case is FresnelKernel,
+             is LayerWeightKernel,
              is BsdfGlassKernel,
              is BsdfGlossyKernel,
              is BsdfDiffuseKernel,
              is BsdfPrincipledKernel,
              is BsdfTranslucentKernel,
+             is BsdfRefractionKernel,
+             is BsdfAnisotropicKernel,
              is BumpKernel:
             provideDefault(name: "Normal", value: normal)
         default: break
@@ -625,13 +628,6 @@ struct Codegen {
         invocation.name = key
         
         provideDefaults(forNode: &node, inInvocation: &invocation)
-        
-        if node.kernel is OutputLightKernel {
-            /// Light materials behave differently in terms of texture coordinates
-            /// We emit a "preamble" node before emitting any other nodes to fix this
-            /// @todo avoid name clashes
-            invocations.append(.init(name: "Output Light Preamble", kernel: "OutputLightPreamble"))
-        }
         
         for (key, value) in node.inputs.sorted(by: { $0.0 < $1.0 }) {
             if value.links == nil || value.links!.isEmpty {

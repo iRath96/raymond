@@ -64,11 +64,8 @@ struct InstanceLoader {
     }
     
     func build(withDevice device: MTLDevice) throws -> Instancing {
-        let indexBuffer = device.makeBuffer(length: MemoryLayout<UInt32>.stride * instances.count)!
-        let transformBuffer = device.makeBuffer(length: MemoryLayout<float4x4>.stride * instances.count)!
-        
-        var indices = indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
-        var transforms = transformBuffer.contents().assumingMemoryBound(to: float4x4.self)
+        var (indexBuffer, indices) = device.makeBufferAndPointer(type: UInt32.self, count: instances.count)
+        var (transformBuffer, transforms) = device.makeBufferAndPointer(type: float4x4.self, count: instances.count)
         
         for instance in instances {
             indices.pointee = instance.index
@@ -215,23 +212,17 @@ struct MeshLoader {
         let totalFaceCount = Int(faceOffset)
         let totalIndexCount = 3 * totalFaceCount
         
-        let vertexBuffer = device.makeBuffer(length: 3 * MemoryLayout<Float>.stride * totalVertexCount)!
-        let indexBuffer = device.makeBuffer(length: MemoryLayout<UInt32>.stride * totalIndexCount)!
-        let normalBuffer = device.makeBuffer(length: 3 * MemoryLayout<Float>.stride * totalVertexCount)!
-        let texCoordBuffer = device.makeBuffer(length: 2 * MemoryLayout<Float>.stride * totalVertexCount)!
-        let materialBuffer = device.makeBuffer(length: MemoryLayout<UInt32>.stride * totalFaceCount)!
+        let (vertexBuffer, vertices)    = device.makeBufferAndPointer(type: Float.self, count: 3 * totalVertexCount)
+        let (indexBuffer, indices)      = device.makeBufferAndPointer(type: UInt32.self, count: totalIndexCount)
+        let (normalBuffer, normals)     = device.makeBufferAndPointer(type: Float.self, count: 3 * totalVertexCount)
+        let (texCoordBuffer, texCoords) = device.makeBufferAndPointer(type: Float.self, count: 2 * totalVertexCount)
+        let (materialBuffer, materials) = device.makeBufferAndPointer(type: UInt32.self, count: totalFaceCount)
         
         vertexBuffer.label = "Vertex buffer"
         indexBuffer.label = "Index buffer"
         normalBuffer.label = "Normal buffer"
         texCoordBuffer.label = "UV buffer"
         materialBuffer.label = "Material buffer"
-        
-        let vertices = vertexBuffer.contents().assumingMemoryBound(to: Float.self)
-        let indices = indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
-        let normals = normalBuffer.contents().assumingMemoryBound(to: Float.self)
-        let texCoords = texCoordBuffer.contents().assumingMemoryBound(to: Float.self)
-        let materials = materialBuffer.contents().assumingMemoryBound(to: UInt32.self)
         
         DispatchQueue.concurrentPerform(iterations: shapeHandles.count) { index in
         //for index in 0..<shapeHandles.count {
