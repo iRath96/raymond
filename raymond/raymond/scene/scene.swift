@@ -1,225 +1,7 @@
 import Foundation
 import Metal
 import MetalPerformanceShaders
-
-struct SceneDescription: Codable {
-    struct Visibility: Codable {
-        var camera: Bool
-        var diffuse: Bool
-        var glossy: Bool
-        var transmission: Bool
-        var volume: Bool
-        var shadow: Bool
-    }
-    
-    struct Material: Codable {
-        var nodes: [String: Node]
-        
-        init(from decoder: Decoder) throws {
-            self.nodes = try [String: Node].init(from: decoder)
-        }
-        
-        func encode(to encoder: Encoder) throws {
-            try nodes.encode(to: encoder)
-        }
-    }
-    
-    enum LightError: Error {
-        case unsupportedLightType
-    }
-    
-    struct Light: Codable {
-        var material: String
-        var visibility: Visibility
-        var castShadows: Bool
-        var useMIS: Bool
-        
-        var kernel: LightKernel
-        
-        private enum CodingKeys: CodingKey {
-            case type
-            case material
-            case visibility, cast_shadows, use_mis
-            case parameters
-        }
-        
-        static let kernels: [String: LightKernel.Type] = [
-            "WORLD": WorldLight.self,
-            "AREA":  AreaLight.self,
-            "POINT": PointLight.self,
-            "SPOT":  SpotLight.self,
-            "SUN":   SunLight.self,
-        ]
-        
-        init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            let type = try container.decode(String.self, forKey: .type)
-            
-            guard let type = Light.kernels[type] else {
-                throw LightError.unsupportedLightType
-            }
-            
-            material = try container.decode(String.self, forKey: .material)
-            visibility = try container.decode(Visibility.self, forKey: .visibility)
-            castShadows = try container.decode(Bool.self, forKey: .cast_shadows)
-            useMIS = try container.decode(Bool.self, forKey: .use_mis)
-            kernel = try container.decode(type, forKey: .parameters)
-        }
-        
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            guard let type = Light.kernels.first(where: { type(of: kernel) == $0.value })?.key else {
-                throw NodeError.unsupportedNodeType
-            }
-            
-            try container.encode(type, forKey: .type)
-            try container.encode(material, forKey: .material)
-            try container.encode(visibility, forKey: .visibility)
-            try container.encode(castShadows, forKey: .cast_shadows)
-            try container.encode(useMIS, forKey: .use_mis)
-            try kernel.encode(to: container.superEncoder(forKey: .parameters))
-        }
-    }
-    
-    struct Shape: Codable {
-        var type: String
-        var filepath: URL
-        var materials: [String]
-    }
-    
-    struct Entity: Codable {
-        var shape: String
-        var visibility: Visibility
-        var matrix: float4x4
-        
-        private enum CodingKeys: String, CodingKey {
-            case shape
-            case visibility
-            case matrix
-        }
-        
-        init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            shape = try container.decode(String.self, forKey: .shape)
-            visibility = try container.decode(Visibility.self, forKey: .visibility)
-            
-            let matrixEntries = try container.decode([Float].self, forKey: .matrix)
-            matrix = float4x4()
-            for y in 0..<4 {
-                for x in 0..<4 {
-                    matrix[x, y] = matrixEntries[4 * y + x]
-                }
-            }
-        }
-        
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(shape, forKey: .shape)
-            try container.encode(visibility, forKey: .visibility)
-            
-            var matrixEntries: [Float] = .init(repeating: 0, count: 16)
-            for y in 0..<4 {
-                for x in 0..<4 {
-                    matrixEntries[4 * y + x] = matrix[x, y]
-                }
-            }
-            try container.encode(matrixEntries, forKey: .matrix)
-        }
-    }
-    
-    struct Camera: Codable {
-        struct Film: Codable {
-            var width: Float
-            var height: Float
-        }
-        
-        struct DepthOfField: Codable {
-            var focus: Float
-            var fstop: Float
-        }
-        
-        var nearClip: Float
-        var farClip: Float
-        var film: Film
-        var transform: float4x4
-        var depthOfField: DepthOfField?
-        
-        private enum CodingKeys: String, CodingKey {
-            case nearClip = "near_clip"
-            case farClip = "far_clip"
-            case film
-            case transform
-            case depthOfField = "dof"
-        }
-        
-        init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            nearClip = try container.decode(Float.self, forKey: .nearClip)
-            farClip = try container.decode(Float.self, forKey: .farClip)
-            film = try container.decode(Film.self, forKey: .film)
-            depthOfField = try container.decodeIfPresent(DepthOfField.self, forKey: .depthOfField)
-            
-            let matrixEntries = try container.decode([Float].self, forKey: .transform)
-            transform = float4x4()
-            for y in 0..<4 {
-                for x in 0..<4 {
-                    transform[x, y] = matrixEntries[4 * y + x]
-                }
-            }
-        }
-        
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(nearClip, forKey: .nearClip)
-            try container.encode(farClip, forKey: .farClip)
-            try container.encode(film, forKey: .film)
-            try container.encodeIfPresent(depthOfField, forKey: .depthOfField)
-            
-            var matrixEntries: [Float] = .init(repeating: 0, count: 16)
-            for y in 0..<4 {
-                for x in 0..<4 {
-                    matrixEntries[4 * y + x] = transform[x, y]
-                }
-            }
-            try container.encode(matrixEntries, forKey: .transform)
-        }
-    }
-    
-    struct RenderSettings: Codable {
-        struct Resolution: Codable {
-            var width: Float
-            var height: Float
-        }
-        
-        var resolution: Resolution
-    }
-
-    var materials: [String: Material]
-    var lights: [String: Light]
-    var shapes: [String: Shape]
-    var entities: [String: Entity]
-    var camera: Camera?
-    var render: RenderSettings
-}
-
-struct SceneDescriptionLoader {
-    func makeSceneDescription(fromURL url: URL) throws -> SceneDescription {
-        let data = try Data(contentsOf: url)
-        let decoder = JSONDecoder()
-        var scene = try decoder.decode(SceneDescription.self, from: data)
-        for (shapeName, shape) in scene.shapes {
-            if shape.materials.isEmpty {
-                print("assigning random material to shape without materials: \(shapeName)!")
-                scene.shapes[shapeName]!.materials = [ scene.materials.keys.first! ]
-            }
-            
-            // make all relative paths of shapes absolute
-            let filepath = URL(string: shape.filepath.relativePath, relativeTo: url)!.absoluteURL
-            scene.shapes[shapeName]!.filepath = filepath
-        }
-        return scene
-    }
-}
+import Rayjay
 
 struct Scene {
     var mesh: Mesh
@@ -359,7 +141,7 @@ struct SceneLoader {
     }
     
     private func makeWorldShader(
-        scene: SceneDescription,
+        scene: Rayjay.Scene,
         codegen: inout Codegen
     ) throws -> Int {
         NSLog("generating world shader")
@@ -369,8 +151,8 @@ struct SceneLoader {
     }
     
     private func makeLightInfo(
-        light: SceneDescription.Light,
-        scene: SceneDescription,
+        light: Light,
+        scene: Rayjay.Scene,
         codegen: inout Codegen
     ) throws -> NEELightInfo {
         if light.useMIS {
@@ -386,7 +168,7 @@ struct SceneLoader {
     
     private func makeAreaLights(
         device: MTLDevice,
-        scene: SceneDescription,
+        scene: Rayjay.Scene,
         codegen: inout Codegen
     ) throws -> (Int, MTLBuffer) {
         let lights = scene.lights.values.lazy.filter { $0.kernel is AreaLight }
@@ -410,7 +192,7 @@ struct SceneLoader {
     
     private func makePointLights(
         device: MTLDevice,
-        scene: SceneDescription,
+        scene: Rayjay.Scene,
         codegen: inout Codegen
     ) throws -> (Int, MTLBuffer) {
         let lights = scene.lights.values.lazy.filter { $0.kernel is PointLight }
@@ -433,7 +215,7 @@ struct SceneLoader {
     
     private func makeSunLights(
         device: MTLDevice,
-        scene: SceneDescription,
+        scene: Rayjay.Scene,
         codegen: inout Codegen
     ) throws -> (Int, MTLBuffer) {
         let lights = scene.lights.values.lazy.filter { $0.kernel is SunLight }
@@ -456,7 +238,7 @@ struct SceneLoader {
     
     private func makeSpotLights(
         device: MTLDevice,
-        scene: SceneDescription,
+        scene: Rayjay.Scene,
         codegen: inout Codegen
     ) throws -> (Int, MTLBuffer) {
         let lights = scene.lights.values.lazy.filter { $0.kernel is SpotLight }
@@ -483,7 +265,7 @@ struct SceneLoader {
     }
     
     func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
-        let sceneDescription = try SceneDescriptionLoader().makeSceneDescription(fromURL: url)
+        let sceneDescription = try Rayjay.SceneLoader().makeScene(fromURL: url)
         
         var instanceLoader = InstanceLoader()
         let entityNames = [String](sceneDescription.entities.keys.sorted())

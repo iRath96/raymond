@@ -1,6 +1,7 @@
 import Foundation
 import Metal
 import MetalPerformanceShaders
+import Rayjay
 
 func normalTransformFromPointTransform(_ transform: float4x4) -> float3x3 {
     let inv = transform.inverse.transpose
@@ -46,14 +47,14 @@ struct InstanceLoader {
         return newId
     }
     
-    mutating func addEntity(_ entity: SceneDescription.Entity) throws {
+    mutating func addEntity(_ entity: Entity) throws {
         var visibility: UInt8 = 0
-        if entity.visibility.camera       { visibility |= RayFlags.camera.rawValue }
-        if entity.visibility.diffuse      { visibility |= RayFlags.diffuse.rawValue }
-        if entity.visibility.glossy       { visibility |= RayFlags.glossy.rawValue }
-        if entity.visibility.transmission { visibility |= RayFlags.transmission.rawValue }
-        if entity.visibility.volume       { visibility |= RayFlags.volume.rawValue }
-        if entity.visibility.shadow       { visibility |= RayFlags.shadow.rawValue }
+        if entity.visibility.contains(.camera)       { visibility |= RayFlags.camera.rawValue }
+        if entity.visibility.contains(.diffuse)      { visibility |= RayFlags.diffuse.rawValue }
+        if entity.visibility.contains(.glossy)       { visibility |= RayFlags.glossy.rawValue }
+        if entity.visibility.contains(.transmission) { visibility |= RayFlags.transmission.rawValue }
+        if entity.visibility.contains(.volume)       { visibility |= RayFlags.volume.rawValue }
+        if entity.visibility.contains(.shadow)       { visibility |= RayFlags.shadow.rawValue }
         
         let shapeId = shapeId(forName: entity.shape)
         instances.append(Instance(
@@ -179,7 +180,7 @@ struct MeshLoader {
     private var vertexOffset: UInt32 = 0
     private var faceOffset: UInt32 = 0
     
-    mutating func addShape(_ shape: SceneDescription.Shape) throws {
+    mutating func addShape(_ shape: Shape) throws {
         guard shape.type == "ply" else {
             throw MeshLoaderError.unsupportedFormat
         }

@@ -1,6 +1,7 @@
 import Foundation
 import Metal
 import MetalKit
+import Rayjay
 
 extension String {
     var camelCase: String {
@@ -247,7 +248,7 @@ struct Codegen {
         print("Warning: \(message)")
     }
     
-    private mutating func makeKernelInvocation(for kernel: NodeKernel) throws -> KernelInvocation {
+    private mutating func makeKernelInvocation(for kernel: any NodeKernel) throws -> KernelInvocation {
         switch kernel {
         case let kernel as TexSkyKernel:
             if kernel.type == "NISHITA" {
@@ -368,9 +369,9 @@ struct Codegen {
             return .init(kernel: "Mapping", parameters: [
                 .enum("TYPE", kernel.type)
             ])
-        case let kernel as NormalMapKernel:
+        case let kernel as NormalMappingKernel:
             if !kernel.uvMap.isEmpty {
-                warn("NormalMap: UV maps not yet supported")
+                warn("NormalMapping: UV maps not yet supported")
             }
             return .init(kernel: "NormalMap", parameters: [
                 .enum("SPACE", kernel.space)
@@ -398,8 +399,8 @@ struct Codegen {
         case is BsdfTranslucentKernel:
             warn("BsdfTranslucent: not implemented")
             return .init(kernel: "BsdfTranslucent")
-        case is BumpKernel:
-            warn("Bump: not yet supported")
+        case is BumpMappingKernel:
+            warn("BumpMapping: not yet supported")
             return .init(kernel: "Bump")
         case is OutputMaterialKernel:
             return .init(kernel: "OutputMaterial")
@@ -485,11 +486,11 @@ struct Codegen {
         }
     }
     
-    mutating func addMaterial(_ material: SceneDescription.Material) throws -> Int {
+    mutating func addMaterial(_ material: Material) throws -> Int {
         return try emit(material)
     }
     
-    private mutating func emit(_ material: SceneDescription.Material) throws -> Int {
+    private mutating func emit(_ material: Material) throws -> Int {
         state = [:]
         invocations = []
         
@@ -608,13 +609,13 @@ struct Codegen {
              is BsdfTranslucentKernel,
              is BsdfRefractionKernel,
              is BsdfAnisotropicKernel,
-             is BumpKernel:
+             is BumpMappingKernel:
             provideDefault(name: "Normal", value: normal)
         default: break
         }
     }
     
-    private mutating func emitNode(_ material: SceneDescription.Material, key: String) throws {
+    private mutating func emitNode(_ material: Material, key: String) throws {
         switch state[key] {
             case .emitted: return
             case .pending: throw CodegenError.cycleDetected

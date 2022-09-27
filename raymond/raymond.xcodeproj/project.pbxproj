@@ -18,6 +18,8 @@
 		FA10CBB328787A69004092CA /* random.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A85287790ED00884319 /* random.hpp */; };
 		FA10CBB8287886B8004092CA /* PLYReader.m in Sources */ = {isa = PBXBuildFile; fileRef = FA10CBB7287886B8004092CA /* PLYReader.m */; };
 		FA289CD728860BBB008AD555 /* sky.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA5779152885FAAC003C10E7 /* sky.hpp */; };
+		FA2BA27A28E31A520083F61C /* scene.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27928E31A520083F61C /* scene.swift */; };
+		FA2BA27D28E31C4A0083F61C /* Rayjay in Frameworks */ = {isa = PBXBuildFile; productRef = FA2BA27C28E31C4A0083F61C /* Rayjay */; };
 		FA44785028CA14B5004F5A66 /* warp.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA44784F28CA1418004F5A66 /* warp.hpp */; };
 		FA44785228CA1B88004F5A66 /* IO.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA44785128CA1B88004F5A66 /* IO.swift */; };
 		FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = FA5779122883EC7F003C10E7 /* ArgumentParser */; };
@@ -29,10 +31,7 @@
 		FAC3AAF92875D4D800C0B0D0 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF82875D4D800C0B0D0 /* Shaders.metal */; };
 		FAC3AAFC2875D4D900C0B0D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */; };
 		FAC3AAFF2875D4D900C0B0D0 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFD2875D4D900C0B0D0 /* Main.storyboard */; };
-		FAC3AB082875D55800C0B0D0 /* nodes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AB072875D55800C0B0D0 /* nodes.swift */; };
 		FAC3AB1D2876D26700C0B0D0 /* codegen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AB1C2876D26700C0B0D0 /* codegen.swift */; };
-		FAC3AB1F2876D34600C0B0D0 /* scene.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AB1E2876D34600C0B0D0 /* scene.swift */; };
-		FAD9264928D5E1F4003FA1FE /* lights.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD9264828D5E1F4003FA1FE /* lights.swift */; };
 		FADBFA9328817ACC00727183 /* noise.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FADBFA9228817A9900727183 /* noise.hpp */; };
 /* End PBXBuildFile section */
 
@@ -49,6 +48,7 @@
 		FA100A9428786F9A00884319 /* shading.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = shading.hpp; sourceTree = "<group>"; };
 		FA10CBB6287886B8004092CA /* PLYReader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PLYReader.h; sourceTree = "<group>"; };
 		FA10CBB7287886B8004092CA /* PLYReader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PLYReader.m; sourceTree = "<group>"; };
+		FA2BA27928E31A520083F61C /* scene.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = scene.swift; sourceTree = "<group>"; };
 		FA44784F28CA1418004F5A66 /* warp.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = warp.hpp; sourceTree = "<group>"; };
 		FA44785128CA1B88004F5A66 /* IO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IO.swift; sourceTree = "<group>"; };
 		FA5779152885FAAC003C10E7 /* sky.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sky.hpp; sourceTree = "<group>"; };
@@ -66,10 +66,7 @@
 		FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FAC3AAFE2875D4D900C0B0D0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		FAC3AB002875D4D900C0B0D0 /* raymond.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = raymond.entitlements; sourceTree = "<group>"; };
-		FAC3AB072875D55800C0B0D0 /* nodes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = nodes.swift; sourceTree = "<group>"; };
 		FAC3AB1C2876D26700C0B0D0 /* codegen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = codegen.swift; sourceTree = "<group>"; };
-		FAC3AB1E2876D34600C0B0D0 /* scene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = scene.swift; sourceTree = "<group>"; };
-		FAD9264828D5E1F4003FA1FE /* lights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = lights.swift; sourceTree = "<group>"; };
 		FADBFA9228817A9900727183 /* noise.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = noise.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -78,6 +75,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA2BA27D28E31C4A0083F61C /* Rayjay in Frameworks */,
 				FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */,
 				FA100A8D28780BA900884319 /* libz.tbd in Frameworks */,
 			);
@@ -189,11 +187,9 @@
 		FAC3AB062875D53800C0B0D0 /* scene */ = {
 			isa = PBXGroup;
 			children = (
-				FAC3AB072875D55800C0B0D0 /* nodes.swift */,
+				FA2BA27928E31A520083F61C /* scene.swift */,
 				FAC3AB1C2876D26700C0B0D0 /* codegen.swift */,
-				FAC3AB1E2876D34600C0B0D0 /* scene.swift */,
 				FA100A822877685100884319 /* meshes.swift */,
-				FAD9264828D5E1F4003FA1FE /* lights.swift */,
 			);
 			path = scene;
 			sourceTree = "<group>";
@@ -216,6 +212,7 @@
 			name = raymond;
 			packageProductDependencies = (
 				FA5779122883EC7F003C10E7 /* ArgumentParser */,
+				FA2BA27C28E31C4A0083F61C /* Rayjay */,
 			);
 			productName = raymond;
 			productReference = FAC3AAEF2875D4D800C0B0D0 /* raymond.app */;
@@ -247,6 +244,7 @@
 			mainGroup = FAC3AAE62875D4D800C0B0D0;
 			packageReferences = (
 				FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+				FA2BA27B28E31C4A0083F61C /* XCRemoteSwiftPackageReference "rayjay" */,
 			);
 			productRefGroup = FAC3AAF02875D4D800C0B0D0 /* Products */;
 			projectDirPath = "";
@@ -283,7 +281,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FAC3AB1F2876D34600C0B0D0 /* scene.swift in Sources */,
 				FA44785228CA1B88004F5A66 /* IO.swift in Sources */,
 				FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */,
 				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
@@ -292,11 +289,10 @@
 				FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */,
 				FA100A832877685100884319 /* meshes.swift in Sources */,
 				FAC3AB1D2876D26700C0B0D0 /* codegen.swift in Sources */,
+				FA2BA27A28E31A520083F61C /* scene.swift in Sources */,
 				FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */,
-				FAD9264928D5E1F4003FA1FE /* lights.swift in Sources */,
 				FA10CBB8287886B8004092CA /* PLYReader.m in Sources */,
 				FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */,
-				FAC3AB082875D55800C0B0D0 /* nodes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -507,6 +503,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		FA2BA27B28E31C4A0083F61C /* XCRemoteSwiftPackageReference "rayjay" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://69co.de/research/rayjay.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-argument-parser.git";
@@ -518,6 +522,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		FA2BA27C28E31C4A0083F61C /* Rayjay */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA2BA27B28E31C4A0083F61C /* XCRemoteSwiftPackageReference "rayjay" */;
+			productName = Rayjay;
+		};
 		FA5779122883EC7F003C10E7 /* ArgumentParser */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
