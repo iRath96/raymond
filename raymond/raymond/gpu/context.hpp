@@ -9,7 +9,17 @@ using namespace metal;
 
 struct Context;
 struct ThreadContext;
-void runShader(device Context &ctx, thread ThreadContext &tctx, int shaderIndex);
+
+#ifdef JIT_COMPILED
+#define SHADE_STUB ;
+#else
+#define SHADE_STUB {}
+#endif
+
+void shadeLight(int shaderIndex, device Context &ctx, thread ThreadContext &tctx) SHADE_STUB
+void shadeSurface(int shaderIndex, device Context &ctx, thread ThreadContext &tctx) SHADE_STUB
+
+#undef SHADE_STUB
 
 struct Material {
     float3 normal;
@@ -148,13 +158,14 @@ struct ThreadContext {
 
 #ifndef JIT_COMPILED
 #define NUMBER_OF_TEXTURES 1
-#define USE_FUNCTION_TABLE
 #endif
 
-struct EnvmapSampling {
-    int resolution [[ id(0) ]]; // must be a power of two
-    device float *pdfs [[ id(1) ]];
-    device float *mipmap [[ id(2) ]];
+typedef struct {
+    uint16_t shaderIndex [[ id(0) ]];
+    
+    int resolution [[ id(1) ]]; // must be a power of two
+    device float *pdfs [[ id(2) ]];
+    device float *mipmap [[ id(3) ]];
     
     float pdf(float3 wo) const device {
         uint2 position = uint2(resolution * warp::uniformSphereToSquare(wo)) % resolution;
@@ -205,26 +216,26 @@ struct EnvmapSampling {
         uv = (float2(shift) + uv) / resolution;
         return warp::uniformSquareToSphere(uv);
     }
-};
+} WorldLight;
 
-struct NEESample {
+struct LightSample {
     int shaderIndex;
     bool canBeHit;
-    bool usesVisibility;
+    bool castsShadows;
     float3 weight;
     float pdf;
     float3 direction;
     float distance;
     
-    NEESample() {}
-    NEESample(NEELightInfo info) {
+    LightSample() {}
+    LightSample(LightInfo info) {
         shaderIndex = info.shaderIndex;
         canBeHit = info.usesMIS;
-        usesVisibility = info.usesVisibility;
+        castsShadows = info.castsShadows;
     }
     
-    static NEESample invalid() {
-        NEESample result;
+    static LightSample invalid() {
+        LightSample result;
         result.pdf = 0;
         result.weight = 0;
         return result;
@@ -232,28 +243,27 @@ struct NEESample {
 };
 
 struct Context;
-struct NEESampling {
-    int numLightsTotal [[ id(0) ]];
-    int numAreaLights [[ id(1) ]];
-    int numPointLights [[ id(2) ]];
-    int numSunLights [[ id(3) ]];
-    int numSpotLights [[ id(4) ]];
+struct Lights {
+    int numLightsTotal [[id(LightsBufferTotalLightCount)]];
+    int numAreaLights  [[id(LightsBufferAreaLightCount)]];
+    int numPointLights [[id(LightsBufferPointLightCount)]];
+    int numSunLights   [[id(LightsBufferSunLightCount)]];
+    int numSpotLights  [[id(LightsBufferSpotLightCount)]];
     
-    int envmapShader [[ id(5) ]];
-    EnvmapSampling envmap [[ id(6) ]];
-    device NEEAreaLight *neeAreaLights [[ id(9) ]];
-    device NEEPointLight *neePointLights [[ id(10) ]];
-    device NEESunLight *neeSunLights [[ id(11) ]];
-    device NEESpotLight *neeSpotLights [[ id(12) ]];
+    WorldLight worldLight          [[id(LightsBufferWorldLight)]];
+    device AreaLight *areaLights   [[id(LightsBufferAreaLight)]];
+    device PointLight *pointLights [[id(LightsBufferPointLight)]];
+    device SunLight *sunLights     [[id(LightsBufferSunLight)]];
+    device SpotLight *spotLights   [[id(LightsBufferSpotLight)]];
     
     float envmapPdf(float3 wo) const device {
-        const float envmapSelectionProbability = 1 / float(numLightsTotal);
-        return envmap.pdf(wo) * envmapSelectionProbability;
+        const float worldLightProbability = 1 / float(numLightsTotal);
+        return worldLight.pdf(wo) * worldLightProbability;
     }
     
-    NEESample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
+    LightSample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
         int sampledLightSource = prng.sampleInt(numLightsTotal);
-        NEESample sample;
+        LightSample sample;
         
         ThreadContext neeTctx;
         neeTctx.rayFlags = tctx.rayFlags;
@@ -262,20 +272,20 @@ struct NEESampling {
         if (sampledLightSource == 0) {
             sample = sampleEnvmap(ctx, neeTctx, prng);
         } else if ((sampledLightSource -= 1) < numAreaLights) {
-            sample = neeAreaLights[sampledLightSource].sample(ctx, neeTctx, prng);
+            sample = areaLights[sampledLightSource].sample(ctx, neeTctx, prng);
         } else if ((sampledLightSource -= numAreaLights) < numPointLights) {
-            sample = neePointLights[sampledLightSource].sample(ctx, neeTctx, prng);
+            sample = pointLights[sampledLightSource].sample(ctx, neeTctx, prng);
         } else if ((sampledLightSource -= numPointLights) < numSunLights) {
-            sample = neeSunLights[sampledLightSource].sample(ctx, neeTctx, prng);
+            sample = sunLights[sampledLightSource].sample(ctx, neeTctx, prng);
         } else if ((sampledLightSource -= numSunLights) < numSpotLights) {
-            sample = neeSpotLights[sampledLightSource].sample(ctx, neeTctx, prng);
+            sample = spotLights[sampledLightSource].sample(ctx, neeTctx, prng);
         } else {
-            return NEESample::invalid();
+            return LightSample::invalid();
         }
         
         neeTctx.wo = -sample.direction;
         if (any(sample.weight != 0)) {
-            runShader(ctx, neeTctx, sample.shaderIndex);
+            shadeLight(sample.shaderIndex, ctx, neeTctx);
             sample.weight *= neeTctx.material.emission;
         }
         
@@ -299,12 +309,12 @@ struct NEESampling {
     void evaluateEnvironment(device Context &ctx, thread ThreadContext &tctx) const device;
 
 private:
-    NEESample sampleEnvmap(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
-        NEESample sample;
-        sample.direction = envmap.sample(prng.sample2d(), sample.pdf);
+    LightSample sampleEnvmap(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device {
+        LightSample sample;
+        sample.direction = worldLight.sample(prng.sample2d(), sample.pdf);
         sample.distance = INFINITY;
-        sample.shaderIndex = envmapShader;
-        sample.usesVisibility = true;
+        sample.shaderIndex = worldLight.shaderIndex;
+        sample.castsShadows = true;
         sample.canBeHit = true;
         
         tctx.position = -sample.direction;
@@ -320,11 +330,18 @@ private:
 };
 
 struct Context {
-    NEESampling nee [[ id(0) ]];
-    array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[ id(20) ]];
+    device const Vertex *vertices                 [[id(ContextBufferVertices)]];
+    device const VertexIndex *vertexIndices       [[id(ContextBufferVertexIndices)]];
+    device const Vertex *vertexNormals            [[id(ContextBufferNormals)]];
+    device const float2 *texcoords                [[id(ContextBufferTexcoords)]];
+    device const PerInstanceData *perInstanceData [[id(ContextBufferPerInstanceData)]];
+    device const MaterialIndex *materials         [[id(ContextBufferMaterials)]];
+    
+    Lights lights [[id(ContextBufferLights)]];
+    array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[id(ContextBufferTextures)]];
 };
 
-void NEESampling::evaluateEnvironment(device Context &ctx, thread ThreadContext &tctx) const device {
+void Lights::evaluateEnvironment(device Context &ctx, thread ThreadContext &tctx) const device {
     tctx.position = tctx.wo;
     tctx.normal = tctx.wo;
     tctx.trueNormal = tctx.wo; /// @todo ???
@@ -332,10 +349,10 @@ void NEESampling::evaluateEnvironment(device Context &ctx, thread ThreadContext 
     tctx.object = -tctx.wo;
     tctx.uv = 0;
     
-    runShader(ctx, tctx, envmapShader);
+    shadeLight(worldLight.shaderIndex, ctx, tctx);
 }
 
-NEESample NEEAreaLight::sample(
+LightSample AreaLight::sample(
     device Context &ctx,
     thread ThreadContext &tctx,
     thread PRNGState &prng
@@ -348,7 +365,7 @@ NEESample NEEAreaLight::sample(
     const float3 point = float4(uv - 0.5, 0, 1) * transform;
     const float3 normal = normalize(float4(0, 0, 1, 0) * transform);
     
-    NEESample sample(info);
+    LightSample sample(info);
     sample.direction = point - tctx.position;
     
     const float lensqr = length_squared(sample.direction);
@@ -368,7 +385,7 @@ NEESample NEEAreaLight::sample(
     return sample;
 }
 
-NEESample NEEPointLight::sample(
+LightSample PointLight::sample(
     device Context &ctx,
     thread ThreadContext &tctx,
     thread PRNGState &prng
@@ -381,7 +398,7 @@ NEESample NEEPointLight::sample(
         point += radius * (basis * float3(warp::uniformSquareToDisk(prng.sample2d()), 0));
     }
     
-    NEESample sample(info);
+    LightSample sample(info);
     sample.direction = point - tctx.position;
     
     const float lensqr = length_squared(sample.direction);
@@ -401,7 +418,7 @@ NEESample NEEPointLight::sample(
     return sample;
 }
 
-NEESample NEESunLight::sample(
+LightSample SunLight::sample(
     device Context &ctx,
     thread ThreadContext &tctx,
     thread PRNGState &prng
@@ -415,7 +432,7 @@ NEESample NEESunLight::sample(
     const float3x3 frame = buildOrthonormalBasis(direction);
     const float3 point = frame * float3(sinTheta * sinPhi, sinTheta * cosPhi, cosTheta);
 
-    NEESample sample(info);
+    LightSample sample(info);
     sample.direction = point;
     sample.distance = INFINITY;
     
@@ -444,7 +461,7 @@ float spotLightAttenuation(float3 dir, float spotAngle, float spotSmooth, float3
     return attenuation;
 }
 
-NEESample NEESpotLight::sample(
+LightSample SpotLight::sample(
     device Context &ctx,
     thread ThreadContext &tctx,
     thread PRNGState &prng
@@ -457,7 +474,7 @@ NEESample NEESpotLight::sample(
         point += radius * (basis * float3(warp::uniformSquareToDisk(prng.sample2d()), 0));
     }
     
-    NEESample sample(info);
+    LightSample sample(info);
     sample.direction = point - tctx.position;
     
     const float lensqr = length_squared(sample.direction);
@@ -476,10 +493,4 @@ NEESample NEESpotLight::sample(
     sample.weight = attenuation * color * G * (M_1_PI_F * 0.25f);
     sample.pdf = 1;
     return sample;
-}
-
-void runShader(device Context &ctx, thread ThreadContext &tctx, int shaderIndex) {
-#ifdef JIT_COMPILED
-    SWITCH_SHADERS
-#endif
 }

@@ -1,6 +1,15 @@
 {
   "pins" : [
     {
+      "identity" : "rayjay",
+      "kind" : "remoteSourceControl",
+      "location" : "https://69co.de/research/rayjay.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "8b447ec64290ccb18858877f688b8bb00f1a86ae"
+      }
+    },
+    {
       "identity" : "swift-argument-parser",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-argument-parser.git",

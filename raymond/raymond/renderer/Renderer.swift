@@ -106,14 +106,14 @@ class Renderer: NSObject, MTKViewDelegate {
     
     private func setupRayIntersectors() {
         rayIntersector.rayDataType = .originMinDistanceDirectionMaxDistance
-        rayIntersector.rayStride = MemoryLayout<Ray>.stride
+        rayIntersector.rayStride = MemoryLayout<DeviceRay>.stride
         rayIntersector.intersectionDataType = .distancePrimitiveIndexInstanceIndexCoordinates
-        rayIntersector.intersectionStride = MemoryLayout<Intersection>.stride
+        rayIntersector.intersectionStride = MemoryLayout<DeviceIntersection>.stride
         
         shadowRayIntersector.rayDataType = .originMinDistanceDirectionMaxDistance
-        shadowRayIntersector.rayStride = MemoryLayout<ShadowRay>.stride
+        shadowRayIntersector.rayStride = MemoryLayout<DeviceShadowRay>.stride
         shadowRayIntersector.intersectionDataType = .distance
-        shadowRayIntersector.intersectionStride = MemoryLayout<Intersection>.stride
+        shadowRayIntersector.intersectionStride = MemoryLayout<DeviceIntersection>.stride
     }
     
     class func buildComputePipelineWithDevice(
@@ -306,36 +306,12 @@ class Renderer: NSObject, MTKViewDelegate {
                         shadowRayCountBuffer, offset: rayCountBufferOffset,
                         index: ShadingBufferIndex.shadowRayCount.rawValue)
                     
-                    // geometry buffers
-                    computeEncoder.setBuffer(
-                        scene.mesh.vertices,
-                        offset: 0, index: ShadingBufferIndex.vertices.rawValue)
-                    computeEncoder.setBuffer(
-                        scene.mesh.indices,
-                        offset: 0, index: ShadingBufferIndex.vertexIndices.rawValue)
-                    computeEncoder.setBuffer(
-                        scene.mesh.normals,
-                        offset: 0, index: ShadingBufferIndex.normals.rawValue)
-                    computeEncoder.setBuffer(
-                        scene.mesh.texCoords,
-                        offset: 0, index: ShadingBufferIndex.texcoords.rawValue)
-                    
                     // scene buffers
                     computeEncoder.setBuffer(
                         dynamicUniformBuffer,
                         offset: 0, index: ShadingBufferIndex.uniforms.rawValue)
-                    computeEncoder.setBuffer(
-                        scene.instanceBuffer,
-                        offset: 0, index: ShadingBufferIndex.perInstanceData.rawValue)
-                    computeEncoder.setBuffer(
-                        scene.mesh.materials,
-                        offset: 0, index: ShadingBufferIndex.materials.rawValue)
                     
                     // shader table
-                    computeEncoder.setVisibleFunctionTable(
-                        scene.shaderFunctionTable,
-                        bufferIndex: ShadingBufferIndex.functionTable.rawValue)
-                    
                     computeEncoder.setBuffer(
                         scene.contextBuffer, offset: 0,
                         index: ShadingBufferIndex.context.rawValue)
@@ -380,9 +356,6 @@ class Renderer: NSObject, MTKViewDelegate {
                     computeEncoder.setBuffer(intersectionBuffer, offset: 0, index: ShadowBufferIndex.intersections.rawValue)
                     computeEncoder.setBuffer(shadowRayBuffer, offset: 0, index: ShadowBufferIndex.shadowRays.rawValue)
                     computeEncoder.setBuffer(shadowRayCountBuffer, offset: rayCountBufferOffset, index: ShadowBufferIndex.rayCount.rawValue)
-                    computeEncoder.setVisibleFunctionTable(
-                        scene.shaderFunctionTable,
-                        bufferIndex: ShadingBufferIndex.functionTable.rawValue)
                     computeEncoder.setBuffer(
                         scene.contextBuffer, offset: 0,
                         index: ShadingBufferIndex.context.rawValue)
@@ -474,23 +447,29 @@ class Renderer: NSObject, MTKViewDelegate {
         
         rayCount = outputImageSize.width * outputImageSize.height
         rayBuffer = device.makeBuffer(
-            length: 2 * rayCount * MemoryLayout<Ray>.stride,
-            options: .storageModePrivate)!
+            type: DeviceRay.self,
+            count: 2 * rayCount,
+            options: .storageModePrivate)
         shadowRayBuffer = device.makeBuffer(
-            length: rayCount * MemoryLayout<ShadowRay>.stride,
+            type: DeviceShadowRay.self,
+            count: rayCount,
             options: .storageModePrivate)
         rayCountBuffer = device.makeBuffer(
-            length: (maxDepth+1) * MemoryLayout<UInt32>.stride,
-            options: .storageModeShared)!
+            type: UInt32.self,
+            count: maxDepth + 1,
+            options: .storageModeShared)
         shadowRayCountBuffer = device.makeBuffer(
-            length: maxDepth * MemoryLayout<UInt32>.stride,
+            type: UInt32.self,
+            count: maxDepth,
             options: .storageModeShared)
         intersectionBuffer = device.makeBuffer(
-            length: rayCount * MemoryLayout<Intersection>.stride,
-            options: .storageModePrivate)!
+            type: DeviceIntersection.self,
+            count: rayCount,
+            options: .storageModePrivate)
         indirectDispatchBuffer = device.makeBuffer(
-            length: MemoryLayout<MTLDispatchThreadgroupsIndirectArguments>.stride,
-            options: .storageModePrivate)!
+            type: MTLDispatchThreadgroupsIndirectArguments.self,
+            count: 1,
+            options: .storageModePrivate)
         
         rayBuffer.label = "Rays"
         shadowRayBuffer!.label = "Shadow rays"

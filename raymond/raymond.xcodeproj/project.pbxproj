@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		FA100A832877685100884319 /* meshes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA100A822877685100884319 /* meshes.swift */; };
 		FA100A8A287809B600884319 /* tinyexr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA100A88287809B600884319 /* tinyexr.cpp */; };
 		FA100A8D28780BA900884319 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = FA100A8C28780BA300884319 /* libz.tbd */; };
 		FA100A8F28781C7000884319 /* nodes.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A8E28781AD400884319 /* nodes.hpp */; };
@@ -18,8 +17,11 @@
 		FA10CBB328787A69004092CA /* random.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A85287790ED00884319 /* random.hpp */; };
 		FA10CBB8287886B8004092CA /* PLYReader.m in Sources */ = {isa = PBXBuildFile; fileRef = FA10CBB7287886B8004092CA /* PLYReader.m */; };
 		FA289CD728860BBB008AD555 /* sky.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA5779152885FAAC003C10E7 /* sky.hpp */; };
-		FA2BA27A28E31A520083F61C /* scene.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27928E31A520083F61C /* scene.swift */; };
+		FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27928E31A520083F61C /* SceneLoader.swift */; };
 		FA2BA27D28E31C4A0083F61C /* Rayjay in Frameworks */ = {isa = PBXBuildFile; productRef = FA2BA27C28E31C4A0083F61C /* Rayjay */; };
+		FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */; };
+		FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28028E65BF50083F61C /* EntityBuilder.swift */; };
+		FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28228E65C190083F61C /* LightBuilder.swift */; };
 		FA44785028CA14B5004F5A66 /* warp.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA44784F28CA1418004F5A66 /* warp.hpp */; };
 		FA44785228CA1B88004F5A66 /* IO.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA44785128CA1B88004F5A66 /* IO.swift */; };
 		FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = FA5779122883EC7F003C10E7 /* ArgumentParser */; };
@@ -31,12 +33,11 @@
 		FAC3AAF92875D4D800C0B0D0 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF82875D4D800C0B0D0 /* Shaders.metal */; };
 		FAC3AAFC2875D4D900C0B0D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */; };
 		FAC3AAFF2875D4D900C0B0D0 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFD2875D4D900C0B0D0 /* Main.storyboard */; };
-		FAC3AB1D2876D26700C0B0D0 /* codegen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AB1C2876D26700C0B0D0 /* codegen.swift */; };
+		FAC3AB1D2876D26700C0B0D0 /* MaterialBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AB1C2876D26700C0B0D0 /* MaterialBuilder.swift */; };
 		FADBFA9328817ACC00727183 /* noise.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FADBFA9228817A9900727183 /* noise.hpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		FA100A822877685100884319 /* meshes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = meshes.swift; sourceTree = "<group>"; };
 		FA100A85287790ED00884319 /* random.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = random.hpp; sourceTree = "<group>"; };
 		FA100A87287809B600884319 /* tinyexr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tinyexr.h; sourceTree = "<group>"; };
 		FA100A88287809B600884319 /* tinyexr.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tinyexr.cpp; sourceTree = "<group>"; };
@@ -48,7 +49,10 @@
 		FA100A9428786F9A00884319 /* shading.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = shading.hpp; sourceTree = "<group>"; };
 		FA10CBB6287886B8004092CA /* PLYReader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PLYReader.h; sourceTree = "<group>"; };
 		FA10CBB7287886B8004092CA /* PLYReader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PLYReader.m; sourceTree = "<group>"; };
-		FA2BA27928E31A520083F61C /* scene.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = scene.swift; sourceTree = "<group>"; };
+		FA2BA27928E31A520083F61C /* SceneLoader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SceneLoader.swift; sourceTree = "<group>"; };
+		FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShapeBuilder.swift; sourceTree = "<group>"; };
+		FA2BA28028E65BF50083F61C /* EntityBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityBuilder.swift; sourceTree = "<group>"; };
+		FA2BA28228E65C190083F61C /* LightBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightBuilder.swift; sourceTree = "<group>"; };
 		FA44784F28CA1418004F5A66 /* warp.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = warp.hpp; sourceTree = "<group>"; };
 		FA44785128CA1B88004F5A66 /* IO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IO.swift; sourceTree = "<group>"; };
 		FA5779152885FAAC003C10E7 /* sky.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sky.hpp; sourceTree = "<group>"; };
@@ -66,7 +70,7 @@
 		FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FAC3AAFE2875D4D900C0B0D0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		FAC3AB002875D4D900C0B0D0 /* raymond.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = raymond.entitlements; sourceTree = "<group>"; };
-		FAC3AB1C2876D26700C0B0D0 /* codegen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = codegen.swift; sourceTree = "<group>"; };
+		FAC3AB1C2876D26700C0B0D0 /* MaterialBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaterialBuilder.swift; sourceTree = "<group>"; };
 		FADBFA9228817A9900727183 /* noise.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = noise.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -187,9 +191,11 @@
 		FAC3AB062875D53800C0B0D0 /* scene */ = {
 			isa = PBXGroup;
 			children = (
-				FA2BA27928E31A520083F61C /* scene.swift */,
-				FAC3AB1C2876D26700C0B0D0 /* codegen.swift */,
-				FA100A822877685100884319 /* meshes.swift */,
+				FA2BA27928E31A520083F61C /* SceneLoader.swift */,
+				FAC3AB1C2876D26700C0B0D0 /* MaterialBuilder.swift */,
+				FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */,
+				FA2BA28028E65BF50083F61C /* EntityBuilder.swift */,
+				FA2BA28228E65C190083F61C /* LightBuilder.swift */,
 			);
 			path = scene;
 			sourceTree = "<group>";
@@ -281,15 +287,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */,
+				FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */,
 				FA44785228CA1B88004F5A66 /* IO.swift in Sources */,
 				FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */,
 				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
 				FAC3AAF92875D4D800C0B0D0 /* Shaders.metal in Sources */,
 				FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */,
 				FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */,
-				FA100A832877685100884319 /* meshes.swift in Sources */,
-				FAC3AB1D2876D26700C0B0D0 /* codegen.swift in Sources */,
-				FA2BA27A28E31A520083F61C /* scene.swift in Sources */,
+				FAC3AB1D2876D26700C0B0D0 /* MaterialBuilder.swift in Sources */,
+				FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */,
+				FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */,
 				FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */,
 				FA10CBB8287886B8004092CA /* PLYReader.m in Sources */,
 				FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */,

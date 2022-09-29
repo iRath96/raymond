@@ -3,104 +3,12 @@ import Metal
 import MetalPerformanceShaders
 import Rayjay
 
-func normalTransformFromPointTransform(_ transform: float4x4) -> float3x3 {
-    let inv = transform.inverse.transpose
-    let result = float3x3(
-        SIMD3(inv[0,0], inv[0,1], inv[0,2]),
-        SIMD3(inv[1,0], inv[1,1], inv[1,2]),
-        SIMD3(inv[2,0], inv[2,1], inv[2,2])
-    )
-    return result
-}
+class ShapeBuilder {
+    struct Result {
+        let accelerationGroup: MPSAccelerationStructureGroup
+        let accelerationStructures: [MPSTriangleAccelerationStructure]
+    }
 
-struct Instancing {
-    let instanceCount: UInt32
-    let shapeNames: [String]
-    
-    let indices: MTLBuffer
-    let transforms: MTLBuffer
-    
-    let indicesArray: [UInt32]
-    let pointTransforms: [simd_float4x4]
-    let normalTransforms: [simd_float3x3]
-    let visibility: [RayFlags]
-}
-
-struct InstanceLoader {
-    private var shapeIds: [String: UInt32] = [:]
-    
-    private struct Instance {
-        let index: UInt32
-        let transform: float4x4
-        let visibility: RayFlags
-    }
-    
-    private var instances: [Instance] = []
-    
-    private mutating func shapeId(forName name: String) -> UInt32 {
-        if let id = shapeIds[name] {
-            return id
-        }
-        
-        let newId = UInt32(shapeIds.count)
-        shapeIds[name] = newId
-        return newId
-    }
-    
-    mutating func addEntity(_ entity: Entity) throws {
-        var visibility: UInt8 = 0
-        if entity.visibility.contains(.camera)       { visibility |= RayFlags.camera.rawValue }
-        if entity.visibility.contains(.diffuse)      { visibility |= RayFlags.diffuse.rawValue }
-        if entity.visibility.contains(.glossy)       { visibility |= RayFlags.glossy.rawValue }
-        if entity.visibility.contains(.transmission) { visibility |= RayFlags.transmission.rawValue }
-        if entity.visibility.contains(.volume)       { visibility |= RayFlags.volume.rawValue }
-        if entity.visibility.contains(.shadow)       { visibility |= RayFlags.shadow.rawValue }
-        
-        let shapeId = shapeId(forName: entity.shape)
-        instances.append(Instance(
-            index: shapeId,
-            transform: entity.matrix,
-            visibility: RayFlags(rawValue: visibility)!
-        ))
-    }
-    
-    func build(withDevice device: MTLDevice) throws -> Instancing {
-        var (indexBuffer, indices) = device.makeBufferAndPointer(type: UInt32.self, count: instances.count)
-        var (transformBuffer, transforms) = device.makeBufferAndPointer(type: float4x4.self, count: instances.count)
-        
-        for instance in instances {
-            indices.pointee = instance.index
-            transforms.pointee = instance.transform
-            
-            indices = indices.advanced(by: 1)
-            transforms = transforms.advanced(by: 1)
-        }
-        
-        return Instancing(
-            instanceCount: UInt32(instances.count),
-            shapeNames: shapeIds.sorted(by: { $0.value < $1.value }).map { $0.key },
-            indices: indexBuffer,
-            transforms: transformBuffer,
-            indicesArray: instances.map { $0.index },
-            pointTransforms: instances.map { $0.transform },
-            normalTransforms: instances.map {
-                normalTransformFromPointTransform($0.transform)
-            },
-            visibility: instances.map { $0.visibility }
-        )
-    }
-}
-
-struct Mesh {
-    let vertices: MTLBuffer
-    let indices: MTLBuffer
-    let normals: MTLBuffer
-    let texCoords: MTLBuffer
-    let materials: MTLBuffer
-    
-    let accelerationGroup: MPSAccelerationStructureGroup
-    let accelerationStructures: [MPSTriangleAccelerationStructure]
-    
     struct ShapeInfo {
         var vertexOffset: UInt32
         var faceOffset: UInt32
@@ -108,11 +16,13 @@ struct Mesh {
         var boundsMax: simd_float3
     }
     
-    var shapeInfos: [ShapeInfo]
-    var materialNames: [String]
-}
-
-struct MeshLoader {
+    private let library: [String: Shape]
+    private var materialRegistry: MaterialBuilder
+    public init(library: [String: Shape], materialRegistry: MaterialBuilder) {
+        self.library = library
+        self.materialRegistry = materialRegistry
+    }
+    
     enum MeshLoaderError: Error {
         case unsupportedFormat
         case invalidShapeHeader
@@ -122,7 +32,7 @@ struct MeshLoader {
     private struct ShapeHandle {
         var path: String
         
-        var materials: [UInt32]
+        var materialIndices: [MaterialIndex]
         var vertexCount: UInt32
         var faceCount: UInt32
         var vertexOffset: UInt32
@@ -133,8 +43,8 @@ struct MeshLoader {
         
         var fileReader: PLYReader
         
-        init(withPath url: URL, materials: [UInt32], vertexOffset: UInt32, faceOffset: UInt32) throws {
-            self.materials = materials
+        init(withPath url: URL, materialIndices: [MaterialIndex], vertexOffset: UInt32, faceOffset: UInt32) throws {
+            self.materialIndices = materialIndices
             self.path = url.relativeString
             self.fileReader = PLYReader(url: url)
             self.vertexOffset = vertexOffset
@@ -175,30 +85,35 @@ struct MeshLoader {
         }
     }
     
-    private var materialIds: [String: UInt32] = [:]
+    private var shapeIds: [String: Int] = [:]
     private var shapeHandles: [ShapeHandle] = []
     private var vertexOffset: UInt32 = 0
     private var faceOffset: UInt32 = 0
     
-    mutating func addShape(_ shape: Shape) throws {
+    @discardableResult
+    func index(of name: String) throws -> Int {
+        if let id = shapeIds[name] {
+            return id
+        }
+        
+        let id = shapeIds.count
+        try add(shape: library[name]!)
+        shapeIds[name] = id
+        return id
+    }
+    
+    private func add(shape: Shape) throws {
         guard shape.type == "ply" else {
             throw MeshLoaderError.unsupportedFormat
         }
         
-        let materials = shape.materials.map {
-            // map material names to indices
-            if let id = materialIds[$0] {
-                return id
-            }
-            
-            let newId = UInt32(materialIds.count)
-            materialIds[$0] = newId
-            return newId
+        let materialIndices = shape.materials.map { material in
+            MaterialIndex(materialRegistry.index(of: .surface, named: material))
         }
         
         let shapeHandle = try ShapeHandle(
             withPath: shape.filepath,
-            materials: materials,
+            materialIndices: materialIndices,
             vertexOffset: vertexOffset,
             faceOffset: faceOffset
         )
@@ -208,7 +123,17 @@ struct MeshLoader {
         faceOffset += shapeHandle.faceCount
     }
     
-    mutating func build(withDevice device: MTLDevice) throws -> Mesh {
+    func shapeInfo(for index: Int) -> ShapeInfo {
+        let shapeHandle = shapeHandles[index]
+        return .init(
+            vertexOffset: shapeHandle.vertexOffset,
+            faceOffset: shapeHandle.faceOffset,
+            boundsMin: shapeHandle.boundsMin,
+            boundsMax: shapeHandle.boundsMax
+        )
+    }
+    
+    func build(withDevice device: MTLDevice, encoder: MTLArgumentEncoder, resources: inout [MTLResource]) throws -> Result {
         let totalVertexCount = Int(vertexOffset)
         let totalFaceCount = Int(faceOffset)
         let totalIndexCount = 3 * totalFaceCount
@@ -217,7 +142,7 @@ struct MeshLoader {
         let (indexBuffer, indices)      = device.makeBufferAndPointer(type: UInt32.self, count: totalIndexCount)
         let (normalBuffer, normals)     = device.makeBufferAndPointer(type: Float.self, count: 3 * totalVertexCount)
         let (texCoordBuffer, texCoords) = device.makeBufferAndPointer(type: Float.self, count: 2 * totalVertexCount)
-        let (materialBuffer, materials) = device.makeBufferAndPointer(type: UInt32.self, count: totalFaceCount)
+        let (materialBuffer, materials) = device.makeBufferAndPointer(type: MaterialIndex.self, count: totalFaceCount)
         
         vertexBuffer.label = "Vertex buffer"
         indexBuffer.label = "Index buffer"
@@ -240,7 +165,7 @@ struct MeshLoader {
                 boundsMin: &shapeHandle.boundsMin,
                 boundsMax: &shapeHandle.boundsMax)
             
-            let palette = UnsafePointer<UInt32>(shapeHandle.materials)
+            let palette = UnsafePointer<MaterialIndex>(shapeHandle.materialIndices)
             shapeHandle.fileReader.readFaces(
                 shapeHandle.faceCount,
                 indices: indices.advanced(by: 3 * Int(shapeHandle.faceOffset)),
@@ -255,7 +180,6 @@ struct MeshLoader {
         // build acceleration structure
         let group = MPSAccelerationStructureGroup(device: device)
         
-        var shapeInfos: [Mesh.ShapeInfo] = []
         let accelerationStructures = shapeHandles.map { shapeHandle in
             NSLog("accelerating \(shapeHandle.path)")
             
@@ -271,28 +195,24 @@ struct MeshLoader {
             triAccel.triangleCount = Int(shapeHandle.faceCount)
             triAccel.rebuild()
             
-            shapeInfos.append(Mesh.ShapeInfo(
-                vertexOffset: shapeHandle.vertexOffset,
-                faceOffset: shapeHandle.faceOffset,
-                boundsMin: shapeHandle.boundsMin,
-                boundsMax: shapeHandle.boundsMax
-            ))
-            
             return triAccel
         }
         
-        return Mesh(
-            vertices: vertexBuffer,
-            indices: indexBuffer,
-            normals: normalBuffer,
-            texCoords: texCoordBuffer,
-            materials: materialBuffer,
-            
+        encoder.setBuffer(vertexBuffer, offset: 0, index: ContextBufferIndex.vertices.rawValue)
+        encoder.setBuffer(indexBuffer, offset: 0, index: ContextBufferIndex.vertexIndices.rawValue)
+        encoder.setBuffer(normalBuffer, offset: 0, index: ContextBufferIndex.normals.rawValue)
+        encoder.setBuffer(texCoordBuffer, offset: 0, index: ContextBufferIndex.texcoords.rawValue)
+        encoder.setBuffer(materialBuffer, offset: 0, index: ContextBufferIndex.materials.rawValue)
+        
+        resources.append(vertexBuffer)
+        resources.append(indexBuffer)
+        resources.append(normalBuffer)
+        resources.append(texCoordBuffer)
+        resources.append(materialBuffer)
+        
+        return .init(
             accelerationGroup: group,
-            accelerationStructures: accelerationStructures,
-            
-            shapeInfos: shapeInfos,
-            materialNames: materialIds.sorted(by: { $0.value < $1.value }).map { $0.key }
+            accelerationStructures: accelerationStructures
         )
     }
 }

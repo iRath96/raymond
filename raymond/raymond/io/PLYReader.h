@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <simd/simd.h>
+#include "ShaderTypes.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -23,8 +24,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)readFaces:(unsigned int)number
     indices:(unsigned int * _Nonnull)indices
-    materials:(unsigned int * _Nonnull)materials
-    fromPalette:(const unsigned int * _Nonnull)palette;
+    materials:(MaterialIndex * _Nonnull)materials
+    fromPalette:(const MaterialIndex * _Nonnull)palette;
 
 @end
 

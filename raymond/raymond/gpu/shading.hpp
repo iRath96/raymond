@@ -49,21 +49,8 @@ kernel void handleIntersections(
     device atomic_uint &nextRayCount [[buffer(ShadingBufferNextRayCount)]],
     device atomic_uint &shadowRayCount [[buffer(ShadingBufferShadowRayCount)]],
     
-    // geometry buffers
-    device const Vertex *vertices [[buffer(ShadingBufferVertices)]],
-    device const VertexIndex *vertexIndices [[buffer(ShadingBufferVertexIndices)]],
-    device const Vertex *vertexNormals [[buffer(ShadingBufferNormals)]],
-    device const float2 *texcoords [[buffer(ShadingBufferTexcoords)]],
-    
     // scene buffers
     constant Uniforms &uniforms [[buffer(ShadingBufferUniforms)]],
-    device const PerInstanceData *perInstanceData [[buffer(ShadingBufferPerInstanceData)]],
-    device const MaterialIndex *materials [[buffer(ShadingBufferMaterials)]],
-    
-    // awesome
-    visible_function_table<
-        void (device Context &, thread ThreadContext &)
-    > shaders [[buffer(ShadingBufferFunctionTable)]],
     device Context &ctx [[buffer(ShadingBufferContext)]],
     
     uint rayIndex [[thread_position_in_grid]]
@@ -84,9 +71,9 @@ kernel void handleIntersections(
         // miss
         if (isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee) {
             const float misWeight = uniforms.samplingMode == SamplingModeBsdf ? 1 :
-                computeMisWeight(ray.bsdfPdf, ctx.nee.envmapPdf(ray.direction));
+                computeMisWeight(ray.bsdfPdf, ctx.lights.envmapPdf(ray.direction));
             
-            ctx.nee.evaluateEnvironment(ctx, tctx);
+            ctx.lights.evaluateEnvironment(ctx, tctx);
             uint2 coordinates = uint2(ray.x, ray.y);
             image.write(
                 image.read(coordinates) + float4(
@@ -99,28 +86,28 @@ kernel void handleIntersections(
         return;
     }
     
-    const device PerInstanceData &instance = perInstanceData[isect.instanceIndex];
+    const device PerInstanceData &instance = ctx.perInstanceData[isect.instanceIndex];
     
     int shaderIndex;
     {
         const unsigned int faceIndex = instance.faceOffset + isect.primitiveIndex;
-        const unsigned int idx0 = instance.vertexOffset + vertexIndices[3 * faceIndex + 0];
-        const unsigned int idx1 = instance.vertexOffset + vertexIndices[3 * faceIndex + 1];
-        const unsigned int idx2 = instance.vertexOffset + vertexIndices[3 * faceIndex + 2];
+        const unsigned int idx0 = instance.vertexOffset + ctx.vertexIndices[3 * faceIndex + 0];
+        const unsigned int idx1 = instance.vertexOffset + ctx.vertexIndices[3 * faceIndex + 1];
+        const unsigned int idx2 = instance.vertexOffset + ctx.vertexIndices[3 * faceIndex + 2];
         
         // @todo: is this numerically stable enough?
         //ipoint = ray.origin + ray.direction * isect.distance;
         
-        float2 Tc = texcoords[idx2];
+        float2 Tc = ctx.texcoords[idx2];
         float2x2 T;
-        T.columns[0] = texcoords[idx0] - Tc;
-        T.columns[1] = texcoords[idx1] - Tc;
+        T.columns[0] = ctx.texcoords[idx0] - Tc;
+        T.columns[1] = ctx.texcoords[idx1] - Tc;
         tctx.uv = float3(T * isect.coordinates + Tc, 0);
         
-        float3 Pc = vertexToFloat3(vertices[idx2]);
+        float3 Pc = vertexToFloat3(ctx.vertices[idx2]);
         float2x3 P;
-        P.columns[0] = vertexToFloat3(vertices[idx0]) - Pc;
-        P.columns[1] = vertexToFloat3(vertices[idx1]) - Pc;
+        P.columns[0] = vertexToFloat3(ctx.vertices[idx0]) - Pc;
+        P.columns[1] = vertexToFloat3(ctx.vertices[idx1]) - Pc;
         tctx.trueNormal = normalize(instance.normalTransform * cross(P.columns[0], P.columns[1]));
         
         float3 localP = P * isect.coordinates + Pc;
@@ -129,24 +116,20 @@ kernel void handleIntersections(
         tctx.position = (instance.pointTransform * float4(localP, 1)).xyz;
         
         tctx.normal = instance.normalTransform * interpolate(
-            vertexToFloat3(vertexNormals[idx0]),
-            vertexToFloat3(vertexNormals[idx1]),
-            vertexToFloat3(vertexNormals[idx2]),
+            vertexToFloat3(ctx.vertexNormals[idx0]),
+            vertexToFloat3(ctx.vertexNormals[idx1]),
+            vertexToFloat3(ctx.vertexNormals[idx2]),
             isect.coordinates);
         tctx.normal = normalize(tctx.normal);
         
         tctx.tu = normalize(instance.normalTransform * (P * float2(T[1][1], -T[0][1])));
         tctx.tv = normalize(instance.normalTransform * (P * float2(-T[1][0], T[0][0])));
 
-        shaderIndex = materials[faceIndex];
+        shaderIndex = ctx.materials[faceIndex];
     }
     
     if (instance.visibility & ray.flags) {
-#ifdef USE_FUNCTION_TABLE
-        shaders[shaderIndex](ctx, tctx);
-#else
-        SWITCH_SHADERS
-#endif
+        shadeSurface(shaderIndex, ctx, tctx);
     } else {
         tctx.material.alpha = 0;
     }
@@ -192,13 +175,13 @@ kernel void handleIntersections(
     /// @todo slight inaccuracies with BsdfTranslucent
     /// @todo verify that clearcoat evaluation works correctly
     if (uniforms.samplingMode != SamplingModeBsdf) {
-        NEESample neeSample = ctx.nee.sample(ctx, tctx, prng);
+        LightSample neeSample = ctx.lights.sample(ctx, tctx, prng);
         
         float bsdfPdf;
         float3 bsdf = tctx.material.evaluate(tctx.wo, neeSample.direction, shNormal, tctx.trueNormal, bsdfPdf);
         
         float3 contribution = neeSample.weight * bsdf * ray.weight;
-        if (neeSample.usesVisibility) {
+        if (neeSample.castsShadows) {
             const float misWeight = uniforms.samplingMode == SamplingModeNee || !neeSample.canBeHit ? 1 :
                 computeMisWeight(neeSample.pdf, bsdfPdf);
             
@@ -279,7 +262,7 @@ kernel void buildEnvironmentMap(
         tctx.rayFlags = RayFlags(0);
         tctx.rnd = prng.sample3d();
         tctx.wo = -wo;
-        ctx.nee.evaluateEnvironment(ctx, tctx);
+        ctx.lights.evaluateEnvironment(ctx, tctx);
         
         float3 sampleValue = tctx.material.emission;
         if (UseSecondMoment) {
@@ -380,7 +363,7 @@ kernel void testEnvironmentMapSampling(
     //const float3 sample = warp::uniformSquareToSphere(uv);
     
     float samplePdf;
-    const float3 sample = ctx.nee.envmap.sample(uv, samplePdf);
+    const float3 sample = ctx.lights.worldLight.sample(uv, samplePdf);
     const float2 projected = warp::uniformSphereToSquare(sample);
     const float pdf = 1;//ctx.envmap.pdf(sample) * (4 * M_PI_F);
     
