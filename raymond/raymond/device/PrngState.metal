@@ -1,6 +1,4 @@
-#pragma once
-
-#include "ShaderTypes.h"
+#include "../bridge/PRNGState.hpp"
 
 /**
  * \brief Generate fast and reasonably good pseudorandom numbers using the
