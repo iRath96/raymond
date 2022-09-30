@@ -298,7 +298,7 @@ struct TexImage {
         
         case kTexImage::COLOR_SPACE_XYZ:
             /// @todo verify
-            color.xyz = xyz_to_rgb(color.x, color.y, color.z);
+            color.xyz = xyz_to_rgb(color.xyz);
             break;
         }
     }
@@ -417,7 +417,7 @@ float3 sky_radiance_preetham(
 
     /* convert to RGB */
     float3 xyz = xyY_to_xyz(x, y, Y);
-    return xyz_to_rgb(xyz.x, xyz.y, xyz.z);
+    return xyz_to_rgb(xyz);
 }
 
 /* Hosek / Wilkie */
@@ -455,12 +455,10 @@ float3 sky_radiance_hosek(
     theta = min(theta, M_PI_2_F - 0.001f);
 
     /* compute xyz color space values */
-    float x = sky_radiance_internal(config_x, theta, gamma) * radiance.x;
-    float y = sky_radiance_internal(config_y, theta, gamma) * radiance.y;
-    float z = sky_radiance_internal(config_z, theta, gamma) * radiance.z;
+    float3 xyz = sky_radiance_internal(config_x, theta, gamma) * radiance;
 
     /* convert to RGB and adjust strength */
-    return xyz_to_rgb(x, y, z) * (2 * M_PI_F / 683);
+    return xyz_to_rgb(xyz) * (2 * M_PI_F / 683);
 }
 
 /* Nishita improved */
@@ -548,7 +546,7 @@ float3 sky_radiance_nishita(float3 dir, float nishita_data[10], texture2d<float>
     }
   }
   /* convert to RGB */
-  return xyz_to_rgb(xyz.x, xyz.y, xyz.z);
+  return xyz_to_rgb(xyz);
 }
 
 template<
