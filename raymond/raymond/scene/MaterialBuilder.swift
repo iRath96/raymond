@@ -237,14 +237,14 @@ struct Codegen {
         
         for functionTable in functionTables {
             header += "void \(functionTable.name)(int index, device Context &ctx, thread ShadingContext &shading) {\n"
-            header += "  switch (index) {\n"
-            for (index, function) in functionTable.functions {
-                header += "  case \(index): \\\n"
-                header += "    void \(function.name)(device Context &, thread ShadingContext &); \\\n"
-                header += "    \(function.name)(ctx, shading); \\\n"
-                header += "    break; \\\n"
+            header += "    switch (index) {\n"
+            for (index, function) in functionTable.functions.sorted(by: { $0.key < $1.key }) {
+                header += "    case \(index):\n"
+                header += "        void \(function.name)(device Context &, thread ShadingContext &);\n"
+                header += "        \(function.name)(ctx, shading);\n"
+                header += "        break;\n"
             }
-            header += "  }\n"
+            header += "    }\n"
             header += "}\n"
         }
         
