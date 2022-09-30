@@ -38,4 +38,19 @@ float2 uniformSquareToDisk(float2 uv) {
     return float2(r * cos, r * sin);
 }
 
+/**
+ * Samples vectors in the upper hemisphere weighted by their cosine value.
+ * @note The PDF of this is given by:
+ *   @code max(0, cosTheta(w)) / pi @endcode
+ */
+float3 uniformSquareToCosineWeightedHemisphere(float2 rnd) {
+    float cosTheta = sqrt(rnd.x);
+    float sinTheta = sqrt(1 - square(cosTheta));
+    
+    float cosPhi;
+    float sinPhi = sincos(2 * M_PI_F * rnd.y, cosPhi);
+
+    return float3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
+}
+
 }

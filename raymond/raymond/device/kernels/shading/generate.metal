@@ -1,16 +1,8 @@
-#include <metal_stdlib>
-#include <simd/simd.h>
-
-#include "gpu/random.hpp"
-#include "gpu/context.hpp"
-#include "gpu/nodes.hpp"
-#include "gpu/shading.hpp"
-
-#import "gpu/ShaderTypes.h"
-
-using namespace metal;
-
-// MARK: - ray tracing
+#include "../../../bridge/common.hpp"
+#include "../../../bridge/Ray.hpp"
+#include "../../../bridge/Uniforms.hpp"
+#include "../../../bridge/ResourceIds.hpp"
+#include "../../../bridge/PrngState.hpp"
 
 kernel void generateRays(
     device Ray *rays            [[buffer(GeneratorBufferRays)]],
@@ -31,8 +23,7 @@ kernel void generateRays(
             warpIndex.y * warpSize.y * imageSize.x;
     device Ray &ray = rays[rayIndex];
     
-    ray.prng.seed = sample_tea_32(uniforms.frameIndex, rayIndex);
-    ray.prng.index = 0;
+    ray.prng = PrngState(uniforms.frameIndex, rayIndex);
     ray.x = coordinates.x;
     ray.y = coordinates.y;
     
@@ -52,46 +43,4 @@ kernel void generateRays(
     if (coordinates.x == 0 && coordinates.y == 0) {
         *rayCount = imageSize.x * imageSize.y;
     }
-}
-
-kernel void makeIndirectDispatchArguments(
-    device uint *rayCount [[buffer(0)]],
-    device MTLDispatchThreadgroupsIndirectArguments *dispatchArg [[buffer(1)]]
-) {
-    dispatchArg->threadgroupsPerGrid[0] = (*rayCount + 63) / 64;
-    dispatchArg->threadgroupsPerGrid[1] = 1;
-    dispatchArg->threadgroupsPerGrid[2] = 1;
-}
-
-// MARK: - blit shader
-
-struct BlitVertexOut {
-    float4 pos [[position]];
-    float2 coords;
-};
-
-constant constexpr static const float4 fullscreenTrianglePositions[3] {
-    { -1.0, -1.0, 0.0, 1.0 },
-    {  3.0, -1.0, 0.0, 1.0 },
-    { -1.0,  3.0, 0.0, 1.0 }
-};
-
-vertex BlitVertexOut blitVertex(
-    uint vertexIndex [[vertex_id]]
-) {
-    BlitVertexOut out;
-    out.pos = fullscreenTrianglePositions[vertexIndex];
-    out.coords = out.pos.xy * 0.5 + 0.5;
-    return out;
-}
-
-fragment float4 blitFragment(
-    BlitVertexOut in [[stage_in]],
-    constant Uniforms &uniforms [[buffer(0)]],
-    texture2d<float> image [[texture(0)]]
-) {
-    constexpr sampler linearSampler(coord::normalized, filter::nearest);
-    float4 color = image.sample(linearSampler, in.coords) / (uniforms.frameIndex + 1);
-    if (any(isnan(color))) color = float4(1, 0, 1, 1);
-    return color;
 }

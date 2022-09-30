@@ -16,6 +16,10 @@ extension String {
 }
 
 struct Codegen {
+    static func makeIdentifier(from name: String) -> String {
+        return name.camelCase.replacing(/[^a-zA-Z0-9_]/, with: "_")
+    }
+    
     enum CodegenError: Error {
         case cycleDetected
         case multiInputDetected
@@ -60,10 +64,6 @@ struct Codegen {
         var comments: [String] = []
         var inputs: [String: String] = [:]
         
-        private func makeIdentifier(_ id: String) -> String {
-            return id.camelCase.replacing(/[^a-zA-Z0-9_]/, with: "_")
-        }
-        
         @discardableResult
         mutating func assign(key: String, value: String) -> Self {
             inputs[key] = value
@@ -84,7 +84,9 @@ struct Codegen {
         
         @discardableResult
         mutating func assign(key: String, link: Node.Link, type: String) -> Self {
-            inputs[key] = "\(type)(n_\(makeIdentifier(link.node)).\(makeIdentifier(link.property)))"
+            let node = Codegen.makeIdentifier(from: link.node)
+            let property = Codegen.makeIdentifier(from: link.property)
+            inputs[key] = "\(type)(n_\(node).\(property))"
             return self
         }
         
@@ -113,19 +115,19 @@ struct Codegen {
                 kernelType += ">"
             }
             
-            let nodeName = "n_\(makeIdentifier(name!))"
+            let nodeName = "n_\(Codegen.makeIdentifier(from: name!))"
             if inputs.isEmpty {
                 text.addLine("\(kernelType) \(nodeName);")
             } else {
                 text.addLine("\(kernelType) \(nodeName) = {")
                 text.indent()
                 for input in inputs.sorted(by: { $0.0 < $1.0 }) {
-                    text.addLine(".\(makeIdentifier(input.key)) = \(input.value),")
+                    text.addLine(".\(Codegen.makeIdentifier(from: input.key)) = \(input.value),")
                 }
                 text.unindent()
                 text.addLine("};")
             }
-            text.addLine("\(nodeName).compute(ctx, tctx);")
+            text.addLine("\(nodeName).compute(ctx, shading);")
         }
     }
     
@@ -135,18 +137,25 @@ struct Codegen {
         case emitted
     }
     
-    struct Options: OptionSet {
-        let rawValue: Int
-        static let useFunctionTable = Options(rawValue: 1 << 0)
-    }
-    
     private struct TextureDescriptor {
         var url: URL?
         var options: [MTKTextureLoader.Option: Any]?
         var texture: MTLTexture?
     }
     
-    private var basePath: URL
+    struct Function {
+        var name: String
+    }
+    
+    struct FunctionTable {
+        var name: String
+        var functions: [Int: Function] = [:]
+        
+        mutating func set(function: Function, at index: Int) {
+            functions[index] = function
+        }
+    }
+    
     private var device: MTLDevice
     private var textureLoader: MTKTextureLoader
     
@@ -154,16 +163,14 @@ struct Codegen {
     private(set) var textures: [MTLTexture] = []
     private var textureIndices: [String: Int] = [:]
     
-    private var materialIndex = 0
+    private var usedFunctionNames: Set<String> = []
+    private var functionTables: [FunctionTable] = []
     private var state: [String: NodeState] = [:]
     private var invocations: [KernelInvocation] = []
     private var text = CodegenOutput()
-    private(set) var options: Options
     
-    init(basePath: URL, device: MTLDevice, options: Options) {
-        self.basePath = basePath
+    init(device: MTLDevice) {
         self.device = device
-        self.options = options
         self.textureLoader = .init(device: device)
     }
     
@@ -199,13 +206,18 @@ struct Codegen {
         }
     }
     
+    mutating func add(functionTable table: FunctionTable) {
+        functionTables.append(table)
+    }
+    
     mutating func build() throws -> MTLLibrary {
         try loadTextures()
         
         NSLog("building code")
         let metalEntryURL = Bundle.main.url(
-            forResource: "shading",
-            withExtension: "hpp"
+            forResource: "entry",
+            withExtension: "metal",
+            subdirectory: "device"
         )!
         
         var header = """
@@ -220,21 +232,21 @@ struct Codegen {
             let pixelFormat = textures[index].pixelFormat
             header += "#define TEX\(index)_PIXEL_FORMAT kTexImage::PIXEL_FORMAT_\(try mapPixelFormat(pixelFormat))\n"
         }
+                
+        header += "#include \"\(metalEntryURL.relativePath)\"\n"
         
-        if options.contains(.useFunctionTable) {
-            header += "#define USE_FUNCTION_TABLE\n"
-        } else {
-            header += "#define SWITCH_SHADERS switch (shaderIndex) { \\\n"
-            for index in 0..<materialIndex {
+        for functionTable in functionTables {
+            header += "void \(functionTable.name)(int index, device Context &ctx, thread ShadingContext &shading) {\n"
+            header += "  switch (index) {\n"
+            for (index, function) in functionTable.functions {
                 header += "  case \(index): \\\n"
-                header += "    void material_\(index)(device Context &, thread ThreadContext &); \\\n"
-                header += "    material_\(index)(ctx, tctx); \\\n"
+                header += "    void \(function.name)(device Context &, thread ShadingContext &); \\\n"
+                header += "    \(function.name)(ctx, shading); \\\n"
                 header += "    break; \\\n"
             }
+            header += "  }\n"
             header += "}\n"
         }
-        
-        header += "#include \"\(metalEntryURL.relativePath)\"\n"
         
         let source = "\(header)\n\(text.output)"
         print(source)
@@ -486,11 +498,19 @@ struct Codegen {
         }
     }
     
-    mutating func addMaterial(_ material: Material) throws -> Int {
-        return try emit(material)
+    private func findUnusedFunctionName(for name: String) -> String {
+        let identifier = "s_" + Codegen.makeIdentifier(from: name)
+        
+        var index = 2
+        var candidate = identifier
+        while usedFunctionNames.contains(candidate) {
+            candidate = "\(identifier)\(index)"
+            index += 1
+        }
+        return candidate
     }
     
-    private mutating func emit(_ material: Material) throws -> Int {
+    mutating func add(material: Material, named name: String) throws -> Function {
         state = [:]
         invocations = []
         
@@ -503,26 +523,13 @@ struct Codegen {
             }
         }
         
-        if textures.isEmpty {
-            // Metal doesn't like arrays of length zero, so we need to
-            // create a fake texture for the argument buffer to work
-            let descriptor = MTLTextureDescriptor()
-            descriptor.width = 1
-            descriptor.height = 1
-            descriptor.pixelFormat = .r8Unorm
-            textures.append(textureLoader.device.makeTexture(descriptor: descriptor)!)
-        }
+        let functionName = findUnusedFunctionName(for: name)
+        usedFunctionNames.insert(functionName)
         
-        let functionName = "material_\(materialIndex)"
-        defer {
-            materialIndex += 1
-        }
-        
-        let attributes = options.contains(.useFunctionTable) ? "[[visible]] " : ""
         text.addLine("""
-        \(attributes)void \(functionName)(
+        void \(functionName)(
             device Context &ctx,
-            thread ThreadContext &tctx
+            thread ShadingContext &shading
         ) {
         """)
         text.indent()
@@ -533,7 +540,7 @@ struct Codegen {
         text.addLine("}")
         text.addLine("")
         
-        return materialIndex
+        return .init(name: functionName)
     }
     
     private mutating func registerTexture(_ texture: MTLTexture) -> Int {
@@ -591,9 +598,9 @@ struct Codegen {
             invocation.assign(key: name, value: value)
         }
         
-        let mappedUV = "VECTOR(tctx.uv)"
-        let generatedUV = "VECTOR(tctx.generated)"
-        let normal = "VECTOR(tctx.normal)"
+        let mappedUV = "VECTOR(shading.uv)"
+        let generatedUV = "VECTOR(shading.generated)"
+        let normal = "VECTOR(shading.normal)"
         
         switch node.kernel {
         case is TexImageKernel:
@@ -647,5 +654,67 @@ struct Codegen {
         
         invocations.append(invocation)
         state[key] = .emitted
+    }
+}
+
+class MaterialBuilder {
+    struct Result {
+        let textures: [MTLTexture]
+        let library: MTLLibrary
+        
+        func makeComputePipelineState(for function: String) throws -> (MTLFunction, MTLComputePipelineState) {
+            let descriptor = MTLComputePipelineDescriptor()
+            descriptor.computeFunction = library.makeFunction(name: function)
+            descriptor.label = function
+            
+            return (descriptor.computeFunction!, try library.device.makeComputePipelineState(
+                descriptor: descriptor,
+                options: [],
+                reflection: nil))
+        }
+    }
+    
+    enum MaterialType {
+        case surface
+        case light
+    }
+    
+    private struct FunctionTableDescriptor {
+        let type: MaterialType
+        let name: String
+    }
+    
+    private static let functionTables: [FunctionTableDescriptor] = [
+        .init(type: .surface, name: "shadeSurface"),
+        .init(type: .light, name: "shadeLight")
+    ]
+    
+    private var shaderIndices: [MaterialType: [String: Int]] = [:]
+    
+    private let library: [String: Material]
+    public init(library: [String: Material]) {
+        self.library = library
+    }
+    
+    @discardableResult
+    func index(of type: MaterialType, named name: String) -> Int {
+        let index = shaderIndices[type, default: [:]].getOrAdd(name)
+        return index
+    }
+    
+    func build(withDevice device: MTLDevice) throws -> Result {
+        var codegen = Codegen(device: device)
+        
+        for fnTableDesc in Self.functionTables {
+            var fnTable = Codegen.FunctionTable(name: fnTableDesc.name)
+            for (name, index) in shaderIndices[fnTableDesc.type, default: [:]] {
+                let function = try codegen.add(material: library[name]!, named: name)
+                fnTable.set(function: function, at: Int(index))
+            }
+            codegen.add(functionTable: fnTable)
+        }
+        
+        let library = try codegen.build()
+        return .init(textures: codegen.textures, library: library)
     }
 }

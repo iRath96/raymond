@@ -134,8 +134,8 @@ float my_strtof(char *head, char **endPtr) {
 
 - (void)readFaces:(unsigned int)number
     indices:(unsigned int * _Nonnull)indices
-    materials:(unsigned int * _Nonnull)materials
-    fromPalette:(const unsigned int *)palette
+    materials:(uint16_t * _Nonnull)materials
+    fromPalette:(const uint16_t *)palette
 {
     char buffer[16384];
     long n = sizeof(buffer);
