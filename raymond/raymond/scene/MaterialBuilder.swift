@@ -16,6 +16,14 @@ extension String {
 }
 
 struct Codegen {
+    struct Options {
+        let externalCompile: Bool
+        
+        init(externalCompile: Bool = false) {
+            self.externalCompile = externalCompile
+        }
+    }
+    
     static func makeIdentifier(from name: String) -> String {
         return name.camelCase.replacing(/[^a-zA-Z0-9_]/, with: "_")
     }
@@ -157,6 +165,7 @@ struct Codegen {
     }
     
     private var device: MTLDevice
+    private var options: Options
     private var textureLoader: MTKTextureLoader
     
     private var textureDescriptors: [TextureDescriptor] = []
@@ -169,8 +178,9 @@ struct Codegen {
     private var invocations: [KernelInvocation] = []
     private var text = CodegenOutput()
     
-    init(device: MTLDevice) {
+    init(device: MTLDevice, options: Options) {
         self.device = device
+        self.options = options
         self.textureLoader = .init(device: device)
     }
     
@@ -232,8 +242,18 @@ struct Codegen {
             let pixelFormat = textures[index].pixelFormat
             header += "#define TEX\(index)_PIXEL_FORMAT kTexImage::PIXEL_FORMAT_\(try mapPixelFormat(pixelFormat))\n"
         }
-                
-        header += "#include \"\(metalEntryURL.relativePath)\"\n"
+        
+        let dumpDirectory = URL.temporaryDirectory
+        
+        header += "\n"
+        if options.externalCompile {
+            /// not sure why, but our #includes need to be relative so that Xcode shader profiling works fully
+            let relativePath = metalEntryURL.relativePath(from: dumpDirectory)!
+            header += "#include \"\(relativePath)\"\n"
+        } else {
+            header += "#include \"\(metalEntryURL.relativePath)\"\n"
+        }
+        header += "\n"
         
         for functionTable in functionTables {
             header += "void \(functionTable.name)(int index, device Context &ctx, thread ShadingContext &shading) {\n"
@@ -250,6 +270,23 @@ struct Codegen {
         
         let source = "\(header)\n\(text.output)"
         print(source)
+        
+        if options.externalCompile {
+            let libname = "raymond"
+            let sourcePath = dumpDirectory.appending(path: "\(libname).metal")
+            let airPath = dumpDirectory.appending(path: "\(libname).air")
+            let libraryPath = dumpDirectory.appending(path: "\(libname).metallib")
+            try source.write(to: sourcePath, atomically: true, encoding: .utf8)
+            
+            try shell("xcrun", "metal", "-c",
+                "-gline-tables-only", "-frecord-sources",
+                "-ffast-math",
+                sourcePath.relativePath, "-o", airPath.relativePath)
+            try shell("xcrun", "metallib",
+                airPath.relativePath, "-o", libraryPath.relativePath)
+            
+            return try device.makeLibrary(URL: libraryPath)
+        }
         
         let compileOptions = MTLCompileOptions()
         let library = try device.makeLibrary(source: source, options: compileOptions)
@@ -702,8 +739,8 @@ class MaterialBuilder {
         return index
     }
     
-    func build(withDevice device: MTLDevice) throws -> Result {
-        var codegen = Codegen(device: device)
+    func build(withDevice device: MTLDevice, options: Codegen.Options) throws -> Result {
+        var codegen = Codegen(device: device, options: options)
         
         for fnTableDesc in Self.functionTables {
             var fnTable = Codegen.FunctionTable(name: fnTableDesc.name)

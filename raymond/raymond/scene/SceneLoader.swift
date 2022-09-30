@@ -25,6 +25,7 @@ struct Scene {
     var accelerationStructure: MPSInstanceAccelerationStructure
     var intersectionHandler: MTLComputePipelineState
     var shadowRayHandler: MTLComputePipelineState
+    var library: MTLLibrary
     
     var projectionMatrix: float4x4
     var resourcesRead: [MTLResource]
@@ -32,10 +33,12 @@ struct Scene {
 }
 
 struct SceneLoader {
+    var externalCompile: Bool = false
+    
     func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
         let sceneDescription = try Rayjay.SceneLoader().makeScene(fromURL: url)
         
-        var materialBuilder = MaterialBuilder(
+        let materialBuilder = MaterialBuilder(
             library: sceneDescription.materials)
         let shapeBuilder = ShapeBuilder(
             library: sceneDescription.shapes,
@@ -48,7 +51,9 @@ struct SceneLoader {
             shapeBuilder: shapeBuilder)
         
         // STEP 1: build all the shaders, so the following stages can access pipeline state info
-        let shading = try materialBuilder.build(withDevice: device)
+        let shading = try materialBuilder.build(
+            withDevice: device,
+            options: .init(externalCompile: externalCompile))
         
         let (intersectionFunction, intersectionHandler) = try shading.makeComputePipelineState(for: "handleIntersections")
         let (_, shadowRayHandler) = try shading.makeComputePipelineState(for: "handleShadowRays")
@@ -103,6 +108,8 @@ struct SceneLoader {
             accelerationStructure: entities.accelerationStructure,
             intersectionHandler: intersectionHandler,
             shadowRayHandler: shadowRayHandler,
+            library: shading.library,
+            
             projectionMatrix: projectionMatrix,
             resourcesRead: resourcesRead,
             contextBuffer: contextBuffer

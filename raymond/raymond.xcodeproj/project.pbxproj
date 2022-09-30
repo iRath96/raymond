@@ -15,11 +15,13 @@
 		FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */; };
 		FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28028E65BF50083F61C /* EntityBuilder.swift */; };
 		FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28228E65C190083F61C /* LightBuilder.swift */; };
-		FA2BA2D128E6F0C50083F61C /* entry.metal in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA2D028E6F0C50083F61C /* entry.metal */; };
-		FA44785228CA1B88004F5A66 /* IO.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA44785128CA1B88004F5A66 /* IO.swift */; };
+		FA44785228CA1B88004F5A66 /* Metal.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA44785128CA1B88004F5A66 /* Metal.swift */; };
 		FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = FA5779122883EC7F003C10E7 /* ArgumentParser */; };
 		FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FA5779172885FF86003C10E7 /* SkyLoader.mm */; };
 		FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA57791A2885FFE6003C10E7 /* sky_nishita.cpp */; };
+		FA7D5D5628E77B5B00912878 /* entry.metal in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA2D028E6F0C50083F61C /* entry.metal */; };
+		FA7D5D5928E780F500912878 /* URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D5828E780F500912878 /* URL.swift */; };
+		FA7D5D5C28E7813800912878 /* shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D5B28E7813800912878 /* shell.swift */; };
 		FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF22875D4D800C0B0D0 /* Main.swift */; };
 		FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */; };
 		FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */; };
@@ -86,12 +88,14 @@
 		FA2BA2CF28E6EFDB0083F61C /* shading.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = shading.hpp; sourceTree = "<group>"; };
 		FA2BA2D028E6F0C50083F61C /* entry.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = entry.metal; sourceTree = "<group>"; };
 		FA44784F28CA1418004F5A66 /* warp.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = warp.hpp; sourceTree = "<group>"; };
-		FA44785128CA1B88004F5A66 /* IO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IO.swift; sourceTree = "<group>"; };
+		FA44785128CA1B88004F5A66 /* Metal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Metal.swift; sourceTree = "<group>"; };
 		FA5779172885FF86003C10E7 /* SkyLoader.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SkyLoader.mm; sourceTree = "<group>"; };
 		FA57791A2885FFE6003C10E7 /* sky_nishita.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sky_nishita.cpp; sourceTree = "<group>"; };
 		FA57791D2885FFFD003C10E7 /* sky_float3.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sky_float3.h; sourceTree = "<group>"; };
 		FA57791E28860042003C10E7 /* sky_model.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sky_model.h; sourceTree = "<group>"; };
 		FA57791F2886009A003C10E7 /* SkyLoader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SkyLoader.h; sourceTree = "<group>"; };
+		FA7D5D5828E780F500912878 /* URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URL.swift; sourceTree = "<group>"; };
+		FA7D5D5B28E7813800912878 /* shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = shell.swift; sourceTree = "<group>"; };
 		FAC3AAEF2875D4D800C0B0D0 /* raymond.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = raymond.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3AAF22875D4D800C0B0D0 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
 		FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendererViewController.swift; sourceTree = "<group>"; };
@@ -142,7 +146,6 @@
 				FA100A88287809B600884319 /* tinyexr.cpp */,
 				FA10CBB6287886B8004092CA /* PLYReader.h */,
 				FA10CBB7287886B8004092CA /* PLYReader.m */,
-				FA44785128CA1B88004F5A66 /* IO.swift */,
 			);
 			path = io;
 			sourceTree = "<group>";
@@ -308,6 +311,23 @@
 			path = sky;
 			sourceTree = "<group>";
 		};
+		FA7D5D5728E780EB00912878 /* extensions */ = {
+			isa = PBXGroup;
+			children = (
+				FA44785128CA1B88004F5A66 /* Metal.swift */,
+				FA7D5D5828E780F500912878 /* URL.swift */,
+			);
+			path = extensions;
+			sourceTree = "<group>";
+		};
+		FA7D5D5A28E7812C00912878 /* utils */ = {
+			isa = PBXGroup;
+			children = (
+				FA7D5D5B28E7813800912878 /* shell.swift */,
+			);
+			path = utils;
+			sourceTree = "<group>";
+		};
 		FAC3AAE62875D4D800C0B0D0 = {
 			isa = PBXGroup;
 			children = (
@@ -334,6 +354,8 @@
 				FA100A84287790CD00884319 /* device */,
 				FAC3AB062875D53800C0B0D0 /* scene */,
 				FA5779142883F635003C10E7 /* renderer */,
+				FA7D5D5A28E7812C00912878 /* utils */,
+				FA7D5D5728E780EB00912878 /* extensions */,
 				FAC3AAF22875D4D800C0B0D0 /* Main.swift */,
 				FA100A89287809B600884319 /* BridgingHeader.h */,
 				FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */,
@@ -456,9 +478,10 @@
 			files = (
 				FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */,
 				FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */,
-				FA44785228CA1B88004F5A66 /* IO.swift in Sources */,
+				FA44785228CA1B88004F5A66 /* Metal.swift in Sources */,
 				FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */,
 				FAC3AB1D2876D26700C0B0D0 /* MaterialBuilder.swift in Sources */,
+				FA7D5D5928E780F500912878 /* URL.swift in Sources */,
 				FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */,
 				FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */,
 				FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */,
@@ -467,7 +490,8 @@
 				FA10CBB8287886B8004092CA /* PLYReader.m in Sources */,
 				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
 				FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */,
-				FA2BA2D128E6F0C50083F61C /* entry.metal in Sources */,
+				FA7D5D5C28E7813800912878 /* shell.swift in Sources */,
+				FA7D5D5628E77B5B00912878 /* entry.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -647,6 +671,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/bridge/ $SRCROOT/device/";
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";

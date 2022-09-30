@@ -77,12 +77,12 @@ class Renderer: NSObject, MTKViewDelegate {
         lastHandlerConstants.setConstantValue(ptr, type: .bool, index: 0)
         ptr.deallocate()
         
-        rayGenerator = Renderer.buildComputePipelineWithDevice(device: device, name: "generateRays")!
-        makeIndirectDispatch = Renderer.buildComputePipelineWithDevice(device: device, name: "makeIndirectDispatchArguments")!
+        rayGenerator = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "generateRays")!
+        makeIndirectDispatch = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "makeIndirectDispatchArguments")!
         
         do {
             pipelineState = try Renderer.buildBlitPipelineWithDevice(
-                device: device,
+                library: scene.library,
                 metalKitView: metalKitView
             )
         } catch {
@@ -117,13 +117,11 @@ class Renderer: NSObject, MTKViewDelegate {
     }
     
     class func buildComputePipelineWithDevice(
-        device: MTLDevice,
+        library: MTLLibrary,
         name: String,
         constantValues: MTLFunctionConstantValues = MTLFunctionConstantValues(),
         linkedFunctions: MTLLinkedFunctions? = nil
     ) -> MTLComputePipelineState? {
-        let library = device.makeDefaultLibrary()!
-        
         do {
             let descriptor = MTLComputePipelineDescriptor()
             descriptor.computeFunction = try library.makeFunction(name: name, constantValues: constantValues)
@@ -137,15 +135,13 @@ class Renderer: NSObject, MTKViewDelegate {
     }
     
     class func buildBlitPipelineWithDevice(
-        device: MTLDevice,
+        library: MTLLibrary,
         metalKitView: MTKView
     ) throws -> MTLRenderPipelineState {
         /// Build a render state pipeline object
         
-        let library = device.makeDefaultLibrary()
-        
-        let vertexFunction = library?.makeFunction(name: "blitVertex")
-        let fragmentFunction = library?.makeFunction(name: "blitFragment")
+        let vertexFunction = library.makeFunction(name: "blitVertex")
+        let fragmentFunction = library.makeFunction(name: "blitFragment")
         
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.label = "BlitPipeline"
@@ -157,7 +153,7 @@ class Renderer: NSObject, MTKViewDelegate {
         pipelineDescriptor.depthAttachmentPixelFormat = metalKitView.depthStencilPixelFormat
         pipelineDescriptor.stencilAttachmentPixelFormat = metalKitView.depthStencilPixelFormat
         
-        return try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        return try library.device.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }
     
     private func updateDynamicBufferState() {

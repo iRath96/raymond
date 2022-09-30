@@ -11,9 +11,18 @@ struct Raymond: ParsableCommand {
     @Option(name: .short, help: "Gesture amplification")
     var gestureAmplification: Float = 0.02
     
+    @Flag(name: .shortAndLong, help: ArgumentHelp(
+        "Compile shaders using xcrun",
+        discussion: "Enables better profiling information in Xcode"
+    ))
+    var externalCompile = false
+    
     mutating func run() throws {
+        var sceneLoader = SceneLoader()
+        sceneLoader.externalCompile = externalCompile
+        
         let sceneURL = URL(filePath: scenePath)
-        let scene = try SceneLoader().loadScene(fromURL: sceneURL, onDevice: MTLCreateSystemDefaultDevice()!)
+        let scene = try sceneLoader.loadScene(fromURL: sceneURL, onDevice: MTLCreateSystemDefaultDevice()!)
         
         let storyboard = NSStoryboard(name: "Main", bundle: nil)
         let windowController = storyboard.instantiateInitialController() as! NSWindowController
