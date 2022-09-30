@@ -9,20 +9,13 @@
 /* Begin PBXBuildFile section */
 		FA100A8A287809B600884319 /* tinyexr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA100A88287809B600884319 /* tinyexr.cpp */; };
 		FA100A8D28780BA900884319 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = FA100A8C28780BA300884319 /* libz.tbd */; };
-		FA100A8F28781C7000884319 /* nodes.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A8E28781AD400884319 /* nodes.hpp */; };
-		FA100A91287830A300884319 /* bsdf.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A902878308200884319 /* bsdf.hpp */; };
-		FA100A932878317F00884319 /* context.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A922878314400884319 /* context.hpp */; };
-		FA100A9528786FBE00884319 /* shading.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A9428786F9A00884319 /* shading.hpp */; };
-		FA100A962878701A00884319 /* ShaderTypes.h in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFA2875D4D800C0B0D0 /* ShaderTypes.h */; };
-		FA10CBB328787A69004092CA /* random.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA100A85287790ED00884319 /* random.hpp */; };
 		FA10CBB8287886B8004092CA /* PLYReader.m in Sources */ = {isa = PBXBuildFile; fileRef = FA10CBB7287886B8004092CA /* PLYReader.m */; };
-		FA289CD728860BBB008AD555 /* sky.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA5779152885FAAC003C10E7 /* sky.hpp */; };
 		FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27928E31A520083F61C /* SceneLoader.swift */; };
 		FA2BA27D28E31C4A0083F61C /* Rayjay in Frameworks */ = {isa = PBXBuildFile; productRef = FA2BA27C28E31C4A0083F61C /* Rayjay */; };
 		FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */; };
 		FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28028E65BF50083F61C /* EntityBuilder.swift */; };
 		FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28228E65C190083F61C /* LightBuilder.swift */; };
-		FA44785028CA14B5004F5A66 /* warp.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FA44784F28CA1418004F5A66 /* warp.hpp */; };
+		FA2BA2D128E6F0C50083F61C /* entry.metal in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA2D028E6F0C50083F61C /* entry.metal */; };
 		FA44785228CA1B88004F5A66 /* IO.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA44785128CA1B88004F5A66 /* IO.swift */; };
 		FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = FA5779122883EC7F003C10E7 /* ArgumentParser */; };
 		FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FA5779172885FF86003C10E7 /* SkyLoader.mm */; };
@@ -30,32 +23,70 @@
 		FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF22875D4D800C0B0D0 /* Main.swift */; };
 		FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */; };
 		FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */; };
-		FAC3AAF92875D4D800C0B0D0 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF82875D4D800C0B0D0 /* Shaders.metal */; };
 		FAC3AAFC2875D4D900C0B0D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */; };
 		FAC3AAFF2875D4D900C0B0D0 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FAC3AAFD2875D4D900C0B0D0 /* Main.storyboard */; };
 		FAC3AB1D2876D26700C0B0D0 /* MaterialBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AB1C2876D26700C0B0D0 /* MaterialBuilder.swift */; };
-		FADBFA9328817ACC00727183 /* noise.hpp in Resources */ = {isa = PBXBuildFile; fileRef = FADBFA9228817A9900727183 /* noise.hpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		FA100A85287790ED00884319 /* random.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = random.hpp; sourceTree = "<group>"; };
+		FA100A85287790ED00884319 /* PrngState.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PrngState.metal; sourceTree = "<group>"; };
 		FA100A87287809B600884319 /* tinyexr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tinyexr.h; sourceTree = "<group>"; };
 		FA100A88287809B600884319 /* tinyexr.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tinyexr.cpp; sourceTree = "<group>"; };
 		FA100A89287809B600884319 /* BridgingHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
 		FA100A8C28780BA300884319 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		FA100A8E28781AD400884319 /* nodes.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = nodes.hpp; sourceTree = "<group>"; };
-		FA100A902878308200884319 /* bsdf.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = bsdf.hpp; sourceTree = "<group>"; };
-		FA100A922878314400884319 /* context.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = context.hpp; sourceTree = "<group>"; };
-		FA100A9428786F9A00884319 /* shading.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = shading.hpp; sourceTree = "<group>"; };
+		FA100A922878314400884319 /* Context.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Context.hpp; sourceTree = "<group>"; };
 		FA10CBB6287886B8004092CA /* PLYReader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PLYReader.h; sourceTree = "<group>"; };
 		FA10CBB7287886B8004092CA /* PLYReader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PLYReader.m; sourceTree = "<group>"; };
 		FA2BA27928E31A520083F61C /* SceneLoader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SceneLoader.swift; sourceTree = "<group>"; };
 		FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShapeBuilder.swift; sourceTree = "<group>"; };
 		FA2BA28028E65BF50083F61C /* EntityBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityBuilder.swift; sourceTree = "<group>"; };
 		FA2BA28228E65C190083F61C /* LightBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightBuilder.swift; sourceTree = "<group>"; };
+		FA2BA28628E6D6D30083F61C /* LightInfo.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = LightInfo.hpp; sourceTree = "<group>"; };
+		FA2BA28728E6D6EB0083F61C /* AreaLight.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = AreaLight.hpp; sourceTree = "<group>"; };
+		FA2BA28828E6D7010083F61C /* PointLight.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = PointLight.hpp; sourceTree = "<group>"; };
+		FA2BA28928E6D71D0083F61C /* SunLight.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = SunLight.hpp; sourceTree = "<group>"; };
+		FA2BA28A28E6D72F0083F61C /* SpotLight.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = SpotLight.hpp; sourceTree = "<group>"; };
+		FA2BA28B28E6D75F0083F61C /* Uniforms.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Uniforms.hpp; sourceTree = "<group>"; };
+		FA2BA28C28E6D7840083F61C /* ResourceIds.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ResourceIds.hpp; sourceTree = "<group>"; };
+		FA2BA28D28E6D7AE0083F61C /* PerInstanceData.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = PerInstanceData.hpp; sourceTree = "<group>"; };
+		FA2BA28E28E6D7DB0083F61C /* Ray.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Ray.hpp; sourceTree = "<group>"; };
+		FA2BA28F28E6D8060083F61C /* common.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = common.hpp; sourceTree = "<group>"; };
+		FA2BA29028E6D83B0083F61C /* PrngState.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = PrngState.hpp; sourceTree = "<group>"; };
+		FA2BA29728E6DBD10083F61C /* math.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = math.hpp; sourceTree = "<group>"; };
+		FA2BA29828E6DC010083F61C /* ShadingFrame.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ShadingFrame.hpp; sourceTree = "<group>"; };
+		FA2BA29928E6DC180083F61C /* BsdfSample.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = BsdfSample.hpp; sourceTree = "<group>"; };
+		FA2BA29A28E6DC3E0083F61C /* fresnel.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = fresnel.hpp; sourceTree = "<group>"; };
+		FA2BA29B28E6DCC40083F61C /* microfacet.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = microfacet.hpp; sourceTree = "<group>"; };
+		FA2BA29D28E6DD2B0083F61C /* color.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = color.hpp; sourceTree = "<group>"; };
+		FA2BA29E28E6DD420083F61C /* Clearcoat.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Clearcoat.hpp; sourceTree = "<group>"; };
+		FA2BA29F28E6DD570083F61C /* Transmission.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Transmission.hpp; sourceTree = "<group>"; };
+		FA2BA2A028E6DD680083F61C /* Specular.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Specular.hpp; sourceTree = "<group>"; };
+		FA2BA2A128E6DD780083F61C /* Diffuse.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Diffuse.hpp; sourceTree = "<group>"; };
+		FA2BA2A228E6DDB50083F61C /* UberShader.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = UberShader.hpp; sourceTree = "<group>"; };
+		FA2BA2A428E6DDE20083F61C /* ShadingContext.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ShadingContext.hpp; sourceTree = "<group>"; };
+		FA2BA2A528E6DE1B0083F61C /* WorldLight.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = WorldLight.hpp; sourceTree = "<group>"; };
+		FA2BA2A628E6DE860083F61C /* LightSample.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = LightSample.hpp; sourceTree = "<group>"; };
+		FA2BA2A728E6DE9B0083F61C /* Lights.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Lights.hpp; sourceTree = "<group>"; };
+		FA2BA2A828E6DED50083F61C /* AreaLight.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = AreaLight.metal; sourceTree = "<group>"; };
+		FA2BA2AA28E6DEFD0083F61C /* PointLight.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = PointLight.metal; sourceTree = "<group>"; };
+		FA2BA2AC28E6DF0F0083F61C /* SunLight.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = SunLight.metal; sourceTree = "<group>"; };
+		FA2BA2AE28E6DF220083F61C /* SpotLight.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = SpotLight.metal; sourceTree = "<group>"; };
+		FA2BA2B028E6DF420083F61C /* Lights.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Lights.metal; sourceTree = "<group>"; };
+		FA2BA2B428E6DFD30083F61C /* reduce.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = reduce.metal; sourceTree = "<group>"; };
+		FA2BA2B628E6DFEC0083F61C /* normalize.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = normalize.metal; sourceTree = "<group>"; };
+		FA2BA2B828E6E0020083F61C /* test.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = test.metal; sourceTree = "<group>"; };
+		FA2BA2BA28E6E0220083F61C /* build.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = build.metal; sourceTree = "<group>"; };
+		FA2BA2BD28E6E0490083F61C /* shadow.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = shadow.metal; sourceTree = "<group>"; };
+		FA2BA2BF28E6E0660083F61C /* intersection.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = intersection.metal; sourceTree = "<group>"; };
+		FA2BA2C128E6E1360083F61C /* constants.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = constants.hpp; sourceTree = "<group>"; };
+		FA2BA2C228E6E17F0083F61C /* generate.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = generate.metal; sourceTree = "<group>"; };
+		FA2BA2C528E6E1A70083F61C /* indirectDispatch.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = indirectDispatch.metal; sourceTree = "<group>"; };
+		FA2BA2C728E6E1BE0083F61C /* blit.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = blit.metal; sourceTree = "<group>"; };
+		FA2BA2CF28E6EFDB0083F61C /* shading.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = shading.hpp; sourceTree = "<group>"; };
+		FA2BA2D028E6F0C50083F61C /* entry.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = entry.metal; sourceTree = "<group>"; };
 		FA44784F28CA1418004F5A66 /* warp.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = warp.hpp; sourceTree = "<group>"; };
 		FA44785128CA1B88004F5A66 /* IO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IO.swift; sourceTree = "<group>"; };
-		FA5779152885FAAC003C10E7 /* sky.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sky.hpp; sourceTree = "<group>"; };
 		FA5779172885FF86003C10E7 /* SkyLoader.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = SkyLoader.mm; sourceTree = "<group>"; };
 		FA57791A2885FFE6003C10E7 /* sky_nishita.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sky_nishita.cpp; sourceTree = "<group>"; };
 		FA57791D2885FFFD003C10E7 /* sky_float3.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sky_float3.h; sourceTree = "<group>"; };
@@ -65,8 +96,6 @@
 		FAC3AAF22875D4D800C0B0D0 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
 		FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendererViewController.swift; sourceTree = "<group>"; };
 		FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
-		FAC3AAF82875D4D800C0B0D0 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
-		FAC3AAFA2875D4D800C0B0D0 /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FAC3AAFE2875D4D900C0B0D0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		FAC3AB002875D4D900C0B0D0 /* raymond.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = raymond.entitlements; sourceTree = "<group>"; };
@@ -88,20 +117,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		FA100A84287790CD00884319 /* gpu */ = {
+		FA100A84287790CD00884319 /* device */ = {
 			isa = PBXGroup;
 			children = (
-				FAC3AAFA2875D4D800C0B0D0 /* ShaderTypes.h */,
-				FA100A85287790ED00884319 /* random.hpp */,
-				FA100A8E28781AD400884319 /* nodes.hpp */,
-				FADBFA9228817A9900727183 /* noise.hpp */,
-				FA100A902878308200884319 /* bsdf.hpp */,
-				FA100A922878314400884319 /* context.hpp */,
-				FA100A9428786F9A00884319 /* shading.hpp */,
-				FA5779152885FAAC003C10E7 /* sky.hpp */,
-				FA44784F28CA1418004F5A66 /* warp.hpp */,
+				FA2BA29628E6DB620083F61C /* lights */,
+				FA2BA29528E6DB3A0083F61C /* bsdf */,
+				FA2BA29428E6DB2A0083F61C /* utils */,
+				FA2BA29328E6DB090083F61C /* nodes */,
+				FA2BA2B228E6DF940083F61C /* kernels */,
+				FA100A85287790ED00884319 /* PrngState.metal */,
+				FA100A922878314400884319 /* Context.hpp */,
+				FA2BA2A428E6DDE20083F61C /* ShadingContext.hpp */,
+				FA2BA2C128E6E1360083F61C /* constants.hpp */,
+				FA2BA2CF28E6EFDB0083F61C /* shading.hpp */,
+				FA2BA2D028E6F0C50083F61C /* entry.metal */,
 			);
-			path = gpu;
+			path = device;
 			sourceTree = "<group>";
 		};
 		FA100A86287809A600884319 /* io */ = {
@@ -122,6 +153,130 @@
 				FA100A8C28780BA300884319 /* libz.tbd */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		FA2BA28528E6D6B90083F61C /* lights */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA28628E6D6D30083F61C /* LightInfo.hpp */,
+				FA2BA28728E6D6EB0083F61C /* AreaLight.hpp */,
+				FA2BA28828E6D7010083F61C /* PointLight.hpp */,
+				FA2BA28928E6D71D0083F61C /* SunLight.hpp */,
+				FA2BA28A28E6D72F0083F61C /* SpotLight.hpp */,
+			);
+			path = lights;
+			sourceTree = "<group>";
+		};
+		FA2BA29128E6DA520083F61C /* bridge */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA28528E6D6B90083F61C /* lights */,
+				FA2BA28B28E6D75F0083F61C /* Uniforms.hpp */,
+				FA2BA28C28E6D7840083F61C /* ResourceIds.hpp */,
+				FA2BA28D28E6D7AE0083F61C /* PerInstanceData.hpp */,
+				FA2BA29028E6D83B0083F61C /* PrngState.hpp */,
+				FA2BA28E28E6D7DB0083F61C /* Ray.hpp */,
+				FA2BA28F28E6D8060083F61C /* common.hpp */,
+			);
+			path = bridge;
+			sourceTree = "<group>";
+		};
+		FA2BA29328E6DB090083F61C /* nodes */ = {
+			isa = PBXGroup;
+			children = (
+				FA100A8E28781AD400884319 /* nodes.hpp */,
+			);
+			path = nodes;
+			sourceTree = "<group>";
+		};
+		FA2BA29428E6DB2A0083F61C /* utils */ = {
+			isa = PBXGroup;
+			children = (
+				FADBFA9228817A9900727183 /* noise.hpp */,
+				FA2BA29728E6DBD10083F61C /* math.hpp */,
+				FA44784F28CA1418004F5A66 /* warp.hpp */,
+				FA2BA29D28E6DD2B0083F61C /* color.hpp */,
+			);
+			path = utils;
+			sourceTree = "<group>";
+		};
+		FA2BA29528E6DB3A0083F61C /* bsdf */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA29C28E6DCF70083F61C /* lobes */,
+				FA2BA29828E6DC010083F61C /* ShadingFrame.hpp */,
+				FA2BA29928E6DC180083F61C /* BsdfSample.hpp */,
+				FA2BA2A228E6DDB50083F61C /* UberShader.hpp */,
+				FA2BA29A28E6DC3E0083F61C /* fresnel.hpp */,
+				FA2BA29B28E6DCC40083F61C /* microfacet.hpp */,
+			);
+			path = bsdf;
+			sourceTree = "<group>";
+		};
+		FA2BA29628E6DB620083F61C /* lights */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA2A528E6DE1B0083F61C /* WorldLight.hpp */,
+				FA2BA2A628E6DE860083F61C /* LightSample.hpp */,
+				FA2BA2A728E6DE9B0083F61C /* Lights.hpp */,
+				FA2BA2A828E6DED50083F61C /* AreaLight.metal */,
+				FA2BA2AA28E6DEFD0083F61C /* PointLight.metal */,
+				FA2BA2AC28E6DF0F0083F61C /* SunLight.metal */,
+				FA2BA2AE28E6DF220083F61C /* SpotLight.metal */,
+				FA2BA2B028E6DF420083F61C /* Lights.metal */,
+			);
+			path = lights;
+			sourceTree = "<group>";
+		};
+		FA2BA29C28E6DCF70083F61C /* lobes */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA29E28E6DD420083F61C /* Clearcoat.hpp */,
+				FA2BA29F28E6DD570083F61C /* Transmission.hpp */,
+				FA2BA2A028E6DD680083F61C /* Specular.hpp */,
+				FA2BA2A128E6DD780083F61C /* Diffuse.hpp */,
+			);
+			path = lobes;
+			sourceTree = "<group>";
+		};
+		FA2BA2B228E6DF940083F61C /* kernels */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA2BC28E6E0340083F61C /* shading */,
+				FA2BA2B328E6DFB60083F61C /* envmap */,
+				FA2BA2C428E6E1930083F61C /* utils */,
+			);
+			path = kernels;
+			sourceTree = "<group>";
+		};
+		FA2BA2B328E6DFB60083F61C /* envmap */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA2BA28E6E0220083F61C /* build.metal */,
+				FA2BA2B628E6DFEC0083F61C /* normalize.metal */,
+				FA2BA2B428E6DFD30083F61C /* reduce.metal */,
+				FA2BA2B828E6E0020083F61C /* test.metal */,
+			);
+			path = envmap;
+			sourceTree = "<group>";
+		};
+		FA2BA2BC28E6E0340083F61C /* shading */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA2C228E6E17F0083F61C /* generate.metal */,
+				FA2BA2BF28E6E0660083F61C /* intersection.metal */,
+				FA2BA2BD28E6E0490083F61C /* shadow.metal */,
+			);
+			path = shading;
+			sourceTree = "<group>";
+		};
+		FA2BA2C428E6E1930083F61C /* utils */ = {
+			isa = PBXGroup;
+			children = (
+				FA2BA2C528E6E1A70083F61C /* indirectDispatch.metal */,
+				FA2BA2C728E6E1BE0083F61C /* blit.metal */,
+			);
+			path = utils;
 			sourceTree = "<group>";
 		};
 		FA5779142883F635003C10E7 /* renderer */ = {
@@ -173,13 +328,13 @@
 		FAC3AAF12875D4D800C0B0D0 /* raymond */ = {
 			isa = PBXGroup;
 			children = (
-				FA5779162885FF7B003C10E7 /* host */,
 				FA100A86287809A600884319 /* io */,
-				FA100A84287790CD00884319 /* gpu */,
+				FA5779162885FF7B003C10E7 /* host */,
+				FA2BA29128E6DA520083F61C /* bridge */,
+				FA100A84287790CD00884319 /* device */,
 				FAC3AB062875D53800C0B0D0 /* scene */,
 				FA5779142883F635003C10E7 /* renderer */,
 				FAC3AAF22875D4D800C0B0D0 /* Main.swift */,
-				FAC3AAF82875D4D800C0B0D0 /* Shaders.metal */,
 				FA100A89287809B600884319 /* BridgingHeader.h */,
 				FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */,
 				FAC3AAFD2875D4D900C0B0D0 /* Main.storyboard */,
@@ -210,6 +365,7 @@
 				FAC3AAEB2875D4D800C0B0D0 /* Sources */,
 				FAC3AAEC2875D4D800C0B0D0 /* Frameworks */,
 				FAC3AAED2875D4D800C0B0D0 /* Resources */,
+				FA2BA2D428E6F2830083F61C /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -268,19 +424,30 @@
 			files = (
 				FAC3AAFC2875D4D900C0B0D0 /* Assets.xcassets in Resources */,
 				FAC3AAFF2875D4D900C0B0D0 /* Main.storyboard in Resources */,
-				FA289CD728860BBB008AD555 /* sky.hpp in Resources */,
-				FA100A91287830A300884319 /* bsdf.hpp in Resources */,
-				FA100A8F28781C7000884319 /* nodes.hpp in Resources */,
-				FA100A932878317F00884319 /* context.hpp in Resources */,
-				FA100A9528786FBE00884319 /* shading.hpp in Resources */,
-				FA100A962878701A00884319 /* ShaderTypes.h in Resources */,
-				FA10CBB328787A69004092CA /* random.hpp in Resources */,
-				FADBFA9328817ACC00727183 /* noise.hpp in Resources */,
-				FA44785028CA14B5004F5A66 /* warp.hpp in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		FA2BA2D428E6F2830083F61C /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\ncp -R \"$SRCROOT/raymond/bridge\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\ncp -R \"$SRCROOT/raymond/device\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		FAC3AAEB2875D4D800C0B0D0 /* Sources */ = {
@@ -290,17 +457,17 @@
 				FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */,
 				FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */,
 				FA44785228CA1B88004F5A66 /* IO.swift in Sources */,
-				FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */,
-				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
-				FAC3AAF92875D4D800C0B0D0 /* Shaders.metal in Sources */,
-				FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */,
 				FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */,
 				FAC3AB1D2876D26700C0B0D0 /* MaterialBuilder.swift in Sources */,
 				FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */,
 				FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */,
 				FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */,
+				FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */,
+				FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */,
 				FA10CBB8287886B8004092CA /* PLYReader.m in Sources */,
+				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
 				FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */,
+				FA2BA2D128E6F0C50083F61C /* entry.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -451,6 +618,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/bridge/ $SRCROOT/device/";
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -479,6 +647,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/bridge/ $SRCROOT/device/";
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

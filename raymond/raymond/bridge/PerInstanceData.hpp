@@ -1,6 +1,9 @@
 #pragma once
 
-typedef struct {
+#include "common.hpp"
+#include "Ray.hpp"
+
+DEVICE_STRUCT(PerInstanceData) {
     uint32_t vertexOffset;
     uint32_t faceOffset;
     
@@ -11,4 +14,4 @@ typedef struct {
     float3x3 normalTransform;
     
     RayFlags visibility;
-} DEVICE_STRUCT(PerInstanceData);
+};

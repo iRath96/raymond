@@ -1,11 +1,10 @@
-//
-//  indirectDispatch.metal
-//  raymond
-//
-//  Created by Alexander Rath on 30.09.22.
-//
+#include "../../../bridge/common.hpp"
 
-#include <metal_stdlib>
-using namespace metal;
-
-
+kernel void makeIndirectDispatchArguments(
+    device uint *rayCount [[buffer(0)]],
+    device MTLDispatchThreadgroupsIndirectArguments *dispatchArg [[buffer(1)]]
+) {
+    dispatchArg->threadgroupsPerGrid[0] = (*rayCount + 63) / 64;
+    dispatchArg->threadgroupsPerGrid[1] = 1;
+    dispatchArg->threadgroupsPerGrid[2] = 1;
+}

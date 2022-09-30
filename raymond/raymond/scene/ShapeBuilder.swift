@@ -17,10 +17,10 @@ class ShapeBuilder {
     }
     
     private let library: [String: Shape]
-    private var materialRegistry: MaterialBuilder
-    public init(library: [String: Shape], materialRegistry: MaterialBuilder) {
+    private var materialBuilder: MaterialBuilder
+    public init(library: [String: Shape], materialBuilder: MaterialBuilder) {
         self.library = library
-        self.materialRegistry = materialRegistry
+        self.materialBuilder = materialBuilder
     }
     
     enum MeshLoaderError: Error {
@@ -108,7 +108,7 @@ class ShapeBuilder {
         }
         
         let materialIndices = shape.materials.map { material in
-            MaterialIndex(materialRegistry.index(of: .surface, named: material))
+            MaterialIndex(materialBuilder.index(of: .surface, named: material))
         }
         
         let shapeHandle = try ShapeHandle(

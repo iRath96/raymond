@@ -1,7 +1,9 @@
 #pragma once
 
-typedef struct {
+#include "../common.hpp"
+
+DEVICE_STRUCT(LightInfo) {
     uint16_t shaderIndex;
     bool castsShadows;
     bool usesMIS;
-} DEVICE_STRUCT(LightInfo);
+};

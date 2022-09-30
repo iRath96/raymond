@@ -35,20 +35,20 @@ struct SceneLoader {
     func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
         let sceneDescription = try Rayjay.SceneLoader().makeScene(fromURL: url)
         
-        var materialRegistry = MaterialBuilder(
+        var materialBuilder = MaterialBuilder(
             library: sceneDescription.materials)
-        let shapeRegistry = ShapeBuilder(
+        let shapeBuilder = ShapeBuilder(
             library: sceneDescription.shapes,
-            materialRegistry: materialRegistry)
-        let lightRegistry = LightBuilder(
+            materialBuilder: materialBuilder)
+        let lightBuilder = LightBuilder(
             library: sceneDescription.lights,
-            materialRegistry: materialRegistry)
-        let entityRegistry = try EntityBuilder(
+            materialBuilder: materialBuilder)
+        let entityBuilder = try EntityBuilder(
             library: sceneDescription.entities,
-            shapeRegistry: shapeRegistry)
+            shapeBuilder: shapeBuilder)
         
         // STEP 1: build all the shaders, so the following stages can access pipeline state info
-        let shading = try materialRegistry.build(withDevice: device)
+        let shading = try materialBuilder.build(withDevice: device)
         
         let (intersectionFunction, intersectionHandler) = try shading.makeComputePipelineState(for: "handleIntersections")
         let (_, shadowRayHandler) = try shading.makeComputePipelineState(for: "handleShadowRays")
@@ -68,20 +68,20 @@ struct SceneLoader {
         }
         
         // STEP 2: build all the shapes
-        let shapes = try shapeRegistry.build(
+        let shapes = try shapeBuilder.build(
             withDevice: device,
             encoder: argumentEncoder,
             resources: &resourcesRead)
         
         // STEP 3: build all the entities
-        let entities = try entityRegistry.build(
+        let entities = try entityBuilder.build(
             withDevice: device,
             shapes: shapes,
             encoder: argumentEncoder,
             resources: &resourcesRead)
         
         // STEP 4: build all the lights
-        try lightRegistry.build(
+        try lightBuilder.build(
             withDevice: device,
             library: shading.library,
             context: contextBuffer,

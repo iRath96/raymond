@@ -1,6 +1,9 @@
 #pragma once
 
-typedef struct {
+#include "../common.hpp"
+#include "LightInfo.hpp"
+
+DEVICE_STRUCT(AreaLight) {
     DEVICE_STRUCT(LightInfo) info;
     
     float3x4 transform;
@@ -8,6 +11,6 @@ typedef struct {
     bool isCircular;
     
 #ifdef __METAL_VERSION__
-    LightSample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+    LightSample sample(device Context &, thread ShadingContext &, thread PrngState &) const device;
 #endif
-} DEVICE_STRUCT(AreaLight);
+};

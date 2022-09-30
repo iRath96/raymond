@@ -4,7 +4,7 @@ import MetalPerformanceShaders
 import simd
 
 // The 256 byte aligned size of our uniform structure
-let alignedUniformsSize = (MemoryLayout<Uniforms>.size + 0xFF) & -0x100
+let alignedUniformsSize = (MemoryLayout<DeviceUniforms>.size + 0xFF) & -0x100
 
 enum RendererError: Error {
     case badVertexDescriptor
@@ -24,7 +24,7 @@ class Renderer: NSObject, MTKViewDelegate {
     let shadowRayIntersector: MPSRayIntersector
     
     let inFlightSemaphore = DispatchSemaphore(value: 1)
-    var uniforms: UnsafeMutablePointer<Uniforms>
+    var uniforms: UnsafeMutablePointer<DeviceUniforms>
     
     var projectionMatrix: float4x4
     var frameIndex = UInt32(0)
@@ -62,7 +62,7 @@ class Renderer: NSObject, MTKViewDelegate {
         self.dynamicUniformBuffer = buffer
         self.dynamicUniformBuffer.label = "UniformBuffer"
         
-        uniforms = UnsafeMutableRawPointer(dynamicUniformBuffer.contents()).bindMemory(to: Uniforms.self, capacity: 1)
+        uniforms = UnsafeMutableRawPointer(dynamicUniformBuffer.contents()).bindMemory(to: DeviceUniforms.self, capacity: 1)
         uniforms[0].samplingMode = .mis
         
         metalKitView.depthStencilPixelFormat = MTLPixelFormat.depth32Float_stencil8
@@ -164,7 +164,7 @@ class Renderer: NSObject, MTKViewDelegate {
         /// Update the state of our uniform buffers before rendering
         
         uniforms = UnsafeMutableRawPointer(dynamicUniformBuffer.contents())
-            .bindMemory(to: Uniforms.self, capacity: 1)
+            .bindMemory(to: DeviceUniforms.self, capacity: 1)
     }
     
     private func updateState() {

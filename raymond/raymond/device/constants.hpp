@@ -1,12 +1,3 @@
-//
-//  constants.hpp
-//  raymond
-//
-//  Created by Alexander Rath on 30.09.22.
-//
+#pragma once
 
-#ifndef constants_h
-#define constants_h
-
-
-#endif /* constants_h */
+constant float eps = 0.001f;

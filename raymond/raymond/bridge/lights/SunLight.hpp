@@ -1,6 +1,9 @@
 #pragma once
 
-typedef struct {
+#include "../common.hpp"
+#include "LightInfo.hpp"
+
+DEVICE_STRUCT(SunLight) {
     DEVICE_STRUCT(LightInfo) info;
     
     float3 direction;
@@ -8,6 +11,6 @@ typedef struct {
     float3 color;
     
 #ifdef __METAL_VERSION__
-    LightSample sample(device Context &ctx, thread ThreadContext &tctx, thread PRNGState &prng) const device;
+    LightSample sample(device Context &ctx, thread ShadingContext &shading, thread PrngState &prng) const device;
 #endif
-} DEVICE_STRUCT(SunLight);
+};

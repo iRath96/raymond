@@ -127,7 +127,7 @@ struct Codegen {
                 text.unindent()
                 text.addLine("};")
             }
-            text.addLine("\(nodeName).compute(ctx, tctx);")
+            text.addLine("\(nodeName).compute(ctx, shading);")
         }
     }
     
@@ -215,8 +215,9 @@ struct Codegen {
         
         NSLog("building code")
         let metalEntryURL = Bundle.main.url(
-            forResource: "shading",
-            withExtension: "hpp"
+            forResource: "entry",
+            withExtension: "metal",
+            subdirectory: "device"
         )!
         
         var header = """
@@ -235,12 +236,12 @@ struct Codegen {
         header += "#include \"\(metalEntryURL.relativePath)\"\n"
         
         for functionTable in functionTables {
-            header += "void \(functionTable.name)(int index, device Context &ctx, thread ThreadContext &tctx) {\n"
+            header += "void \(functionTable.name)(int index, device Context &ctx, thread ShadingContext &shading) {\n"
             header += "  switch (index) {\n"
             for (index, function) in functionTable.functions {
                 header += "  case \(index): \\\n"
-                header += "    void \(function.name)(device Context &, thread ThreadContext &); \\\n"
-                header += "    \(function.name)(ctx, tctx); \\\n"
+                header += "    void \(function.name)(device Context &, thread ShadingContext &); \\\n"
+                header += "    \(function.name)(ctx, shading); \\\n"
                 header += "    break; \\\n"
             }
             header += "  }\n"
@@ -528,7 +529,7 @@ struct Codegen {
         text.addLine("""
         void \(functionName)(
             device Context &ctx,
-            thread ThreadContext &tctx
+            thread ShadingContext &shading
         ) {
         """)
         text.indent()
@@ -597,9 +598,9 @@ struct Codegen {
             invocation.assign(key: name, value: value)
         }
         
-        let mappedUV = "VECTOR(tctx.uv)"
-        let generatedUV = "VECTOR(tctx.generated)"
-        let normal = "VECTOR(tctx.normal)"
+        let mappedUV = "VECTOR(shading.uv)"
+        let generatedUV = "VECTOR(shading.generated)"
+        let normal = "VECTOR(shading.normal)"
         
         switch node.kernel {
         case is TexImageKernel:

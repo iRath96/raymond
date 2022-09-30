@@ -4,8 +4,10 @@
 
 // MARK: Metal
 
+#include <metal_stdlib>
 using namespace metal;
-#define DEVICE_STRUCT(name) name
+
+#define DEVICE_STRUCT(name) struct name
 
 #define NS_ENUM(_type, _name) enum _name : _type _name; enum _name : _type
 #define NSInteger metal::int32_t
@@ -19,7 +21,7 @@ typedef packed_float3 MPSPackedFloat3;
 #import <Foundation/Foundation.h>
 
 /// Avoid cluttering the global namespace by prefix names of structs with `Device` on the host
-#define DEVICE_STRUCT(name) Device##name
+#define DEVICE_STRUCT(name) struct Device##name
 
 /// Use Metal names for SIMD Types
 typedef simd_float3 float3;
@@ -51,3 +53,15 @@ typedef MPSPackedFloat3 Vertex;
 typedef uint32_t VertexIndex;
 typedef uint32_t PrimitiveIndex;
 typedef uint16_t MaterialIndex;
+
+// MARK: - Forward declarations
+
+#ifdef __METAL_VERSION__
+
+struct Context;
+struct ShadingContext;
+struct LightSample;
+struct BsdfSample;
+struct PrngState;
+
+#endif

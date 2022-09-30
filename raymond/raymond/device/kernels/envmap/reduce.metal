@@ -1,4 +1,4 @@
-#pragma once
+#include "../../../bridge/common.hpp"
 
 kernel void reduceEnvironmentMap(
     device float *mipmap [[buffer(0)]],

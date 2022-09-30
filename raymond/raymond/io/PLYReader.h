@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <simd/simd.h>
-#include "ShaderTypes.h"
+#include "../bridge/common.hpp"
 
 NS_ASSUME_NONNULL_BEGIN
 

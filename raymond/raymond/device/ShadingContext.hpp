@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../bridge/common.hpp"
+#include "bsdf/UberShader.hpp"
+
 struct ShadingContext {
     float3 uv;
     float3 position;
@@ -12,5 +15,5 @@ struct ShadingContext {
     float3 wo; // pointing away from the hitpoint
     RayFlags rayFlags;
     
-    Material material;
+    UberShader material;
 };

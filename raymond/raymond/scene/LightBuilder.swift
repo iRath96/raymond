@@ -8,14 +8,14 @@ class LightBuilder {
     }
     
     private let library: [String: Light]
-    private var materialRegistry: MaterialBuilder
-    public init(library: [String: Light], materialRegistry: MaterialBuilder) {
+    private var materialBuilder: MaterialBuilder
+    public init(library: [String: Light], materialBuilder: MaterialBuilder) {
         self.library = library
-        self.materialRegistry = materialRegistry
+        self.materialBuilder = materialBuilder
         
         // request that all materials used by light sources are built
         for light in self.library.values {
-            self.materialRegistry.index(of: .light, named: light.material)
+            self.materialBuilder.index(of: .light, named: light.material)
         }
     }
     
@@ -25,7 +25,7 @@ class LightBuilder {
         }
         
         return .init(
-            shaderIndex: UInt16(materialRegistry.index(of: .light, named: light.material)),
+            shaderIndex: UInt16(materialBuilder.index(of: .light, named: light.material)),
             castsShadows: light.castShadows,
             usesMIS: false // light.useMIS
         )
@@ -181,7 +181,7 @@ class LightBuilder {
         }
         
         let worldLight = library.values.first { $0.kernel is WorldLight }!
-        let worldLightShader = materialRegistry.index(of: .light, named: worldLight.material)
+        let worldLightShader = materialBuilder.index(of: .light, named: worldLight.material)
         
         try prepareEnvironmentMapSampling(
             forLibrary: shadingLibrary,

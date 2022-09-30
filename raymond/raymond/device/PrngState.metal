@@ -1,4 +1,4 @@
-#include "../bridge/PRNGState.hpp"
+#include "../bridge/PrngState.hpp"
 
 /**
  * \brief Generate fast and reasonably good pseudorandom numbers using the
@@ -55,34 +55,39 @@ float sample_tea_float32(uint32_t v0, uint32_t v1, int rounds = 6) {
     return v.f - 1.f;
 }
 
-float PRNGState::sample() {
+PrngState::PrngState(uint32_t a, uint32_t b) {
+    seed = sample_tea_32(a, b);
+    index = 0;
+}
+
+float PrngState::sample() {
     return sample_tea_float32(seed, index++);
 }
 
-float2 PRNGState::sample2d() {
+float2 PrngState::sample2d() {
     return float2(sample(), sample());
 }
 
-float3 PRNGState::sample3d() {
+float3 PrngState::sample3d() {
     return float3(sample(), sample(), sample());
 }
 
-int PRNGState::sampleInt(int max) {
+int PrngState::sampleInt(int max) {
     return sample_tea_32(seed, index++) % max;
 }
 
-float PRNGState::sample() device {
+float PrngState::sample() device {
     return sample_tea_float32(seed, index++);
 }
 
-float2 PRNGState::sample2d() device {
+float2 PrngState::sample2d() device {
     return float2(sample(), sample());
 }
 
-float3 PRNGState::sample3d() device {
+float3 PrngState::sample3d() device {
     return float3(sample(), sample(), sample());
 }
 
-int PRNGState::sampleInt(int max) device {
+int PrngState::sampleInt(int max) device {
     return sample_tea_32(seed, index++) % max;
 }

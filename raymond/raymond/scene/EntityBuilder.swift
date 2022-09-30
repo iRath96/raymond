@@ -19,13 +19,13 @@ class EntityBuilder {
     }
 
     private let library: [String: Entity]
-    private let shapeRegistry: ShapeBuilder
-    public init(library: [String: Entity], shapeRegistry: ShapeBuilder) throws {
+    private let shapeBuilder: ShapeBuilder
+    public init(library: [String: Entity], shapeBuilder: ShapeBuilder) throws {
         self.library = library
-        self.shapeRegistry = shapeRegistry
+        self.shapeBuilder = shapeBuilder
         
         for entity in library.values {
-            try shapeRegistry.index(of: entity.shape)
+            try shapeBuilder.index(of: entity.shape)
         }
     }
     
@@ -45,7 +45,7 @@ class EntityBuilder {
         if entity.visibility.contains(.shadow)       { visibility |= RayFlags.shadow.rawValue }
         
         return Instance(
-            index: UInt32(try shapeRegistry.index(of: entity.shape)),
+            index: UInt32(try shapeBuilder.index(of: entity.shape)),
             transform: entity.matrix,
             visibility: RayFlags(rawValue: visibility)!
         )
@@ -63,13 +63,13 @@ class EntityBuilder {
         
         var (indexBuffer, indices) = device.makeBufferAndPointer(type: UInt32.self, count: instances.count)
         var (transformBuffer, transforms) = device.makeBufferAndPointer(type: float4x4.self, count: instances.count)
-        var (instanceBuffer, instanceData) = device.makeBufferAndPointer(type: PerInstanceData.self, count: instances.count)
+        var (instanceBuffer, instanceData) = device.makeBufferAndPointer(type: DevicePerInstanceData.self, count: instances.count)
         
         for instance in instances {
-            let shapeInfo = shapeRegistry.shapeInfo(for: Int(instance.index))
+            let shapeInfo = shapeBuilder.shapeInfo(for: Int(instance.index))
             indices.pointee = instance.index
             transforms.pointee = instance.transform
-            instanceData.pointee = PerInstanceData(
+            instanceData.pointee = .init(
                 vertexOffset: shapeInfo.vertexOffset,
                 faceOffset: shapeInfo.faceOffset,
                 boundsMin: shapeInfo.boundsMin,

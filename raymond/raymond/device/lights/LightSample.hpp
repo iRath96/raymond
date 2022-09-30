@@ -1,12 +1,28 @@
-//
-//  LightSample.hpp
-//  raymond
-//
-//  Created by Alexander Rath on 30.09.22.
-//
+#pragma once
 
-#ifndef LightSample_h
-#define LightSample_h
+#include "../../bridge/common.hpp"
+#include "../../bridge/lights/LightInfo.hpp"
 
-
-#endif /* LightSample_h */
+struct LightSample {
+    int shaderIndex;
+    bool canBeHit;
+    bool castsShadows;
+    float3 weight;
+    float pdf;
+    float3 direction;
+    float distance;
+    
+    LightSample() {}
+    LightSample(LightInfo info) {
+        shaderIndex = info.shaderIndex;
+        canBeHit = info.usesMIS;
+        castsShadows = info.castsShadows;
+    }
+    
+    static LightSample invalid() {
+        LightSample result;
+        result.pdf = 0;
+        result.weight = 0;
+        return result;
+    }
+};

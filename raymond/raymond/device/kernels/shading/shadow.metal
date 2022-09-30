@@ -1,3 +1,8 @@
+#include "../../../bridge/common.hpp"
+#include "../../../bridge/Ray.hpp"
+#include "../../../bridge/ResourceIds.hpp"
+#include "../../utils/math.hpp"
+
 kernel void handleShadowRays(
     texture2d<float, access::read_write> image [[texture(0)]],
     

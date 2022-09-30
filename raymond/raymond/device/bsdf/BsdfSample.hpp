@@ -1,12 +1,16 @@
-//
-//  BSDFSample.hpp
-//  raymond
-//
-//  Created by Alexander Rath on 30.09.22.
-//
+#pragma once
 
-#ifndef BSDFSample_h
-#define BSDFSample_h
-
-
-#endif /* BSDFSample_h */
+struct BsdfSample {
+    float pdf;
+    float3 wi;
+    float3 weight;
+    RayFlags flags;
+    
+    static BsdfSample invalid() {
+        BsdfSample result;
+        result.pdf = 0;
+        result.weight = 0;
+        result.flags = RayFlags(0);
+        return result;
+    }
+};

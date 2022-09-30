@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common.hpp"
+
 typedef NS_ENUM(NSInteger, GeneratorBufferIndex) {
     GeneratorBufferRays     = 0,
     GeneratorBufferRayCount = 1,
