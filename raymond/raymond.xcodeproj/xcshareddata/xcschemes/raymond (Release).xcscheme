@@ -65,7 +65,7 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_009/AI55_009.json"
+            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_006/AI55_006.json"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

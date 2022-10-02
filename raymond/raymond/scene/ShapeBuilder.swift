@@ -194,13 +194,14 @@ class ShapeBuilder {
                 boundsMin: &shapeHandle.boundsMin,
                 boundsMax: &shapeHandle.boundsMax)
             
-            let palette = UnsafePointer<MaterialIndex>(shapeHandle.materialIndices)
-            shapeHandle.fileReader.readFaces(
-                shapeHandle.faceCount,
-                vertices: shapeVertices,
-                indices: indices.advanced(by: Int(shapeHandle.faceOffset)),
-                materials: materials.advanced(by: Int(shapeHandle.faceOffset)),
-                fromPalette: palette)
+            shapeHandle.materialIndices.withUnsafeBufferPointer { materialIndicesPtr in
+                shapeHandle.fileReader.readFaces(
+                    shapeHandle.faceCount,
+                    vertices: shapeVertices,
+                    indices: indices.advanced(by: Int(shapeHandle.faceOffset)),
+                    materials: materials.advanced(by: Int(shapeHandle.faceOffset)),
+                    fromPalette: materialIndicesPtr.baseAddress!)
+            }
             
             shapeHandle.fileReader.close()
             

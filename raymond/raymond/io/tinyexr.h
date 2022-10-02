@@ -673,6 +673,7 @@ static void SetErrorMessage(const std::string &msg, const char **err) {
   }
 }
 
+__attribute__((unused))
 static void SetWarningMessage(const std::string &msg, const char **warn) {
   if (warn) {
 #ifdef _WIN32

@@ -224,20 +224,22 @@ class LightBuilder {
         lightFaceBuffer.label = "Light face buffer"
         
         let emissiveFlags = materialBuilder.getShaderNames(.surface).map(materialBuilder.hasMaterialEmission)
-        let shapeLights = makeLights(collection: shapeLights, device: device) { light in
-            let emissiveArea = buildLightDistribution(
-                light.normalTransform,
-                shapes.indices.advanced(by: Int(light.faceOffset)),
-                shapes.vertices.advanced(by: Int(light.vertexOffset)),
-                shapes.materials.advanced(by: Int(light.faceOffset)),
-                UnsafePointer<Bool>(emissiveFlags),
-                light.faceCount,
-                lightFaces.advanced(by: Int(light.lightFaceOffset))
-            )
-            
-            return DeviceShapeLight(
-                instanceIndex: light.instanceIndex,
-                emissiveArea: emissiveArea)
+        let shapeLights = emissiveFlags.withUnsafeBufferPointer { emissiveFlagsPtr in
+            makeLights(collection: self.shapeLights, device: device) { light in
+                let emissiveArea = buildLightDistribution(
+                    light.normalTransform,
+                    shapes.indices.advanced(by: Int(light.faceOffset)),
+                    shapes.vertices.advanced(by: Int(light.vertexOffset)),
+                    shapes.materials.advanced(by: Int(light.faceOffset)),
+                    emissiveFlagsPtr.baseAddress!,
+                    light.faceCount,
+                    lightFaces.advanced(by: Int(light.lightFaceOffset))
+                )
+                
+                return DeviceShapeLight(
+                    instanceIndex: light.instanceIndex,
+                    emissiveArea: emissiveArea)
+            }
         }
         
         let worldLight = library.values.first { $0.kernel is WorldLight }!
