@@ -11,9 +11,6 @@
 #include "../../constants.hpp"
 
 float computeMisWeight(float pdf, float other) {
-    if (isinf(pdf))
-        return 1;
-    
     pdf *= pdf;
     other *= other;
     return pdf / (pdf + other);
@@ -44,6 +41,8 @@ kernel void handleIntersections(
         return;
     
     device Ray &ray = rays[rayIndex];
+    const bool needsToCollectEmission = isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee;
+    
     PrngState prng = ray.prng;
     
     ShadingContext shading;
@@ -54,8 +53,8 @@ kernel void handleIntersections(
     constant Intersection &isect = intersections[rayIndex];
     if (isect.distance <= 0.0f) {
         // miss
-        if (isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee) {
-            const float misWeight = uniforms.samplingMode == SamplingModeBsdf ? 1 :
+        if (needsToCollectEmission) {
+            const float misWeight = (uniforms.samplingMode == SamplingModeBsdf) || isinf(ray.bsdfPdf) ? 1 :
                 computeMisWeight(ray.bsdfPdf, ctx.lights.envmapPdf(ray.direction));
             
             ctx.lights.evaluateEnvironment(ctx, shading);
@@ -73,45 +72,8 @@ kernel void handleIntersections(
     
     const device PerInstanceData &instance = ctx.perInstanceData[isect.instanceIndex];
     
-    int shaderIndex;
-    {
-        const unsigned int faceIndex = instance.faceOffset + isect.primitiveIndex;
-        const unsigned int idx0 = instance.vertexOffset + ctx.vertexIndices[3 * faceIndex + 0];
-        const unsigned int idx1 = instance.vertexOffset + ctx.vertexIndices[3 * faceIndex + 1];
-        const unsigned int idx2 = instance.vertexOffset + ctx.vertexIndices[3 * faceIndex + 2];
-        
-        // @todo: is this numerically stable enough?
-        //ipoint = ray.origin + ray.direction * isect.distance;
-        
-        float2 Tc = ctx.texcoords[idx2];
-        float2x2 T;
-        T.columns[0] = ctx.texcoords[idx0] - Tc;
-        T.columns[1] = ctx.texcoords[idx1] - Tc;
-        shading.uv = float3(T * isect.coordinates + Tc, 0);
-        
-        float3 Pc = ctx.vertices[idx2];
-        float2x3 P;
-        P.columns[0] = ctx.vertices[idx0] - Pc;
-        P.columns[1] = ctx.vertices[idx1] - Pc;
-        shading.trueNormal = normalize(instance.normalTransform * cross(P.columns[0], P.columns[1]));
-        
-        float3 localP = P * isect.coordinates + Pc;
-        shading.object = localP;
-        shading.generated = safe_divide(localP - instance.boundsMin, instance.boundsSize, 0.5f);
-        shading.position = (instance.pointTransform * float4(localP, 1)).xyz;
-        
-        shading.normal = instance.normalTransform * interpolate(
-            float3(ctx.vertexNormals[idx0]),
-            float3(ctx.vertexNormals[idx1]),
-            float3(ctx.vertexNormals[idx2]),
-            isect.coordinates);
-        shading.normal = normalize(shading.normal);
-        
-        shading.tu = normalize(instance.normalTransform * (P * float2(T[1][1], -T[0][1])));
-        shading.tv = normalize(instance.normalTransform * (P * float2(-T[1][0], T[0][0])));
-
-        shaderIndex = ctx.materials[faceIndex];
-    }
+    MaterialIndex shaderIndex;
+    shading.build(ctx, instance, isect, shaderIndex);
     
     if (instance.visibility & ray.flags) {
         shadeSurface(shaderIndex, ctx, shading);
@@ -119,11 +81,14 @@ kernel void handleIntersections(
         shading.material.alpha = 0;
     }
     
-    if (mean(shading.material.emission) != 0) {
+    if (needsToCollectEmission && mean(shading.material.emission) != 0) {
+        const float misWeight = (uniforms.samplingMode == SamplingModeBsdf) || isinf(ray.bsdfPdf) ? 1 :
+            computeMisWeight(ray.bsdfPdf, ctx.lights.shapePdf(instance, shading));
+        
         uint2 coordinates = uint2(ray.x, ray.y);
         image.write(
             image.read(coordinates) + float4(
-                ray.weight * shading.material.emission,
+                misWeight * ray.weight * shading.material.emission,
                 1),
             coordinates
         );
@@ -177,7 +142,7 @@ kernel void handleIntersections(
                 shadowRay.origin = shading.position;
                 shadowRay.direction = neeSample.direction;
                 shadowRay.minDistance = eps;
-                shadowRay.maxDistance = neeSample.distance;
+                shadowRay.maxDistance = neeSample.distance - eps;
                 shadowRay.weight = neeWeight;
                 shadowRay.x = ray.x;
                 shadowRay.y = ray.y;

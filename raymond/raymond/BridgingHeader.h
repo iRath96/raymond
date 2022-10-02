@@ -1,6 +1,7 @@
 #include "tinyexr.h"
 #include "io/PLYReader.h"
 #include "host/sky/SkyLoader.h"
+#include "host/lights/distribution.h"
 
 #include "bridge/common.hpp"
 #include "bridge/ResourceIds.hpp"
@@ -13,3 +14,4 @@
 #include "bridge/lights/PointLight.hpp"
 #include "bridge/lights/SunLight.hpp"
 #include "bridge/lights/SpotLight.hpp"
+#include "bridge/lights/ShapeLight.hpp"

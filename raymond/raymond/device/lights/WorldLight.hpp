@@ -5,7 +5,7 @@
 #include "../utils/warp.hpp"
 
 typedef struct {
-    uint16_t shaderIndex [[ id(0) ]];
+    MaterialIndex shaderIndex [[ id(0) ]];
     
     int resolution [[ id(1) ]]; // must be a power of two
     device float *pdfs [[ id(2) ]];

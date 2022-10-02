@@ -4,8 +4,11 @@
 #include "Ray.hpp"
 
 DEVICE_STRUCT(PerInstanceData) {
-    uint32_t vertexOffset;
-    uint32_t faceOffset;
+    VertexIndex vertexOffset;
+    FaceIndex faceOffset;
+    FaceIndex lightFaceOffset;
+    FaceIndex lightFaceCount;
+    LightIndex lightIndex;
     
     float3 boundsMin;
     float3 boundsSize;

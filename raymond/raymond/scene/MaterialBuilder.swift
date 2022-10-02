@@ -3,6 +3,17 @@ import Metal
 import MetalKit
 import Rayjay
 
+extension Dictionary {
+    mutating func get(_ key: Key, otherwise fallback: @autoclosure () -> Value) -> Value {
+        if let value = self[key] {
+            return value
+        }
+        
+        self[key] = fallback()
+        return self[key]!
+    }
+}
+
 extension String {
     var camelCase: String {
         get {
@@ -256,7 +267,7 @@ struct Codegen {
         header += "\n"
         
         for functionTable in functionTables {
-            header += "void \(functionTable.name)(int index, device Context &ctx, thread ShadingContext &shading) {\n"
+            header += "void \(functionTable.name)(MaterialIndex index, device Context &ctx, thread ShadingContext &shading) {\n"
             header += "    switch (index) {\n"
             for (index, function) in functionTable.functions.sorted(by: { $0.key < $1.key }) {
                 header += "    case \(index):\n"
@@ -551,6 +562,10 @@ struct Codegen {
         state = [:]
         invocations = []
         
+        if material.hasSurfaceEmission() {
+            print("Material \(name) has surface emission")
+        }
+        
         for node in material.nodes.sorted(by: { $0.0 < $1.0 }) {
             // Only output nodes that are really needed
             if node.value.kernel is OutputMaterialKernel
@@ -726,7 +741,12 @@ class MaterialBuilder {
         .init(type: .light, name: "shadeLight")
     ]
     
-    private var shaderIndices: [MaterialType: [String: Int]] = [:]
+    private var shaderIndices: [MaterialType: [String: MaterialIndex]] = [
+        .surface: [:],
+        .light: [:]
+    ]
+    
+    private var emissionCache: [String: Bool] = [:]
     
     private let library: [String: Material]
     public init(library: [String: Material]) {
@@ -734,9 +754,17 @@ class MaterialBuilder {
     }
     
     @discardableResult
-    func index(of type: MaterialType, named name: String) -> Int {
-        let index = shaderIndices[type, default: [:]].getOrAdd(name)
-        return index
+    func index(of type: MaterialType, named name: String) -> MaterialIndex {
+        let index = MaterialIndex(shaderIndices[type]!.count)
+        return shaderIndices[type]!.get(name, otherwise: index)
+    }
+    
+    func getShaderNames(_ type: MaterialType) -> [String] {
+        return shaderIndices[type]!.sorted(by: { $0.value < $1.value }).map { $0.key }
+    }
+    
+    func hasMaterialEmission(named name: String) -> Bool {
+        return emissionCache.get(name, otherwise: library[name]!.hasSurfaceEmission())
     }
     
     func build(withDevice device: MTLDevice, options: Codegen.Options) throws -> Result {

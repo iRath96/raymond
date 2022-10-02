@@ -53,4 +53,9 @@ float3 uniformSquareToCosineWeightedHemisphere(float2 rnd) {
     return float3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
 }
 
+float2 uniformSquareToTriangleBarycentric(float2 rnd) {
+    float x = sqrt(rnd.x);
+    return float2(1 - x, x * rnd.y);
+}
+
 }

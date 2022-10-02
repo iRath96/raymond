@@ -11,7 +11,6 @@
 		FA100A8D28780BA900884319 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = FA100A8C28780BA300884319 /* libz.tbd */; };
 		FA10CBB8287886B8004092CA /* PLYReader.m in Sources */ = {isa = PBXBuildFile; fileRef = FA10CBB7287886B8004092CA /* PLYReader.m */; };
 		FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27928E31A520083F61C /* SceneLoader.swift */; };
-		FA2BA27D28E31C4A0083F61C /* Rayjay in Frameworks */ = {isa = PBXBuildFile; productRef = FA2BA27C28E31C4A0083F61C /* Rayjay */; };
 		FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */; };
 		FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28028E65BF50083F61C /* EntityBuilder.swift */; };
 		FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28228E65C190083F61C /* LightBuilder.swift */; };
@@ -22,6 +21,8 @@
 		FA7D5D5628E77B5B00912878 /* entry.metal in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA2D028E6F0C50083F61C /* entry.metal */; };
 		FA7D5D5928E780F500912878 /* URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D5828E780F500912878 /* URL.swift */; };
 		FA7D5D5C28E7813800912878 /* shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D5B28E7813800912878 /* shell.swift */; };
+		FA7D5D6528E9850800912878 /* Rayjay in Frameworks */ = {isa = PBXBuildFile; productRef = FA7D5D6428E9850800912878 /* Rayjay */; };
+		FA7D5D6D28EA066E00912878 /* distribution.m in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D6C28EA066E00912878 /* distribution.m */; };
 		FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF22875D4D800C0B0D0 /* Main.swift */; };
 		FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */; };
 		FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */; };
@@ -96,6 +97,12 @@
 		FA57791F2886009A003C10E7 /* SkyLoader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SkyLoader.h; sourceTree = "<group>"; };
 		FA7D5D5828E780F500912878 /* URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URL.swift; sourceTree = "<group>"; };
 		FA7D5D5B28E7813800912878 /* shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = shell.swift; sourceTree = "<group>"; };
+		FA7D5D6328E984BC00912878 /* Rayjay */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Rayjay; path = ../dependencies/Rayjay; sourceTree = "<group>"; };
+		FA7D5D6628E9A50800912878 /* ShapeLight.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ShapeLight.hpp; sourceTree = "<group>"; };
+		FA7D5D6728E9A80500912878 /* ShapeLight.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShapeLight.metal; sourceTree = "<group>"; };
+		FA7D5D6928E9AD5700912878 /* ShadingContext.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShadingContext.metal; sourceTree = "<group>"; };
+		FA7D5D6B28EA066E00912878 /* distribution.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = distribution.h; sourceTree = "<group>"; };
+		FA7D5D6C28EA066E00912878 /* distribution.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = distribution.m; sourceTree = "<group>"; };
 		FAC3AAEF2875D4D800C0B0D0 /* raymond.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = raymond.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3AAF22875D4D800C0B0D0 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
 		FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendererViewController.swift; sourceTree = "<group>"; };
@@ -112,7 +119,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FA2BA27D28E31C4A0083F61C /* Rayjay in Frameworks */,
+				FA7D5D6528E9850800912878 /* Rayjay in Frameworks */,
 				FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */,
 				FA100A8D28780BA900884319 /* libz.tbd in Frameworks */,
 			);
@@ -131,6 +138,7 @@
 				FA2BA2B228E6DF940083F61C /* kernels */,
 				FA100A85287790ED00884319 /* PrngState.metal */,
 				FA100A922878314400884319 /* Context.hpp */,
+				FA7D5D6928E9AD5700912878 /* ShadingContext.metal */,
 				FA2BA2A428E6DDE20083F61C /* ShadingContext.hpp */,
 				FA2BA2C128E6E1360083F61C /* constants.hpp */,
 				FA2BA2CF28E6EFDB0083F61C /* shading.hpp */,
@@ -166,6 +174,7 @@
 				FA2BA28828E6D7010083F61C /* PointLight.hpp */,
 				FA2BA28928E6D71D0083F61C /* SunLight.hpp */,
 				FA2BA28A28E6D72F0083F61C /* SpotLight.hpp */,
+				FA7D5D6628E9A50800912878 /* ShapeLight.hpp */,
 			);
 			path = lights;
 			sourceTree = "<group>";
@@ -226,6 +235,7 @@
 				FA2BA2AA28E6DEFD0083F61C /* PointLight.metal */,
 				FA2BA2AC28E6DF0F0083F61C /* SunLight.metal */,
 				FA2BA2AE28E6DF220083F61C /* SpotLight.metal */,
+				FA7D5D6728E9A80500912878 /* ShapeLight.metal */,
 				FA2BA2B028E6DF420083F61C /* Lights.metal */,
 			);
 			path = lights;
@@ -294,6 +304,7 @@
 		FA5779162885FF7B003C10E7 /* host */ = {
 			isa = PBXGroup;
 			children = (
+				FA7D5D6A28EA064B00912878 /* lights */,
 				FA5779192885FFD3003C10E7 /* sky */,
 			);
 			path = host;
@@ -328,10 +339,28 @@
 			path = utils;
 			sourceTree = "<group>";
 		};
+		FA7D5D6228E984BC00912878 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				FA7D5D6328E984BC00912878 /* Rayjay */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		FA7D5D6A28EA064B00912878 /* lights */ = {
+			isa = PBXGroup;
+			children = (
+				FA7D5D6B28EA066E00912878 /* distribution.h */,
+				FA7D5D6C28EA066E00912878 /* distribution.m */,
+			);
+			path = lights;
+			sourceTree = "<group>";
+		};
 		FAC3AAE62875D4D800C0B0D0 = {
 			isa = PBXGroup;
 			children = (
 				FAC3AAF12875D4D800C0B0D0 /* raymond */,
+				FA7D5D6228E984BC00912878 /* Packages */,
 				FAC3AAF02875D4D800C0B0D0 /* Products */,
 				FA100A8B28780BA300884319 /* Frameworks */,
 			);
@@ -396,7 +425,7 @@
 			name = raymond;
 			packageProductDependencies = (
 				FA5779122883EC7F003C10E7 /* ArgumentParser */,
-				FA2BA27C28E31C4A0083F61C /* Rayjay */,
+				FA7D5D6428E9850800912878 /* Rayjay */,
 			);
 			productName = raymond;
 			productReference = FAC3AAEF2875D4D800C0B0D0 /* raymond.app */;
@@ -428,7 +457,6 @@
 			mainGroup = FAC3AAE62875D4D800C0B0D0;
 			packageReferences = (
 				FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
-				FA2BA27B28E31C4A0083F61C /* XCRemoteSwiftPackageReference "rayjay" */,
 			);
 			productRefGroup = FAC3AAF02875D4D800C0B0D0 /* Products */;
 			projectDirPath = "";
@@ -488,6 +516,7 @@
 				FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */,
 				FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */,
 				FA10CBB8287886B8004092CA /* PLYReader.m in Sources */,
+				FA7D5D6D28EA066E00912878 /* distribution.m in Sources */,
 				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
 				FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */,
 				FA7D5D5C28E7813800912878 /* shell.swift in Sources */,
@@ -705,14 +734,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		FA2BA27B28E31C4A0083F61C /* XCRemoteSwiftPackageReference "rayjay" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://69co.de/research/rayjay.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
 		FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-argument-parser.git";
@@ -724,15 +745,14 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		FA2BA27C28E31C4A0083F61C /* Rayjay */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FA2BA27B28E31C4A0083F61C /* XCRemoteSwiftPackageReference "rayjay" */;
-			productName = Rayjay;
-		};
 		FA5779122883EC7F003C10E7 /* ArgumentParser */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
 			productName = ArgumentParser;
+		};
+		FA7D5D6428E9850800912878 /* Rayjay */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Rayjay;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

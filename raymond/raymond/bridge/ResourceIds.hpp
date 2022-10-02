@@ -25,11 +25,14 @@ typedef NS_ENUM(NSInteger, LightsBufferIndex) {
     LightsBufferPointLightCount = 2,
     LightsBufferSunLightCount   = 3,
     LightsBufferSpotLightCount  = 4,
-    LightsBufferWorldLight      = 5,
+    LightsBufferShapeLightCount = 5,
+    LightsBufferLightFaces      = 10,
+    LightsBufferWorldLight      = 11,
     LightsBufferAreaLight       = 20,
     LightsBufferPointLight      = 21,
     LightsBufferSunLight        = 22,
-    LightsBufferSpotLight       = 23
+    LightsBufferSpotLight       = 23,
+    LightsBufferShapeLight      = 24
 };
 
 typedef NS_ENUM(NSInteger, ShadingBufferIndex) {

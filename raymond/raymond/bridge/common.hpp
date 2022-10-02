@@ -50,9 +50,25 @@ typedef struct _MPSPackedFloat3 {
 // MARK: - Common
 
 typedef MPSPackedFloat3 Vertex;
+typedef MPSPackedFloat3 Normal;
+typedef simd_float2 TexCoord;
 typedef uint32_t VertexIndex;
+typedef uint32_t FaceIndex;
+typedef uint32_t LightIndex;
 typedef uint32_t PrimitiveIndex;
+typedef uint32_t InstanceIndex;
 typedef uint16_t MaterialIndex;
+
+typedef struct {
+    union {
+        struct {
+            VertexIndex x;
+            VertexIndex y;
+            VertexIndex z;
+        };
+        VertexIndex elements[3];
+    };
+} IndexTriplet;
 
 // MARK: - Forward declarations
 

@@ -96,9 +96,9 @@ float my_strtof(char *head, char **endPtr) {
 }
 
 - (void)readVertexElements:(unsigned int)number
-    vertices:(float * _Nonnull)vertices
-    normals:(float * _Nonnull)normals
-    texCoords:(float * _Nonnull)texCoords
+    vertices:(Vertex * _Nonnull)vertices
+    normals:(Normal * _Nonnull)normals
+    texCoords:(TexCoord * _Nonnull)texCoords
     boundsMin:(simd_float3 *)boundsMin
     boundsMax:(simd_float3 *)boundsMax
 {
@@ -115,15 +115,19 @@ float my_strtof(char *head, char **endPtr) {
         }
         
         for (int j = 0; j < 3; ++j) {
-            float value = my_strtof(head, &head);
+            const float value = my_strtof(head, &head);
             if (value < (*boundsMin)[j])
                 (*boundsMin)[j] = value;
             else if (value > (*boundsMax)[j])
                 (*boundsMax)[j] = value;
-            *(vertices++) = value;
+            vertices->elements[j] = value;
         }
-        for (int j = 0; j < 3; ++j) *(normals++) = my_strtof(head, &head);
-        for (int j = 0; j < 2; ++j) *(texCoords++) = my_strtof(head, &head);
+        for (int j = 0; j < 3; ++j) normals->elements[j] = my_strtof(head, &head);
+        for (int j = 0; j < 2; ++j) (*texCoords)[j] = my_strtof(head, &head);
+        
+        vertices++;
+        normals++;
+        texCoords++;
         
         assert(*head == '\n');
         head++;
@@ -133,7 +137,8 @@ float my_strtof(char *head, char **endPtr) {
 }
 
 - (void)readFaces:(unsigned int)number
-    indices:(unsigned int * _Nonnull)indices
+    vertices:(Vertex * _Nonnull)vertices
+    indices:(IndexTriplet * _Nonnull)indices
     materials:(uint16_t * _Nonnull)materials
     fromPalette:(const uint16_t *)palette
 {
@@ -149,14 +154,15 @@ float my_strtof(char *head, char **endPtr) {
             head = buffer;
         }
         
-        int numIndices = (int)strtol(head, &head, 10);
-        for (int j = 0; j < 3; ++j) *(indices++) = (int)strtol(head, &head, 10);
-        *materials = (int)strtol(head, &head, 10);
-        
+        const int numIndices = (int)strtol(head, &head, 10);
         assert(numIndices == 3);
         
-        *materials = palette[*materials];
+        for (int j = 0; j < 3; ++j) indices->elements[j] = (int)strtol(head, &head, 10);
+        const int paletteId = (int)strtol(head, &head, 10);
+        *materials = palette[paletteId];
+        
         materials++;
+        indices++;
     }
 }
 

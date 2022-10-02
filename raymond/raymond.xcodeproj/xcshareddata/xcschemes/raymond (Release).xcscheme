@@ -57,12 +57,16 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/raymond-tests/test-lightout.json"
+            argument = "/Users/alex/Desktop/raymond-tests/nee-shape-test.json"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_006/AI55_006.json"
+            argument = "/Users/alex/Desktop/raymond-tests/nee-instancing-cumulative-distribution.json"
             isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_009/AI55_009.json"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Downloads/normal_test.json"
@@ -74,15 +78,15 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Downloads/bed/Bed.json"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-g"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "1.0"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--external-compile"

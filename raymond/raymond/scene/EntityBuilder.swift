@@ -3,25 +3,37 @@ import Metal
 import MetalPerformanceShaders
 import Rayjay
 
-fileprivate func normalTransformFromPointTransform(_ transform: float4x4) -> float3x3 {
-    let inv = transform.inverse.transpose
-    let result = float3x3(
-        SIMD3(inv[0,0], inv[0,1], inv[0,2]),
-        SIMD3(inv[1,0], inv[1,1], inv[1,2]),
-        SIMD3(inv[2,0], inv[2,1], inv[2,2])
-    )
-    return result
+fileprivate extension simd_float4x4 {
+    var inner3x3: simd_float3x3 {
+        .init(
+            SIMD3(self[0, 0], self[0, 1], self[0, 2]),
+            SIMD3(self[1, 0], self[1, 1], self[1, 2]),
+            SIMD3(self[2, 0], self[2, 1], self[2, 2])
+        )
+    }
 }
 
 class EntityBuilder {
     struct Result {
         let accelerationStructure: MPSInstanceAccelerationStructure
     }
+    
+    private struct Instance {
+        let instanceIndex: InstanceIndex
+        let shapeIndex: InstanceIndex
+        let shapeInfo: ShapeBuilder.ShapeInfo
+        let transform: simd_float4x4
+        let visibility: RayFlags
+    }
 
     private let library: [String: Entity]
+    private let lightBuilder: LightBuilder
     private let shapeBuilder: ShapeBuilder
-    public init(library: [String: Entity], shapeBuilder: ShapeBuilder) throws {
+    private var instances: [Instance] = []
+    
+    public init(library: [String: Entity], lightBuilder: LightBuilder, shapeBuilder: ShapeBuilder) throws {
         self.library = library
+        self.lightBuilder = lightBuilder
         self.shapeBuilder = shapeBuilder
         
         for entity in library.values {
@@ -29,26 +41,28 @@ class EntityBuilder {
         }
     }
     
-    private struct Instance {
-        let index: UInt32
-        let transform: float4x4
-        let visibility: RayFlags
+    private func makeVisibility(from visibility: Visibility) -> RayFlags {
+        var result: UInt8 = 0
+        if visibility.contains(.camera)       { result |= RayFlags.camera.rawValue }
+        if visibility.contains(.diffuse)      { result |= RayFlags.diffuse.rawValue }
+        if visibility.contains(.glossy)       { result |= RayFlags.glossy.rawValue }
+        if visibility.contains(.transmission) { result |= RayFlags.transmission.rawValue }
+        if visibility.contains(.volume)       { result |= RayFlags.volume.rawValue }
+        if visibility.contains(.shadow)       { result |= RayFlags.shadow.rawValue }
+        return RayFlags(rawValue: result)!
     }
     
-    private func makeInstance(from entity: Entity) throws -> Instance {
-        var visibility: UInt8 = 0
-        if entity.visibility.contains(.camera)       { visibility |= RayFlags.camera.rawValue }
-        if entity.visibility.contains(.diffuse)      { visibility |= RayFlags.diffuse.rawValue }
-        if entity.visibility.contains(.glossy)       { visibility |= RayFlags.glossy.rawValue }
-        if entity.visibility.contains(.transmission) { visibility |= RayFlags.transmission.rawValue }
-        if entity.visibility.contains(.volume)       { visibility |= RayFlags.volume.rawValue }
-        if entity.visibility.contains(.shadow)       { visibility |= RayFlags.shadow.rawValue }
+    private func add(entity: Entity) throws {
+        let shapeIndex = try shapeBuilder.index(of: entity.shape)
+        let shapeInfo = shapeBuilder.shapeInfo(for: shapeIndex)
         
-        return Instance(
-            index: UInt32(try shapeBuilder.index(of: entity.shape)),
+        let instanceIndex = InstanceIndex(instances.count)
+        instances.append(.init(
+            instanceIndex: InstanceIndex(instanceIndex),
+            shapeIndex: shapeIndex,
+            shapeInfo: shapeInfo,
             transform: entity.matrix,
-            visibility: RayFlags(rawValue: visibility)!
-        )
+            visibility: makeVisibility(from: entity.visibility)))
     }
     
     func build(
@@ -57,33 +71,52 @@ class EntityBuilder {
         encoder: MTLArgumentEncoder,
         resources: inout [MTLResource]
     ) throws -> Result {
-        let instances = try library.values.map { entity in
-            try makeInstance(from: entity)
-        }
+        try library.values.forEach(add)
         
-        var (indexBuffer, indices) = device.makeBufferAndPointer(type: UInt32.self, count: instances.count)
+        var (indexBuffer, indices) = device.makeBufferAndPointer(type: InstanceIndex.self, count: instances.count)
         var (transformBuffer, transforms) = device.makeBufferAndPointer(type: float4x4.self, count: instances.count)
         var (instanceBuffer, instanceData) = device.makeBufferAndPointer(type: DevicePerInstanceData.self, count: instances.count)
         
         for instance in instances {
-            let shapeInfo = shapeBuilder.shapeInfo(for: Int(instance.index))
-            indices.pointee = instance.index
+            let normalTransform = instance.transform.inner3x3.inverse.transpose
+            
+            var lightIndex = LightIndex.max
+            var lightFaceOffset: FaceIndex = 0
+            var lightFaceCount: FaceIndex = 0
+            if instance.shapeInfo.hasEmission {
+                let light = lightBuilder.add(shapeLight: .init(
+                    instanceIndex: instance.instanceIndex,
+                    faceOffset: instance.shapeInfo.faceOffset,
+                    faceCount: instance.shapeInfo.faceCount,
+                    vertexOffset: instance.shapeInfo.vertexOffset,
+                    normalTransform: instance.transform.inner3x3))
+                
+                lightIndex = light.lightIndex
+                lightFaceOffset = light.lightFaceOffset
+                lightFaceCount = light.faceCount
+            }
+            
+            indices.pointee = instance.shapeIndex
             transforms.pointee = instance.transform
             instanceData.pointee = .init(
-                vertexOffset: shapeInfo.vertexOffset,
-                faceOffset: shapeInfo.faceOffset,
-                boundsMin: shapeInfo.boundsMin,
-                boundsSize: shapeInfo.boundsMax - shapeInfo.boundsMin,
+                vertexOffset: instance.shapeInfo.vertexOffset,
+                faceOffset: instance.shapeInfo.faceOffset,
+                lightFaceOffset: lightFaceOffset,
+                lightFaceCount: lightFaceCount,
+                lightIndex: lightIndex,
+                
+                boundsMin: instance.shapeInfo.boundsMin,
+                boundsSize: instance.shapeInfo.boundsMax - instance.shapeInfo.boundsMin,
                 pointTransform: instance.transform,
-                normalTransform: normalTransformFromPointTransform(instance.transform),
-                visibility: instance.visibility
-            )
+                normalTransform: normalTransform,
+                visibility: instance.visibility)
             
             indices = indices.advanced(by: 1)
             transforms = transforms.advanced(by: 1)
             instanceData = instanceData.advanced(by: 1)
         }
         
+        assert(InstanceIndex.bitWidth == 32)
         let accelerationStructure = MPSInstanceAccelerationStructure(group: shapes.accelerationGroup)
         accelerationStructure.accelerationStructures = shapes.accelerationStructures
         accelerationStructure.instanceCount = instances.count
@@ -95,6 +128,8 @@ class EntityBuilder {
         encoder.setBuffer(instanceBuffer, offset: 0, index: ContextBufferIndex.perInstanceData.rawValue)
         resources.append(instanceBuffer)
         
-        return .init(accelerationStructure: accelerationStructure)
+        return .init(
+            accelerationStructure: accelerationStructure
+        )
     }
 }

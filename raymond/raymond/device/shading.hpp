@@ -8,8 +8,8 @@
 #define SHADE_STUB {}
 #endif
 
-void shadeLight(int shaderIndex, device Context &ctx, thread ShadingContext &shading) SHADE_STUB
-void shadeSurface(int shaderIndex, device Context &ctx, thread ShadingContext &shading) SHADE_STUB
+void shadeLight(MaterialIndex shaderIndex, device Context &ctx, thread ShadingContext &shading) SHADE_STUB
+void shadeSurface(MaterialIndex shaderIndex, device Context &ctx, thread ShadingContext &shading) SHADE_STUB
 
 #undef SHADE_STUB
 

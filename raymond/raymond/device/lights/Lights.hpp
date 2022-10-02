@@ -5,6 +5,7 @@
 #include "../../bridge/lights/PointLight.hpp"
 #include "../../bridge/lights/SunLight.hpp"
 #include "../../bridge/lights/SpotLight.hpp"
+#include "../../bridge/lights/ShapeLight.hpp"
 #include "../../bridge/ResourceIds.hpp"
 #include "../../bridge/PrngState.hpp"
 #include "../ShadingContext.hpp"
@@ -18,16 +19,25 @@ struct Lights {
     int numPointLights [[id(LightsBufferPointLightCount)]];
     int numSunLights   [[id(LightsBufferSunLightCount)]];
     int numSpotLights  [[id(LightsBufferSpotLightCount)]];
+    int numShapeLights [[id(LightsBufferShapeLightCount)]];
+    
+    device const float *lightFaces [[id(LightsBufferLightFaces)]];
     
     WorldLight worldLight          [[id(LightsBufferWorldLight)]];
     device AreaLight *areaLights   [[id(LightsBufferAreaLight)]];
     device PointLight *pointLights [[id(LightsBufferPointLight)]];
     device SunLight *sunLights     [[id(LightsBufferSunLight)]];
     device SpotLight *spotLights   [[id(LightsBufferSpotLight)]];
+    device ShapeLight *shapeLights [[id(LightsBufferShapeLight)]];
+    
+    float shapePdf(device const PerInstanceData &instance, thread const ShadingContext &shading) const device {
+        const float selectionProbability = 1 / float(numLightsTotal);
+        return selectionProbability * shapeLights[instance.lightIndex].pdf(shading);
+    }
     
     float envmapPdf(float3 wo) const device {
-        const float worldLightProbability = 1 / float(numLightsTotal);
-        return worldLight.pdf(wo) * worldLightProbability;
+        const float selectionProbability = 1 / float(numLightsTotal);
+        return selectionProbability * worldLight.pdf(wo);
     }
     
     LightSample sample(device Context &ctx, thread ShadingContext &shading, thread PrngState &prng) const device {
@@ -48,13 +58,20 @@ struct Lights {
             sample = sunLights[sampledLightSource].sample(ctx, lightShading, prng);
         } else if ((sampledLightSource -= numSunLights) < numSpotLights) {
             sample = spotLights[sampledLightSource].sample(ctx, lightShading, prng);
+        } else if ((sampledLightSource -= numSpotLights) < numShapeLights) {
+            sample = shapeLights[sampledLightSource].sample(ctx, lightShading, prng);
         } else {
             return LightSample::invalid();
         }
         
         lightShading.wo = -sample.direction;
         if (any(sample.weight != 0)) {
-            shadeLight(sample.shaderIndex, ctx, lightShading);
+            if (sample.isLight) {
+                shadeLight(sample.shaderIndex, ctx, lightShading);
+            } else {
+                // :-(
+                shadeSurface(sample.shaderIndex, ctx, lightShading);
+            }
             sample.weight *= lightShading.material.emission;
         }
         
@@ -85,6 +102,7 @@ private:
         sample.shaderIndex = worldLight.shaderIndex;
         sample.castsShadows = true;
         sample.canBeHit = true;
+        sample.isLight = true;
         
         shading.position = -sample.direction;
         shading.normal = -sample.direction;

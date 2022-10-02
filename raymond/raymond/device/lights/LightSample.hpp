@@ -4,7 +4,9 @@
 #include "../../bridge/lights/LightInfo.hpp"
 
 struct LightSample {
-    int shaderIndex;
+    bool isLight;
+    MaterialIndex shaderIndex;
+    
     bool canBeHit;
     bool castsShadows;
     float3 weight;
@@ -12,8 +14,12 @@ struct LightSample {
     float3 direction;
     float distance;
     
-    LightSample() {}
+    LightSample() {
+        isLight = false;
+    }
+    
     LightSample(LightInfo info) {
+        isLight = true;
         shaderIndex = info.shaderIndex;
         canBeHit = info.usesMIS;
         castsShadows = info.castsShadows;

@@ -2,13 +2,26 @@ import Foundation
 import Rayjay
 
 class LightBuilder {
+    struct ShapeLight {
+        let instanceIndex: InstanceIndex
+        let faceOffset: FaceIndex
+        let faceCount: FaceIndex
+        let vertexOffset: VertexIndex
+        let normalTransform: float3x3
+        var lightIndex: LightIndex = 0
+        var lightFaceOffset: FaceIndex = 0
+    }
+    
     struct LightCollection {
         let count: Int
         let buffer: MTLBuffer
     }
     
     private let library: [String: Light]
+    private var shapeLights: [ShapeLight] = []
     private var materialBuilder: MaterialBuilder
+    private var lightFaceOffset: FaceIndex = 0
+    
     public init(library: [String: Light], materialBuilder: MaterialBuilder) {
         self.library = library
         self.materialBuilder = materialBuilder
@@ -25,7 +38,7 @@ class LightBuilder {
         }
         
         return .init(
-            shaderIndex: UInt16(materialBuilder.index(of: .light, named: light.material)),
+            shaderIndex: MaterialIndex(materialBuilder.index(of: .light, named: light.material)),
             castsShadows: light.castShadows,
             usesMIS: false // light.useMIS
         )
@@ -43,7 +56,23 @@ class LightBuilder {
             let kernel = light.kernel as! Kernel
             let info = try makeLightInfo(for: light)
             ptr.initialize(to: closure(info, kernel))
-            ptr = ptr.advanced(by: 1)
+            ptr = ptr.successor()
+        }
+        
+        return .init(count: count, buffer: buffer)
+    }
+    
+    private func makeLights<Input, Output>(
+        collection: [Input],
+        device: MTLDevice,
+        closure: (Input) -> Output
+    ) -> LightCollection {
+        let count = collection.count
+        var (buffer, ptr) = device.makeBufferAndPointer(type: Output.self, count: count)
+        
+        for light in collection {
+            ptr.initialize(to: closure(light))
+            ptr = ptr.successor()
         }
         
         return .init(count: count, buffer: buffer)
@@ -54,7 +83,7 @@ class LightBuilder {
         withContext contextBuffer: MTLBuffer,
         andEncoder contextEncoder: MTLArgumentEncoder,
         resources: inout [MTLResource],
-        shaderIndex: Int
+        shaderIndex: MaterialIndex
     ) throws {
         let exponent = 11
         let resolution = 1 << exponent
@@ -127,7 +156,7 @@ class LightBuilder {
         commandBuffer.waitUntilCompleted()
         
         let envmapOffset = ContextBufferIndex.lights.rawValue + LightsBufferIndex.worldLight.rawValue
-        contextEncoder.set(at: envmapOffset + 0, UInt16(shaderIndex))
+        contextEncoder.set(at: envmapOffset + 0, MaterialIndex(shaderIndex))
         contextEncoder.set(at: envmapOffset + 1, resolution)
         contextEncoder.setBuffer(pdfBuffer, offset: 0, index: envmapOffset + 2)
         contextEncoder.setBuffer(mipmapBuffer, offset: 0, index: envmapOffset + 3)
@@ -135,9 +164,20 @@ class LightBuilder {
         resources.append(mipmapBuffer)
     }
     
+    func add(shapeLight light: ShapeLight) -> ShapeLight {
+        var completed = light
+        completed.lightIndex = LightIndex(shapeLights.count)
+        completed.lightFaceOffset = lightFaceOffset
+        lightFaceOffset += light.faceCount
+        
+        shapeLights.append(completed)
+        return completed
+    }
+    
     func build(
         withDevice device: MTLDevice,
         library shadingLibrary: MTLLibrary,
+        shapes: ShapeBuilder.Result,
         context: MTLBuffer,
         encoder: MTLArgumentEncoder,
         resources: inout [MTLResource]
@@ -180,6 +220,26 @@ class LightBuilder {
                 color: kernel.color * kernel.power)
         }
         
+        let (lightFaceBuffer, lightFaces) = device.makeBufferAndPointer(type: Float.self, count: Int(lightFaceOffset))
+        lightFaceBuffer.label = "Light face buffer"
+        
+        let emissiveFlags = materialBuilder.getShaderNames(.surface).map(materialBuilder.hasMaterialEmission)
+        let shapeLights = makeLights(collection: shapeLights, device: device) { light in
+            let emissiveArea = buildLightDistribution(
+                light.normalTransform,
+                shapes.indices.advanced(by: Int(light.faceOffset)),
+                shapes.vertices.advanced(by: Int(light.vertexOffset)),
+                shapes.materials.advanced(by: Int(light.faceOffset)),
+                UnsafePointer<Bool>(emissiveFlags),
+                light.faceCount,
+                lightFaces.advanced(by: Int(light.lightFaceOffset))
+            )
+            
+            return DeviceShapeLight(
+                instanceIndex: light.instanceIndex,
+                emissiveArea: emissiveArea)
+        }
+        
         let worldLight = library.values.first { $0.kernel is WorldLight }!
         let worldLightShader = materialBuilder.index(of: .light, named: worldLight.material)
         
@@ -190,17 +250,29 @@ class LightBuilder {
             resources: &resources,
             shaderIndex: worldLightShader)
         
-        let totalLightCount = 1 + areaLights.count + pointLights.count + sunLights.count + spotLights.count
+        let totalLightCount = 1 + areaLights.count + pointLights.count + sunLights.count + spotLights.count + shapeLights.count
         
-        let neeOffset = ContextBufferIndex.lights.rawValue
-        encoder.set(at: neeOffset + LightsBufferIndex.totalLightCount.rawValue, totalLightCount)
-        encoder.set(at: neeOffset + LightsBufferIndex.areaLightCount.rawValue, areaLights.count)
-        encoder.set(at: neeOffset + LightsBufferIndex.pointLightCount.rawValue, pointLights.count)
-        encoder.set(at: neeOffset + LightsBufferIndex.sunLightCount.rawValue, sunLights.count)
-        encoder.set(at: neeOffset + LightsBufferIndex.spotLightCount.rawValue, spotLights.count)
-        encoder.setBuffer(areaLights.buffer, offset: 0, index: neeOffset + LightsBufferIndex.areaLight.rawValue)
-        encoder.setBuffer(pointLights.buffer, offset: 0, index: neeOffset + LightsBufferIndex.pointLight.rawValue)
-        encoder.setBuffer(sunLights.buffer, offset: 0, index: neeOffset + LightsBufferIndex.sunLight.rawValue)
-        encoder.setBuffer(spotLights.buffer, offset: 0, index: neeOffset + LightsBufferIndex.spotLight.rawValue)
+        let lightsOffset = ContextBufferIndex.lights.rawValue
+        encoder.set(at: lightsOffset + LightsBufferIndex.totalLightCount.rawValue, totalLightCount)
+        encoder.set(at: lightsOffset + LightsBufferIndex.areaLightCount.rawValue, areaLights.count)
+        encoder.set(at: lightsOffset + LightsBufferIndex.pointLightCount.rawValue, pointLights.count)
+        encoder.set(at: lightsOffset + LightsBufferIndex.sunLightCount.rawValue, sunLights.count)
+        encoder.set(at: lightsOffset + LightsBufferIndex.spotLightCount.rawValue, spotLights.count)
+        encoder.set(at: lightsOffset + LightsBufferIndex.shapeLightCount.rawValue, shapeLights.count)
+        encoder.setBuffer(areaLights.buffer, offset: 0, index: lightsOffset + LightsBufferIndex.areaLight.rawValue)
+        encoder.setBuffer(pointLights.buffer, offset: 0, index: lightsOffset + LightsBufferIndex.pointLight.rawValue)
+        encoder.setBuffer(sunLights.buffer, offset: 0, index: lightsOffset + LightsBufferIndex.sunLight.rawValue)
+        encoder.setBuffer(spotLights.buffer, offset: 0, index: lightsOffset + LightsBufferIndex.spotLight.rawValue)
+        encoder.setBuffer(shapeLights.buffer, offset: 0, index: lightsOffset + LightsBufferIndex.shapeLight.rawValue)
+        resources.append(contentsOf: [
+            areaLights.buffer,
+            pointLights.buffer,
+            sunLights.buffer,
+            spotLights.buffer,
+            shapeLights.buffer
+        ])
+        
+        encoder.setBuffer(lightFaceBuffer, offset: 0, index: lightsOffset + LightsBufferIndex.lightFaces.rawValue)
+        resources.append(lightFaceBuffer)
     }
 }

@@ -13,9 +13,9 @@ using namespace metal;
 
 struct Context {
     device const Vertex *vertices                 [[id(ContextBufferVertices)]];
-    device const VertexIndex *vertexIndices       [[id(ContextBufferVertexIndices)]];
-    device const Vertex *vertexNormals            [[id(ContextBufferNormals)]];
-    device const float2 *texcoords                [[id(ContextBufferTexcoords)]];
+    device const IndexTriplet *vertexIndices      [[id(ContextBufferVertexIndices)]];
+    device const Normal *vertexNormals            [[id(ContextBufferNormals)]];
+    device const TexCoord *texcoords              [[id(ContextBufferTexcoords)]];
     device const PerInstanceData *perInstanceData [[id(ContextBufferPerInstanceData)]];
     device const MaterialIndex *materials         [[id(ContextBufferMaterials)]];
     

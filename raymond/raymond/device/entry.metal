@@ -1,4 +1,5 @@
 #include "PrngState.metal"
+#include "ShadingContext.metal"
 
 #include "nodes/nodes.hpp"
 
@@ -6,6 +7,7 @@
 #include "lights/PointLight.metal"
 #include "lights/SunLight.metal"
 #include "lights/SpotLight.metal"
+#include "lights/ShapeLight.metal"
 #include "lights/Lights.metal"
 
 #include "kernels/shading/generate.metal"

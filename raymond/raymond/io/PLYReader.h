@@ -16,14 +16,15 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)reopen;
 
 - (void)readVertexElements:(unsigned int)number
-    vertices:(float * _Nonnull)vertices
-    normals:(float * _Nonnull)normals
-    texCoords:(float * _Nonnull)texCoords
+    vertices:(Vertex * _Nonnull)vertices
+    normals:(Normal * _Nonnull)normals
+    texCoords:(TexCoord * _Nonnull)texCoords
     boundsMin:(simd_float3 *)boundsMin
     boundsMax:(simd_float3 *)boundsMax;
 
 - (void)readFaces:(unsigned int)number
-    indices:(unsigned int * _Nonnull)indices
+    vertices:(Vertex * _Nonnull)vertices
+    indices:(IndexTriplet * _Nonnull)indices
     materials:(MaterialIndex * _Nonnull)materials
     fromPalette:(const MaterialIndex * _Nonnull)palette;
 

@@ -5,15 +5,21 @@ import Rayjay
 
 class ShapeBuilder {
     struct Result {
+        let indices: UnsafeMutablePointer<IndexTriplet>
+        let vertices: UnsafeMutablePointer<Vertex>
+        let materials: UnsafeMutablePointer<MaterialIndex>
+        
         let accelerationGroup: MPSAccelerationStructureGroup
         let accelerationStructures: [MPSTriangleAccelerationStructure]
     }
 
     struct ShapeInfo {
-        var vertexOffset: UInt32
-        var faceOffset: UInt32
+        var vertexOffset: VertexIndex
+        var faceOffset: FaceIndex
+        var faceCount: FaceIndex
         var boundsMin: simd_float3
         var boundsMax: simd_float3
+        var hasEmission: Bool
     }
     
     private let library: [String: Shape]
@@ -33,20 +39,32 @@ class ShapeBuilder {
         var path: String
         
         var materialIndices: [MaterialIndex]
-        var vertexCount: UInt32
-        var faceCount: UInt32
-        var vertexOffset: UInt32
-        var faceOffset: UInt32
+        var emissiveMaterials: [Bool]
+        var hasEmission: Bool
+        
+        var vertexCount: VertexIndex
+        var faceCount: FaceIndex
+        
+        var vertexOffset: VertexIndex
+        var faceOffset: FaceIndex
         
         var boundsMin: simd_float3
         var boundsMax: simd_float3
         
         var fileReader: PLYReader
         
-        init(withPath url: URL, materialIndices: [MaterialIndex], vertexOffset: UInt32, faceOffset: UInt32) throws {
-            self.materialIndices = materialIndices
+        init(
+            withPath url: URL,
+            materialIndices: [MaterialIndex], emissiveMaterials: [Bool], hasEmission: Bool,
+            vertexOffset: VertexIndex, faceOffset: FaceIndex
+        ) throws {
             self.path = url.relativeString
             self.fileReader = PLYReader(url: url)
+            
+            self.materialIndices = materialIndices
+            self.emissiveMaterials = emissiveMaterials
+            self.hasEmission = hasEmission
+            
             self.vertexOffset = vertexOffset
             self.faceOffset = faceOffset
             
@@ -62,7 +80,7 @@ class ShapeBuilder {
             
             fileReader.assertToken("element")
             fileReader.assertToken("vertex")
-            vertexCount = UInt32(exactly: fileReader.readInt())!
+            vertexCount = VertexIndex(exactly: fileReader.readInt())!
             
             fileReader.assertLine("property float x")
             fileReader.assertLine("property float y")
@@ -75,7 +93,7 @@ class ShapeBuilder {
             
             fileReader.assertToken("element")
             fileReader.assertToken("face")
-            faceCount = UInt32(exactly: fileReader.readInt())!
+            faceCount = FaceIndex(exactly: fileReader.readInt())!
             
             fileReader.assertLine("property list uchar uint vertex_indices")
             fileReader.assertLine("property uchar material_index")
@@ -85,18 +103,18 @@ class ShapeBuilder {
         }
     }
     
-    private var shapeIds: [String: Int] = [:]
+    private var shapeIds: [String: InstanceIndex] = [:]
     private var shapeHandles: [ShapeHandle] = []
-    private var vertexOffset: UInt32 = 0
-    private var faceOffset: UInt32 = 0
+    private var vertexOffset: VertexIndex = 0
+    private var faceOffset: FaceIndex = 0
     
     @discardableResult
-    func index(of name: String) throws -> Int {
+    func index(of name: String) throws -> InstanceIndex {
         if let id = shapeIds[name] {
             return id
         }
         
-        let id = shapeIds.count
+        let id = InstanceIndex(shapeIds.count)
         try add(shape: library[name]!)
         shapeIds[name] = id
         return id
@@ -108,12 +126,17 @@ class ShapeBuilder {
         }
         
         let materialIndices = shape.materials.map { material in
-            MaterialIndex(materialBuilder.index(of: .surface, named: material))
+            materialBuilder.index(of: .surface, named: material)
         }
+        
+        let emissiveMaterials = shape.materials.map(materialBuilder.hasMaterialEmission)
+        let hasEmission = emissiveMaterials.contains(where: { $0 })
         
         let shapeHandle = try ShapeHandle(
             withPath: shape.filepath,
             materialIndices: materialIndices,
+            emissiveMaterials: emissiveMaterials,
+            hasEmission: hasEmission,
             vertexOffset: vertexOffset,
             faceOffset: faceOffset
         )
@@ -123,26 +146,31 @@ class ShapeBuilder {
         faceOffset += shapeHandle.faceCount
     }
     
-    func shapeInfo(for index: Int) -> ShapeInfo {
-        let shapeHandle = shapeHandles[index]
+    func shapeInfo(for index: InstanceIndex) -> ShapeInfo {
+        let shapeHandle = shapeHandles[Int(index)]
         return .init(
             vertexOffset: shapeHandle.vertexOffset,
             faceOffset: shapeHandle.faceOffset,
+            faceCount: shapeHandle.faceCount,
             boundsMin: shapeHandle.boundsMin,
-            boundsMax: shapeHandle.boundsMax
+            boundsMax: shapeHandle.boundsMax,
+            hasEmission: shapeHandle.hasEmission
         )
     }
     
-    func build(withDevice device: MTLDevice, encoder: MTLArgumentEncoder, resources: inout [MTLResource]) throws -> Result {
+    func build(
+        withDevice device: MTLDevice,
+        encoder: MTLArgumentEncoder,
+        resources: inout [MTLResource]
+    ) throws -> Result {
         let totalVertexCount = Int(vertexOffset)
         let totalFaceCount = Int(faceOffset)
-        let totalIndexCount = 3 * totalFaceCount
         
-        let (vertexBuffer, vertices)    = device.makeBufferAndPointer(type: Float.self, count: 3 * totalVertexCount)
-        let (indexBuffer, indices)      = device.makeBufferAndPointer(type: UInt32.self, count: totalIndexCount)
-        let (normalBuffer, normals)     = device.makeBufferAndPointer(type: Float.self, count: 3 * totalVertexCount)
-        let (texCoordBuffer, texCoords) = device.makeBufferAndPointer(type: Float.self, count: 2 * totalVertexCount)
-        let (materialBuffer, materials) = device.makeBufferAndPointer(type: MaterialIndex.self, count: totalFaceCount)
+        let (vertexBuffer, vertices)      = device.makeBufferAndPointer(type: Vertex.self, count: totalVertexCount)
+        let (indexBuffer, indices)        = device.makeBufferAndPointer(type: IndexTriplet.self, count: totalFaceCount)
+        let (normalBuffer, normals)       = device.makeBufferAndPointer(type: Normal.self, count: totalVertexCount)
+        let (texCoordBuffer, texCoords)   = device.makeBufferAndPointer(type: TexCoord.self, count: totalVertexCount)
+        let (materialBuffer, materials)   = device.makeBufferAndPointer(type: MaterialIndex.self, count: totalFaceCount)
         
         vertexBuffer.label = "Vertex buffer"
         indexBuffer.label = "Index buffer"
@@ -157,18 +185,20 @@ class ShapeBuilder {
             
             shapeHandle.fileReader.reopen()
             
+            let shapeVertices = vertices.advanced(by: Int(shapeHandle.vertexOffset))
             shapeHandle.fileReader.readVertexElements(
                 shapeHandle.vertexCount,
-                vertices: vertices.advanced(by: 3 * Int(shapeHandle.vertexOffset)),
-                normals: normals.advanced(by: 3 * Int(shapeHandle.vertexOffset)),
-                texCoords: texCoords.advanced(by: 2 * Int(shapeHandle.vertexOffset)),
+                vertices: shapeVertices,
+                normals: normals.advanced(by: Int(shapeHandle.vertexOffset)),
+                texCoords: texCoords.advanced(by: Int(shapeHandle.vertexOffset)),
                 boundsMin: &shapeHandle.boundsMin,
                 boundsMax: &shapeHandle.boundsMax)
             
             let palette = UnsafePointer<MaterialIndex>(shapeHandle.materialIndices)
             shapeHandle.fileReader.readFaces(
                 shapeHandle.faceCount,
-                indices: indices.advanced(by: 3 * Int(shapeHandle.faceOffset)),
+                vertices: shapeVertices,
+                indices: indices.advanced(by: Int(shapeHandle.faceOffset)),
                 materials: materials.advanced(by: Int(shapeHandle.faceOffset)),
                 fromPalette: palette)
             
@@ -177,7 +207,8 @@ class ShapeBuilder {
             shapeHandles[index] = shapeHandle
         }
         
-        // build acceleration structure
+        // MARK: build acceleration structure
+        
         let group = MPSAccelerationStructureGroup(device: device)
         
         let accelerationStructures = shapeHandles.map { shapeHandle in
@@ -185,12 +216,13 @@ class ShapeBuilder {
             
             let triAccel = MPSTriangleAccelerationStructure(group: group)
             triAccel.vertexBuffer = vertexBuffer
-            triAccel.vertexStride = 3 * MemoryLayout<Float>.stride
+            triAccel.vertexStride = MemoryLayout<Vertex>.stride
             triAccel.vertexBufferOffset = triAccel.vertexStride * Int(shapeHandle.vertexOffset)
             
+            assert(VertexIndex.bitWidth == 32)
             triAccel.indexBuffer = indexBuffer
             triAccel.indexType = .uInt32
-            triAccel.indexBufferOffset = MemoryLayout<UInt32>.stride * Int(3 * shapeHandle.faceOffset)
+            triAccel.indexBufferOffset = MemoryLayout<IndexTriplet>.stride * Int(shapeHandle.faceOffset)
             
             triAccel.triangleCount = Int(shapeHandle.faceCount)
             triAccel.rebuild()
@@ -211,6 +243,10 @@ class ShapeBuilder {
         resources.append(materialBuffer)
         
         return .init(
+            indices: indices,
+            vertices: vertices,
+            materials: materials,
+            
             accelerationGroup: group,
             accelerationStructures: accelerationStructures
         )
