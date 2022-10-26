@@ -261,6 +261,14 @@ def export_default_material(unique_name):
     return _DEFAULT_MATERIAL
 
 
+def export_colorspace(colorspace):
+    name = colorspace.name
+    if name == "":
+        warn(f"Empty colorspace found, falling back to sRGB")
+        return "sRGB"
+    return name
+
+
 # @todo material type should be 'Material | World | Light'
 def export_material(registry: SceneRegistry, material: bpy.types.Material):
     result = {}
@@ -309,7 +317,7 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
                 "projection": node.projection,
                 "extension": node.extension,
                 "source": node.image.source,
-                "colorspace": node.image.colorspace_settings.name,
+                "colorspace": export_colorspace(node.image.colorspace_settings),
                 "alpha": node.image.alpha_mode
             }
         elif isinstance(node, bpy.types.ShaderNodeTexEnvironment):
@@ -317,7 +325,7 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
                 "filepath": _handle_image(registry, node.image),
                 "interpolation": node.interpolation,
                 "projection": node.projection,
-                "colorspace": node.image.colorspace_settings.name,
+                "colorspace": export_colorspace(node.image.colorspace_settings),
                 "alpha": node.image.alpha_mode
             }
         elif isinstance(node, bpy.types.ShaderNodeTexSky):
