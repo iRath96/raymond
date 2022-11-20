@@ -114,10 +114,10 @@ class RMNodeGraph(object):
                 link = None
                 for input in node.bl_node.inputs.values():
                     if input.type == output.type and input.is_linked:
-                        link = node.links[output.identifier]
+                        link = node.links[input.identifier]
                         break
                 
-                self.replace_link((node_name, input.identifier), link)
+                self.replace_link((node_name, output.identifier), link)
 
     def remove_reroute_nodes(self):
         for (node_name, node) in list(self.nodes.items()):
@@ -220,7 +220,7 @@ def _export_image(registry: SceneRegistry, image: bpy.types.Image, unique_name: 
         # @todo escape image.name, avoid filename collisions
         extension = ".png" if not image.use_generated_float else ".exr"
         img_path = os.path.join(registry.texturepath, unique_name + extension)
-        _export_image(image, img_path, is_f32=image.use_generated_float)
+        _save_image(image, img_path, is_f32=image.use_generated_float)
         result = img_path
     elif image.source == "FILE":
         img_path = bpy.path.abspath(bpy.path.resolve_ncase(image.filepath_raw), library=image.library).replace("\\", "/")
@@ -254,7 +254,7 @@ def _export_image(registry: SceneRegistry, image: bpy.types.Image, unique_name: 
     else:
         warn(f"Image type {image.source} not supported")
     
-    return result
+    return registry.relative_path(result)
 
 
 def export_default_material(unique_name):
@@ -343,6 +343,23 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
                 "sun_rotation": node.sun_rotation,
                 "sun_size": node.sun_size,
                 "turbidity": node.turbidity
+            }
+        elif isinstance(node, bpy.types.ShaderNodeTexGradient):
+            result_node["parameters"] = {
+                "type": node.gradient_type
+            }
+        elif isinstance(node, bpy.types.ShaderNodeTexWave):
+            result_node["parameters"] = {
+                "type": node.wave_type,
+                "profile": node.wave_profile,
+                "direction": node.rings_direction if node.wave_type == "RINGS" else node.bands_direction
+            }
+        elif isinstance(node, bpy.types.ShaderNodeTexBrick):
+            result_node["parameters"] = {
+                "offset": node.offset,
+                "offset_frequency": node.offset_frequency,
+                "squash": node.squash,
+                "squash_frequency": node.squash_frequency
             }
         elif isinstance(node, bpy.types.ShaderNodeMath):
             result_node["parameters"] = {
@@ -437,12 +454,17 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
                 "from_instancer": node.from_instancer,
                 "uv_map": node.uv_map
             }
+        elif isinstance(node, bpy.types.ShaderNodeRGB):
+            result_node["parameters"] = {
+                "value": list(node.outputs[0].default_value)
+            }
         elif isinstance(node, (
             bpy.types.ShaderNodeOutputMaterial,
             bpy.types.ShaderNodeTexCoord,
             bpy.types.ShaderNodeInvert,
             bpy.types.ShaderNodeBsdfTransparent,
             bpy.types.ShaderNodeBsdfTranslucent,
+            bpy.types.ShaderNodeAddShader,
             bpy.types.ShaderNodeMixShader,
             bpy.types.ShaderNodeSeparateColor,
             bpy.types.ShaderNodeHueSaturation,
@@ -457,7 +479,8 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             bpy.types.ShaderNodeBrightContrast,
             bpy.types.ShaderNodeFresnel,
             bpy.types.ShaderNodeBlackbody,
-            bpy.types.ShaderNodeBsdfDiffuse
+            bpy.types.ShaderNodeBsdfDiffuse,
+            bpy.types.ShaderNodeBsdfVelvet
         )):
             # no parameters
             pass

@@ -22,6 +22,8 @@ struct LightPath {
     bool isGlossyRay;
     bool isSingularRay;
     
+    float rayLength;
+    
     void compute(device Context &ctx, ShadingContext shading) {
         isCameraRay       = (shading.rayFlags & RayFlagsCamera) > 0;
         isReflectionRay   = (shading.rayFlags & RayFlagsReflection) > 0;
@@ -32,9 +34,59 @@ struct LightPath {
         isGlossyRay   = (shading.rayFlags & RayFlagsGlossy) > 0;
         isSingularRay = (shading.rayFlags & RayFlagsSingular) > 0;
         
+        rayLength = shading.distance; /// @todo verify
+        
         if (isSingularRay)
-            /// @todo confirm
+            /// @todo verify
             isGlossyRay = true;
+    }
+};
+
+/**
+ * @todo not properly supported!
+ */
+struct ObjectInfo {
+    int objectIndex;
+    float random; /// @todo unsupported
+    float3 location; /// @todo unsupported
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        
+    }
+};
+
+/**
+ * @todo not properly supported!
+ */
+struct ParticleInfo {
+    float random; /// @todo unsupported
+
+    void compute(device Context &ctx, ShadingContext shading) {
+        
+    }
+};
+
+/**
+ * @todo not properly supported!
+ */
+struct LightFalloff {
+    float strength;
+    float smooth;
+    float quadratic;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        quadratic = 1; /// @todo
+    }
+};
+
+/**
+ * @todo not properly supported!
+ */
+struct VertexColor {
+    float3 color; /// @todo unsupported
+
+    void compute(device Context &ctx, ShadingContext shading) {
+        
     }
 };
 
@@ -47,7 +99,8 @@ struct kVectorMath {
         OPERATION_NORMALIZE,
         OPERATION_SCALE,
         OPERATION_MINIMUM,
-        OPERATION_LENGTH
+        OPERATION_LENGTH,
+        OPERATION_DOT_PRODUCT
     };
 };
 
@@ -80,6 +133,9 @@ struct VectorMath {
             vector = min(vector, vector_001); break;
         case kVectorMath::OPERATION_LENGTH:
             value = length(vector); break;
+        case kVectorMath::OPERATION_DOT_PRODUCT:
+            /// @todo verify
+            vector = dot(vector, vector_001); break;
         }
     }
 };
@@ -91,6 +147,7 @@ struct NewGeometry {
     float3 position;
     float3 parametric; /// @todo apparently this is different to "Texture"."UV"
     float3 incoming; /// @todo not tested
+    float3 randomPerIsland; /// @todo unsupported
     bool backfacing;
     
     void compute(device Context &ctx, ShadingContext shading) {
@@ -100,6 +157,7 @@ struct NewGeometry {
         position = shading.position;
         parametric = shading.uv;
         incoming = shading.wo;
+        randomPerIsland = 0;
         backfacing = dot(shading.wo, shading.normal) < 0;
     }
 };
@@ -109,12 +167,14 @@ struct TextureCoordinate {
     float3 uv;
     float3 object;
     float3 normal;
+    float3 reflection;
     
     void compute(device Context &ctx, ShadingContext shading) {
         uv = shading.uv;
         generated = shading.generated;
         object = shading.object;
         normal = shading.normal;
+        reflection = shading.normal; /// @todo
     }
 };
 
@@ -203,6 +263,68 @@ struct Mapping {
     }
 };
 
+struct kTexGradient {
+    enum Type {
+        TYPE_LINEAR,
+        TYPE_SPHERICAL
+    };
+};
+
+template<
+    kTexGradient::Type Type
+>
+struct TexGradient {
+    float3 vector;
+    float4 color;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        switch (Type) {
+        case kTexGradient::TYPE_LINEAR:
+            color = saturate(vector.x);
+            break;
+        
+        case kTexGradient::TYPE_SPHERICAL:
+            color = saturate(length(vector));
+            break;
+        }
+    }
+};
+
+struct kTexWave {
+    enum Type {
+        TYPE_BANDS
+    };
+    
+    enum Direction {
+        DIRECTION_DIAGONAL
+    };
+    
+    enum Profile {
+        PROFILE_SIN
+    };
+};
+
+template<
+    kTexWave::Type Type,
+    kTexWave::Direction Direction,
+    kTexWave::Profile Profile
+>
+struct TexWave {
+    float detail;
+    float detailRoughness;
+    float detailScale;
+    float distortion;
+    float phaseOffset;
+    float scale;
+    float3 vector;
+    
+    float4 color;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        color = 1; /// @todo
+    }
+};
+
 struct kTexImage {
     enum Interpolation {
         INTERPOLATION_LINEAR
@@ -213,7 +335,9 @@ struct kTexImage {
         PROJECTION_FLAT,
         
         // TexEnvironment
-        PROJECTION_EQUIRECTANGULAR
+        PROJECTION_EQUIRECTANGULAR,
+        
+        PROJECTION_MIRROR_BALL
     };
     
     enum Extension {
@@ -229,7 +353,8 @@ struct kTexImage {
         COLOR_SPACE_SRGB,
         COLOR_SPACE_NON_COLOR,
         COLOR_SPACE_RAW,
-        COLOR_SPACE_XYZ
+        COLOR_SPACE_XYZ,
+        COLOR_SPACE_FILMIC_LOG
     };
     
     enum PixelFormat {
@@ -254,6 +379,7 @@ template<
 struct TexImage {
     float3 vector;
     float4 color;
+    float alpha;
     
     void compute(device Context &ctx, ShadingContext shading) {
         float2 projected;
@@ -265,10 +391,15 @@ struct TexImage {
         case kTexImage::PROJECTION_EQUIRECTANGULAR:
             projected = warp::equirectSphereToSquare(vector);
             break;
+        
+        case kTexImage::PROJECTION_MIRROR_BALL:
+            /// @todo not implemented
+            break;
         }
         
         constexpr sampler linearSampler(address::repeat, coord::normalized, filter::linear);
         color = ctx.textures[TextureIndex].sample(linearSampler, projected);
+        alpha = color.w;
         
         switch (PixelFormat) {
         case kTexImage::PIXEL_FORMAT_R:
@@ -293,6 +424,7 @@ struct TexImage {
         
         case kTexImage::COLOR_SPACE_RAW:
         case kTexImage::COLOR_SPACE_NON_COLOR:
+        case kTexImage::COLOR_SPACE_FILMIC_LOG:
             /// @todo what is this?
             break;
         
@@ -334,6 +466,60 @@ struct TexMagic {
     
     void compute(device Context &ctx, ShadingContext shading) {
         /// @todo
+        color = 1;
+    }
+};
+
+struct TexVoronoi {
+    float exponent;
+    float randomness;
+    float scale;
+    float smoothness;
+    float3 vector;
+    float w;
+    
+    float4 color;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        /// @todo
+        color = 1;
+    }
+};
+
+struct TexMusgrave {
+    float detail;
+    float dimension;
+    float gain;
+    float lacunarity;
+    float offset;
+    float scale;
+    float w;
+    float3 vector;
+    
+    float fac;
+    float4 color;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        /// @todo unsupported
+        fac = 1;
+        color = 1;
+    }
+};
+
+struct TexBrick {
+    float4 color1, color2, mortar;
+    float bias;
+    float brickWidth;
+    float mortarSize;
+    float mortarSmooth;
+    float rowHeight;
+    float scale;
+    float3 vector;
+    
+    float4 color;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        /// @todo unsupported
         color = 1;
     }
 };
@@ -740,7 +926,8 @@ struct ColorRamp {
 
 struct kNormalMap {
     enum Space {
-        SPACE_TANGENT
+        SPACE_TANGENT,
+        SPACE_WORLD
     };
 };
 
@@ -765,7 +952,14 @@ struct NormalMap {
         onb[1] = shading.tv;
         onb[2] = shading.normal;
         
-        normal = onb * normal;
+        switch (Space) {
+        case kNormalMap::SPACE_TANGENT:
+            normal = onb * normal;
+            break;
+        case kNormalMap::SPACE_WORLD:
+            /// @todo verify
+            break;
+        }
     }
 };
 
@@ -808,7 +1002,9 @@ struct kMath {
         OPERATION_POWER,
         OPERATION_MINIMUM,
         OPERATION_MAXIMUM,
-        OPERATION_TANGENT
+        OPERATION_TANGENT,
+        OPERATION_LESS_THAN,
+        OPERATION_GREATER_THAN
     };
 };
 
@@ -830,7 +1026,7 @@ struct Math {
         case kMath::OPERATION_MULTIPLY:
             value = value * value_001; break;
         case kMath::OPERATION_DIVIDE:
-            value = safe_divide(value, value_001); break;
+            value = safe_divide(value, value_001, 0); break;
         case kMath::OPERATION_MULTIPLY_ADD:
             value = value * value_001 + value_002; break;
         case kMath::OPERATION_POWER:
@@ -845,6 +1041,12 @@ struct Math {
         case kMath::OPERATION_TANGENT:
             /// @todo verify
             value = tan(value); break;
+        case kMath::OPERATION_LESS_THAN:
+            /// @todo verify
+            value = value < value_001; break;
+        case kMath::OPERATION_GREATER_THAN:
+            /// @todo verify
+            value = value > value_001; break;
         }
         
         if (Clamp) {
@@ -962,7 +1164,8 @@ struct kColorMix {
         BLEND_TYPE_SUB,
         BLEND_TYPE_COLOR,
         BLEND_TYPE_LIGHTEN,
-        BLEND_TYPE_DARKEN
+        BLEND_TYPE_DARKEN,
+        BLEND_TYPE_VALUE
     };
 };
 
@@ -1019,6 +1222,13 @@ struct ColorMix {
             color = lerp(color1, max(color1, color2), fac); break;
         case kColorMix::BLEND_TYPE_DARKEN:
             color = lerp(color1, min(color1, color2), fac); break;
+        case kColorMix::BLEND_TYPE_VALUE: {
+            /// @todo verify
+            float3 hsv = rgb2hsv(color1.xyz);
+            hsv.z = rgb2hsv(color2.xyz).z;
+            color = lerp(color1, float4(hsv2rgb(hsv), color2.w), fac);
+            break;
+        }
         }
         
         if (Clamp) {
@@ -1360,11 +1570,28 @@ struct Value {
     void compute(device Context &ctx, ShadingContext shading) {}
 };
 
+struct RGB {
+    float4 color;
+    void compute(device Context &ctx, ShadingContext shading) {}
+};
+
+struct RGBToBW {
+    float4 color;
+    float val;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        /// @todo verify
+        val = luminance(color.xyz);
+    }
+};
+
 struct Attribute {
     float3 vector;
+    float4 color;
     
     void compute(device Context &ctx, ShadingContext shading) {
         vector = shading.generated;
+        color = 1; /// @todo
     }
 };
 
@@ -1444,6 +1671,26 @@ struct BsdfDiffuse {
             .diffuseWeight = color.xyz,
             .sheenWeight = 0,
             .roughness = roughness
+        };
+        
+        bsdf.normal = normal;
+        bsdf.lobeProbabilities[0] = 1;
+    }
+};
+
+struct BsdfVelvet {
+    float4 color;
+    float3 normal;
+    float sigma;
+    float weight;
+    
+    UberShader bsdf;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        bsdf.diffuse = (Diffuse){
+            .diffuseWeight = color.xyz,
+            .sheenWeight = 0,
+            .roughness = sigma
         };
         
         bsdf.normal = normal;
@@ -1542,6 +1789,7 @@ float3 VECTOR(float v)  { return float3(v); } /// @todo verify
 float3 VECTOR(float2 v) { return float3(v, 0); }
 float3 VECTOR(float3 v) { return v; }
 float3 VECTOR(float4 v) { return v.xyz; }
+float3 VECTOR(UberShader v) { return float3(0); } /// @todo verify ???
 
 float4 RGBA(float v) { return float4(v, v, v, 1); }
 float4 RGBA(float2 v) { return float4(v, 0, 1); }

@@ -174,7 +174,7 @@ def _export_bmesh_by_material(registry: SceneRegistry, me: bpy.types.Mesh, name:
     
     return {
         "type": "ply",
-        "filepath": filepath,
+        "filepath": registry.relative_path(filepath),
         "materials": [
             (
                 registry.materials.internal_export("default",

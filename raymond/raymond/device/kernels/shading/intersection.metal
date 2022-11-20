@@ -43,6 +43,15 @@ kernel void handleIntersections(
     device Ray &ray = rays[rayIndex];
     const bool needsToCollectEmission = isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee;
     
+#define DO_COMPACTION
+#ifndef DO_COMPACTION
+    uint nextRayIndex = rayIndex;
+    device Ray &nextRay = nextRays[nextRayIndex];
+    nextRay = ray;
+    nextRay.weight = 0;
+    atomic_fetch_add_explicit(&nextRayCount, 1, memory_order_relaxed);
+#endif
+    
     PrngState prng = ray.prng;
     
     ShadingContext shading;
@@ -168,8 +177,10 @@ kernel void handleIntersections(
     
     float survivalProb = min(meanWeight, 1.f);
     if (prng.sample() < survivalProb) {
+#ifdef DO_COMPACTION
         uint nextRayIndex = atomic_fetch_add_explicit(&nextRayCount, 1, memory_order_relaxed);
         device Ray &nextRay = nextRays[nextRayIndex];
+#endif
         nextRay.origin = shading.position;
         nextRay.flags = sample.flags;
         nextRay.direction = sample.wi;

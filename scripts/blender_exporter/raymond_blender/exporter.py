@@ -49,13 +49,8 @@ def export_objects(registry: SceneRegistry, depsgraph: bpy.types.Depsgraph, use_
 def export_scene(filepath, context: bpy.types.Context, use_selection: bool):
     depsgraph = context.evaluated_depsgraph_get()
 
-    base_path = os.path.dirname(filepath)
-    texturepath = os.path.join(base_path, "textures")
-    meshpath = os.path.join(base_path, "meshes")
-    os.makedirs(texturepath, exist_ok=True)
-    os.makedirs(meshpath, exist_ok=True)
-
-    registry = SceneRegistry(meshpath, texturepath)
+    basepath = os.path.dirname(filepath)
+    registry = SceneRegistry(basepath)
 
     export_world_light(registry, depsgraph.scene.world)
     export_objects(registry, depsgraph, use_selection)

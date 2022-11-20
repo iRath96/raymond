@@ -127,6 +127,10 @@ T interpolate(T a, T b, T c, float2 barycentric) {
     return a * u + b * v + c * w;
 }
 
+float safe_divide(float a, float b, float fallback) {
+    return select(a / b, fallback, b == 0);
+}
+
 float3 safe_divide(float3 a, float3 b, float3 fallback) {
     return select(a / b, fallback, b == 0);
 }

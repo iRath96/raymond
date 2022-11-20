@@ -43,7 +43,7 @@ struct Codegen {
         case cycleDetected
         case multiInputDetected
         case unsupportedTextureFormat
-        case unsupportedKernel
+        case unsupportedKernel(any NodeKernel.Type)
         case unsupportedColorSpace
     }
     
@@ -181,7 +181,7 @@ struct Codegen {
     
     private var textureDescriptors: [TextureDescriptor] = []
     private(set) var textures: [MTLTexture] = []
-    private var textureIndices: [String: Int] = [:]
+    private var textureIndices: [URL: Int] = [:]
     
     private var usedFunctionNames: Set<String> = []
     private var functionTables: [FunctionTable] = []
@@ -346,7 +346,7 @@ struct Codegen {
             }
             
             warn("SkyKernel: only Nishita supported")
-            throw CodegenError.unsupportedKernel
+            throw CodegenError.unsupportedKernel(type(of: kernel))
         case let kernel as TexImageKernel:
             let slot = try registerTexture(kernel.filepath)
             if kernel.alpha != "STRAIGHT" {
@@ -358,16 +358,21 @@ struct Codegen {
             default:
                 warn("TexImage: colorspace '\(kernel.colorspace)' not supported")
             }
+            switch kernel.extension {
+            case "REPEAT": break
+            default:
+                warn("TexImage: extension '\(kernel.extension)' not supported")
+            }
             return .init(kernel: "TexImage", parameters: [
                 .int(slot),
                 .enum("INTERPOLATION", kernel.interpolation),
                 .enum("PROJECTION", kernel.projection),
-                .enum("EXTENSION", kernel.extension),
+                .enum("EXTENSION", "REPEAT"),
                 .enum("ALPHA", "STRAIGHT"),
                 .enum("COLOR_SPACE", kernel.colorspace),
                 .constant("TEX\(slot)_PIXEL_FORMAT")
             ], comments: [
-                kernel.filepath
+                kernel.filepath.absoluteString
             ])
         case let kernel as TexEnvironmentKernel:
             let slot = try registerTexture(kernel.filepath)
@@ -389,7 +394,7 @@ struct Codegen {
                 .enum("COLOR_SPACE", kernel.colorspace),
                 .constant("TEX\(slot)_PIXEL_FORMAT")
             ], comments: [
-                kernel.filepath
+                kernel.filepath.absoluteString
             ])
         case is TexCheckerKernel:
             return .init(kernel: "TexChecker")
@@ -403,6 +408,25 @@ struct Codegen {
         case is TexMagicKernel:
             warn("TexMagic: not supported yet")
             return .init(kernel: "TexMagic")
+        case is TexVoronoiKernel:
+            warn("TexVoronoi: not supported yet")
+            return .init(kernel: "TexVoronoi")
+        case is TexMusgraveKernel:
+            warn("TexMusgrave: not supported yet")
+            return .init(kernel: "TexMusgrave")
+        case let kernel as TexGradientKernel:
+            return .init(kernel: "TexGradient", parameters: [
+                .enum("TYPE", kernel.type)
+            ])
+        case let kernel as TexWaveKernel:
+            return .init(kernel: "TexWave", parameters: [
+                .enum("TYPE", kernel.type),
+                .enum("DIRECTION", kernel.direction),
+                .enum("PROFILE", kernel.profile)
+            ])
+        case is TexBrickKernel:
+            warn("TexBrick: unsupported")
+            return .init(kernel: "TexBrick")
         case let kernel as ColorRampKernel:
             let elementStrings = kernel.elements.map { element in
                 "\t{ \(element.position), { \(element.color.map { String($0) }.joined(separator: ", ")) } }"
@@ -456,6 +480,9 @@ struct Codegen {
         case is BsdfDiffuseKernel:
             warn("BsdfDiffuse: not tested")
             return .init(kernel: "BsdfDiffuse")
+        case is BsdfVelvetKernel:
+            warn("BsdfVelvet: unsupported")
+            return .init(kernel: "BsdfVelvet")
         case is BsdfTranslucentKernel:
             warn("BsdfTranslucent: not implemented")
             return .init(kernel: "BsdfTranslucent")
@@ -474,6 +501,16 @@ struct Codegen {
         case let kernel as ValueKernel:
             var invocation: KernelInvocation = .init(kernel: "Value")
             return invocation.assign(key: "value", value: .scalar(kernel.value))
+        case let kernel as RGBKernel:
+            var invocation: KernelInvocation = .init(kernel: "RGB")
+            return invocation.assign(key: "color", value: .vector([
+                kernel.value.x,
+                kernel.value.y,
+                kernel.value.z,
+                kernel.value.w
+            ]))
+        case is RGBToBWKernel:
+            return .init(kernel: "RGBToBW")
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
         case let kernel as UVMapKernel:
@@ -513,6 +550,18 @@ struct Codegen {
         case is LightPathKernel:
             warn("LightPath: support for this node is rudimentary")
             return .init(kernel: "LightPath")
+        case is ObjectInfoKernel:
+            warn("ObjectInfo: unsupported")
+            return .init(kernel: "ObjectInfo")
+        case is ParticleInfoKernel:
+            warn("ParticleInfo: unsupported")
+            return .init(kernel: "ParticleInfo")
+        case is LightFalloffKernel:
+            warn("LightFalloff: unsupported")
+            return .init(kernel: "LightFalloff")
+        case is VertexColorKernel:
+            warn("VertexColor: unsupported")
+            return .init(kernel: "VertexColor")
         case is EmissionKernel:
             return .init(kernel: "Emission")
         case is BackgroundKernel:
@@ -542,7 +591,7 @@ struct Codegen {
                 .enum("OPERATION", kernel.operation)
             ])
         default:
-            throw CodegenError.unsupportedKernel
+            throw CodegenError.unsupportedKernel(type(of: kernel))
         }
     }
     
@@ -601,8 +650,8 @@ struct Codegen {
         return idx
     }
     
-    private mutating func registerTexture(_ path: String) throws -> Int {
-        if let idx = textureIndices[path] {
+    private mutating func registerTexture(_ url: URL) throws -> Int {
+        if let idx = textureIndices[url] {
             return idx
         }
         
@@ -612,11 +661,11 @@ struct Codegen {
         
         let idx = textureDescriptors.count
         textureDescriptors.append(TextureDescriptor(
-            url: URL(filePath: path),
+            url: url,
             options: options
         ))
         
-        textureIndices[path] = idx
+        textureIndices[url] = idx
         return idx
     }
     
@@ -668,6 +717,7 @@ struct Codegen {
              is BsdfTranslucentKernel,
              is BsdfRefractionKernel,
              is BsdfAnisotropicKernel,
+             is BsdfVelvetKernel,
              is BumpMappingKernel:
             provideDefault(name: "Normal", value: normal)
         default: break

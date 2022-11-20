@@ -1,4 +1,5 @@
 import bpy
+import os
 
 from .utils import find_unique_name
 
@@ -37,12 +38,19 @@ class ObjectRegistry(object):
 
 
 class SceneRegistry(object):
-    def __init__(self, meshpath, texturepath):
+    def __init__(self, basepath: str):
         self.entities = ObjectRegistry()
         self.shapes = ObjectRegistry()
         self.materials = ObjectRegistry()
         self.lights = ObjectRegistry()
         self.images = ObjectRegistry()
 
-        self.meshpath = meshpath
-        self.texturepath = texturepath
+        self.basepath = basepath
+
+        self.texturepath = os.path.join(basepath, "textures")
+        self.meshpath = os.path.join(basepath, "meshes")
+        os.makedirs(self.texturepath, exist_ok=True)
+        os.makedirs(self.meshpath, exist_ok=True)
+    
+    def relative_path(self, path):
+        return os.path.relpath(path, self.basepath)
