@@ -441,6 +441,12 @@ struct Codegen {
                 .enum("BLEND_TYPE", kernel.blendType),
                 .bool(kernel.useClamp)
             ])
+        case let kernel as MixKernel:
+            return .init(kernel: "Mix", parameters: [
+                .bool(kernel.clampFactor),
+                .bool(kernel.clampResult),
+                .enum("FACTOR_MODE", kernel.factorMode)
+            ])
         case let kernel as BsdfPrincipledKernel:
             if kernel.distribution != "GGX" {
                 warn("BsdfPrincipled: only GGX distribution supported!")
@@ -449,6 +455,9 @@ struct Codegen {
                 .enum("DISTRIBUTION", "GGX"),
                 .enum("SUBSURFACE_METHOD", kernel.subsurfaceMethod)
             ])
+        case is VolumeScatterKernel:
+            warn("VolumeScatter: unsupported")
+            return .init(kernel: "VolumeScatter")
         case let kernel as MappingKernel:
             return .init(kernel: "Mapping", parameters: [
                 .enum("TYPE", kernel.type)

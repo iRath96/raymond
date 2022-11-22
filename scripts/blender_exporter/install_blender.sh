@@ -1,2 +1,3 @@
-rm -rf /Users/alex/Library/Application\ Support/Blender/3.3/scripts/addons/raymond_blender
-cp -R raymond_blender /Users/alex/Library/Application\ Support/Blender/3.3/scripts/addons/
+mkdir -p ~/Library/Application\ Support/Blender/3.4/scripts/addons/
+rm -rf ~/Library/Application\ Support/Blender/3.4/scripts/addons/raymond_blender
+cp -R raymond_blender ~/Library/Application\ Support/Blender/3.4/scripts/addons/

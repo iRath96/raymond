@@ -1,3 +1,5 @@
+import Metal
+import MetalKit
 import Foundation
 
 extension MTLArgumentEncoder {

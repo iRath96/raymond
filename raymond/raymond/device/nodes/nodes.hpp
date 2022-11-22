@@ -50,9 +50,18 @@ struct ObjectInfo {
     float random; /// @todo unsupported
     float3 location; /// @todo unsupported
     
-    void compute(device Context &ctx, ShadingContext shading) {
-        
-    }
+    void compute(device Context &ctx, ShadingContext shading) {}
+};
+
+struct VolumeScatter {
+    float anisotropy;
+    float4 color;
+    float density;
+    float weight;
+    
+    UberShader volume;
+    
+    void compute(device Context &ctx, ShadingContext shading) {}
 };
 
 /**
@@ -61,9 +70,7 @@ struct ObjectInfo {
 struct ParticleInfo {
     float random; /// @todo unsupported
 
-    void compute(device Context &ctx, ShadingContext shading) {
-        
-    }
+    void compute(device Context &ctx, ShadingContext shading) {}
 };
 
 /**
@@ -1426,7 +1433,8 @@ struct kBsdfPrincipled {
     
     enum SubsurfaceMethod {
         SUBSURFACE_METHOD_BURLEY,
-        SUBSURFACE_METHOD_RANDOM_WALK
+        SUBSURFACE_METHOD_RANDOM_WALK,
+        SUBSURFACE_METHOD_RANDOM_WALK_FIXED_RADIUS
     };
 };
 
@@ -1631,7 +1639,7 @@ struct BsdfRefraction {
     UberShader bsdf;
     
     void compute(device Context &ctx, ShadingContext shading) {
-        const float r2 = square(roughness);
+        const float r2 = square(max(roughness, 1e-4));
         bsdf.transmission = (Transmission){
             .reflectionAlpha = r2,
             .transmissionAlpha = r2,
@@ -1756,10 +1764,55 @@ struct MixShader {
     }
 };
 
+struct kMix {
+    enum FactorMode {
+        FACTOR_MODE_UNIFORM,
+        FACTOR_MODE_NON_UNIFORM
+    };
+};
+
+template<
+    bool ClampFactor,
+    bool ClampResult,
+    kMix::FactorMode FactorMode
+>
+struct Mix {
+    float4 a_Color, b_Color, result_Color;
+    float a_Float, b_Float, result_Float;
+    float3 a_Vector, b_Vector, result_Vector;
+    
+    float factor_Float;
+    float3 factor_Vector;
+    
+    void compute(device Context &ctx, thread ShadingContext &shading) {
+        /// @todo verify
+        
+        if (ClampFactor) {
+            factor_Float = saturate(factor_Float);
+            factor_Vector = saturate(factor_Vector);
+        }
+        
+        if (FactorMode == kMix::FACTOR_MODE_UNIFORM) {
+            result_Vector = lerp(a_Vector, b_Vector, factor_Float);
+        } else {
+            result_Vector = a_Vector + (b_Vector - a_Vector) * factor_Vector;
+        }
+        
+        result_Float = lerp(a_Float, b_Float, factor_Float);
+        result_Color = lerp(a_Color, b_Color, factor_Float);
+        
+        if (ClampResult) {
+            result_Color = saturate(result_Color);
+        }
+    }
+};
+
 struct OutputMaterial {
     float3 displacement;
     float thickness;
+    
     UberShader surface;
+    UberShader volume;
     
     void compute(device Context &ctx, thread ShadingContext &shading) {
         shading.material = surface;
@@ -1795,6 +1848,7 @@ float4 RGBA(float v) { return float4(v, v, v, 1); }
 float4 RGBA(float2 v) { return float4(v, 0, 1); }
 float4 RGBA(float3 v) { return float4(v, 1); }
 float4 RGBA(float4 v) { return v; }
+float4 RGBA(UberShader v) { return float4(v.emission, 1); } /// @todo verify ???
 
 float VALUE(float v) { return v; }
 float VALUE(float3 v) { return (v.x + v.y + v.z) / 3; }

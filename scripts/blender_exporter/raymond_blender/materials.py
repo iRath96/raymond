@@ -458,6 +458,13 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             result_node["parameters"] = {
                 "value": list(node.outputs[0].default_value)
             }
+        elif isinstance(node, bpy.types.ShaderNodeMix):
+            result_node["parameters"] = {
+                "type": node.data_type,
+                "clamp_result": node.clamp_result,
+                "clamp_factor": node.clamp_factor,
+                "factor_mode": node.factor_mode
+            }
         elif isinstance(node, (
             bpy.types.ShaderNodeOutputMaterial,
             bpy.types.ShaderNodeTexCoord,
@@ -480,7 +487,10 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             bpy.types.ShaderNodeFresnel,
             bpy.types.ShaderNodeBlackbody,
             bpy.types.ShaderNodeBsdfDiffuse,
-            bpy.types.ShaderNodeBsdfVelvet
+            bpy.types.ShaderNodeBsdfVelvet,
+            bpy.types.ShaderNodeRGBToBW,
+            bpy.types.ShaderNodeLayerWeight,
+            bpy.types.ShaderNodeVolumeScatter
         )):
             # no parameters
             pass
