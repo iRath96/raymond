@@ -24,6 +24,7 @@ typedef packed_float3 MPSPackedFloat3;
 #define DEVICE_STRUCT(name) struct Device##name
 
 /// Use Metal names for SIMD Types
+typedef simd_float2 float2;
 typedef simd_float3 float3;
 typedef simd_float3x3 float3x3;
 typedef simd_float3x4 float3x4;

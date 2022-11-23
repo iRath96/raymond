@@ -26,7 +26,6 @@ class Renderer: NSObject, MTKViewDelegate {
     let inFlightSemaphore = DispatchSemaphore(value: 1)
     var uniforms: UnsafeMutablePointer<DeviceUniforms>
     
-    var projectionMatrix: float4x4
     var frameIndex = UInt32(0)
     var rayCount = 0
     let maxDepth = 8
@@ -43,11 +42,10 @@ class Renderer: NSObject, MTKViewDelegate {
     var framesPerSecond: Float = 0
     var fpsSamples = 0
     
-    let scene: Scene
+    var scene: Scene
     
     init?(metalKitView: MTKView, scene: Scene) {
         self.scene = scene
-        self.projectionMatrix = scene.projectionMatrix
         self.device = metalKitView.device!
         
         guard let queue = self.device.makeCommandQueue() else { return nil }
@@ -166,7 +164,6 @@ class Renderer: NSObject, MTKViewDelegate {
     private func updateState() {
         /// Update any state before rendering
         uniforms[0].frameIndex = frameIndex
-        uniforms[0].projectionMatrix = projectionMatrix
         frameIndex += 1
     }
     
@@ -239,6 +236,10 @@ class Renderer: NSObject, MTKViewDelegate {
                     dynamicUniformBuffer,
                     offset: 0,
                     index: GeneratorBufferIndex.uniforms.rawValue)
+                computeEncoder.setBuffer(
+                    scene.contextBuffer,
+                    offset: 0,
+                    index: GeneratorBufferIndex.context.rawValue)
                 computeEncoder.dispatchThreads(
                     outputImageSize,
                     threadsPerThreadgroup: MTLSizeMake(8, 8, 1))
@@ -430,7 +431,10 @@ class Renderer: NSObject, MTKViewDelegate {
     }
     
     func updateProjection(by multiplying: float4x4) {
-        projectionMatrix = projectionMatrix * multiplying.transpose
+        var camera = scene.camera
+        camera.transform = camera.transform * multiplying.transpose
+        scene.camera = camera
+        
         reset()
     }
     
@@ -475,8 +479,7 @@ class Renderer: NSObject, MTKViewDelegate {
     }
     
     func saveFrame() {
-        let resourcesURL = URL(fileURLWithPath: "/Users/alex/Desktop", isDirectory: true)
-        let path = resourcesURL.appendingPathComponent("frame.exr")
+        let path = URL.desktopDirectory.appending(path: "frame.exr")
         outputImage.saveEXR(at: path, normalizedBy: 1 / Float(frameIndex))
     }
 }

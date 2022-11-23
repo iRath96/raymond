@@ -3,6 +3,10 @@ import MetalKit
 import Foundation
 
 extension MTLArgumentEncoder {
+    func get<T>(at offset: Int, _ type: T.Type) -> T {
+        return constantData(at: offset).assumingMemoryBound(to: T.self).pointee
+    }
+    
     func set<T>(at offset: Int, _ value: T) {
         constantData(at: offset).assumingMemoryBound(to: T.self).pointee = value
     }

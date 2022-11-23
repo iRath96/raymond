@@ -2,7 +2,7 @@
 
 #include "common.hpp"
 
-typedef NS_ENUM(NSInteger, SamplingMode) {
+typedef NS_ENUM(uint32_t, SamplingMode) {
     SamplingModeBsdf,
     SamplingModeNee,
     SamplingModeMis
@@ -10,6 +10,5 @@ typedef NS_ENUM(NSInteger, SamplingMode) {
 
 DEVICE_STRUCT(Uniforms) {
     uint32_t frameIndex;
-    float4x4 projectionMatrix;
     SamplingMode samplingMode;
 };

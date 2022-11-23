@@ -3,11 +3,13 @@
 #include "../../../bridge/Uniforms.hpp"
 #include "../../../bridge/ResourceIds.hpp"
 #include "../../../bridge/PrngState.hpp"
+#include "../../Context.hpp"
 
 kernel void generateRays(
     device Ray *rays            [[buffer(GeneratorBufferRays)]],
     device uint *rayCount       [[buffer(GeneratorBufferRayCount)]],
     constant Uniforms &uniforms [[buffer(GeneratorBufferUniforms)]],
+    device Context &ctx         [[buffer(GeneratorBufferContext)]],
     uint2 coordinates           [[thread_position_in_grid]],
     uint2 imageSize             [[threads_per_grid]],
     uint2 threadIndex           [[thread_position_in_threadgroup]],
@@ -28,13 +30,13 @@ kernel void generateRays(
     ray.y = coordinates.y;
     
     const float2 jitteredCoordinates = float2(coordinates) + ray.prng.sample2d();
-    const float2 uv = jitteredCoordinates / float2(imageSize) * 2.0f - 1.0f;
+    const float2 uv = (jitteredCoordinates / float2(imageSize) + ctx.camera.shift) * 2.0f - 1.0f;
 
-    const float aspect = float(imageSize.x) / float(imageSize.y);
-    ray.origin = (uniforms.projectionMatrix * float4(0, 0, 0, 1.f)).xyz;
-    ray.direction = normalize((uniforms.projectionMatrix * float4(aspect * uv.x, uv.y, -2.5f, 0)).xyz);
-    ray.minDistance = 0.0f;
-    ray.maxDistance = INFINITY;
+    const float aspect = float(imageSize.y) / float(imageSize.x);
+    ray.origin = (ctx.camera.transform * float4(0, 0, 0, 1.f)).xyz;
+    ray.direction = normalize((ctx.camera.transform * float4(uv.x, uv.y * aspect, -ctx.camera.focalLength, 0)).xyz);
+    ray.minDistance = ctx.camera.nearClip;
+    ray.maxDistance = ctx.camera.farClip;
     ray.weight = float3(1, 1, 1);
     ray.flags = RayFlagsCamera;
     

@@ -13,7 +13,8 @@ def export_camera(camera: bpy.types.Camera):
             "width": camera.data.sensor_width,
             "height": camera.data.sensor_height
         },
-        "transform": flat_matrix(camera.matrix_world)
+        "transform": flat_matrix(camera.matrix_world),
+        "shift": [ camera.data.shift_x, camera.data.shift_y ]
     }
 
     dof: bpy.types.CameraDOFSettings = camera.data.dof

@@ -9,6 +9,7 @@
 #include "bridge/PrngState.hpp"
 #include "bridge/Ray.hpp"
 #include "bridge/Uniforms.hpp"
+#include "bridge/Camera.hpp"
 #include "bridge/lights/LightInfo.hpp"
 #include "bridge/lights/AreaLight.hpp"
 #include "bridge/lights/PointLight.hpp"

@@ -9,13 +9,36 @@ struct Scene {
     var shadowRayHandler: MTLComputePipelineState
     var library: MTLLibrary
     
-    var projectionMatrix: float4x4
     var resourcesRead: [MTLResource]
     var contextBuffer: MTLBuffer
+    var argumentEncoder: MTLArgumentEncoder
+    
+    var camera: DeviceCamera {
+        get {
+            return argumentEncoder.get(at: ContextBufferIndex.camera.rawValue, DeviceCamera.self)
+        }
+        set(camera) {
+            argumentEncoder.set(at: ContextBufferIndex.camera.rawValue, camera)
+        }
+    }
 }
 
 struct SceneLoader {
     var externalCompile: Bool = false
+    
+    private func makeDefaultCamera() -> DeviceCamera {
+        let transform = float4x4(rows: [
+            SIMD4([ 1, 0, 0, 0 ]),
+            SIMD4([ 0, 1, 0, 0 ]),
+            SIMD4([ 0, 0, 1, 0 ]),
+            SIMD4([ 0, 0, 0, 1 ]),
+        ])
+        return DeviceCamera(
+            transform: transform,
+            nearClip: 0.1, farClip: 100,
+            focalLength: 2.5,
+            shift: simd_float2(0, 0))
+    }
     
     func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
         let sceneDescription = try Rayjay.SceneLoader().makeScene(fromURL: url)
@@ -77,26 +100,31 @@ struct SceneLoader {
             encoder: argumentEncoder,
             resources: &resourcesRead)
         
-        var projectionMatrix = float4x4(rows: [
-            SIMD4([ 0, 0, 1, 314.8 ]),
-            SIMD4([ 1, 0, 0, -248.2 ]),
-            SIMD4([ 0, 1, 0, 160.5 ]),
-            SIMD4([ 0, 0, 0, 1 ]),
-        ])
-        
-        if let camera = sceneDescription.camera {
-            projectionMatrix = camera.transform
-        }
-        
-        return Scene(
+        var scene = Scene(
             accelerationStructure: entities.accelerationStructure,
             intersectionHandler: intersectionHandler,
             shadowRayHandler: shadowRayHandler,
             library: shading.library,
             
-            projectionMatrix: projectionMatrix,
             resourcesRead: resourcesRead,
-            contextBuffer: contextBuffer
+            contextBuffer: contextBuffer,
+            argumentEncoder: argumentEncoder
         )
+        
+        var camera = makeDefaultCamera()
+        if let cameraDesc = sceneDescription.camera {
+            camera.transform = cameraDesc.transform
+            camera.nearClip = cameraDesc.nearClip
+            camera.farClip = cameraDesc.farClip
+            camera.shift = cameraDesc.shift
+            
+            let focalLength = cameraDesc.focalLength ?? 50
+            camera.focalLength = focalLength / (cameraDesc.film.width / 2)
+            print(focalLength)
+            print(cameraDesc.film)
+        }
+        scene.camera = camera
+        
+        return scene
     }
 }

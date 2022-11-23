@@ -9,6 +9,7 @@ using namespace metal;
 
 #include "../bridge/common.hpp"
 #include "../bridge/PerInstanceData.hpp"
+#include "../bridge/Camera.hpp"
 #include "lights/Lights.hpp"
 
 struct Context {
@@ -19,6 +20,7 @@ struct Context {
     device const PerInstanceData *perInstanceData [[id(ContextBufferPerInstanceData)]];
     device const MaterialIndex *materials         [[id(ContextBufferMaterials)]];
     
+    Camera camera [[id(ContextBufferCamera)]];
     Lights lights [[id(ContextBufferLights)]];
     array<texture2d<float>, NUMBER_OF_TEXTURES> textures [[id(ContextBufferTextures)]];
 };

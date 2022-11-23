@@ -6,6 +6,7 @@ typedef NS_ENUM(NSInteger, GeneratorBufferIndex) {
     GeneratorBufferRays     = 0,
     GeneratorBufferRayCount = 1,
     GeneratorBufferUniforms = 2,
+    GeneratorBufferContext  = 3,
 };
 
 typedef NS_ENUM(NSInteger, ContextBufferIndex) {
@@ -15,8 +16,9 @@ typedef NS_ENUM(NSInteger, ContextBufferIndex) {
     ContextBufferTexcoords       = 3,
     ContextBufferPerInstanceData = 4,
     ContextBufferMaterials       = 5,
-    ContextBufferLights          = 100,
-    ContextBufferTextures        = 200,
+    ContextBufferCamera          = 100,
+    ContextBufferLights          = 200,
+    ContextBufferTextures        = 300,
 };
 
 typedef NS_ENUM(NSInteger, LightsBufferIndex) {
