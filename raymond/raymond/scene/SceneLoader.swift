@@ -120,8 +120,6 @@ struct SceneLoader {
             
             let focalLength = cameraDesc.focalLength ?? 50
             camera.focalLength = focalLength / (cameraDesc.film.width / 2)
-            print(focalLength)
-            print(cameraDesc.film)
         }
         scene.camera = camera
         
