@@ -259,7 +259,7 @@ struct Codegen {
         header += "\n"
         if options.externalCompile {
             /// not sure why, but our #includes need to be relative so that Xcode shader profiling works fully
-            let relativePath = metalEntryURL.relativePath(from: dumpDirectory)!
+            let relativePath = metalEntryURL.relativePath(from: dumpDirectory.appending(path: "dummy.metal"))!
             header += "#include \"\(relativePath)\"\n"
         } else {
             header += "#include \"\(metalEntryURL.relativePath)\"\n"
