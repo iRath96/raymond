@@ -291,6 +291,7 @@ struct Codegen {
             
             try shell("xcrun", "metal", "-c",
                 "-gline-tables-only", "-frecord-sources",
+                "-I\(Bundle.main.resourcePath!)",
                 "-ffast-math",
                 sourcePath.relativePath, "-o", airPath.relativePath)
             try shell("xcrun", "metallib",

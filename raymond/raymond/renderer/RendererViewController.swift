@@ -6,6 +6,16 @@ class RendererViewController: NSViewController {
     var scene: Scene!
     var gestureAmplification: Float = 0.02
     
+    @IBOutlet weak var statusLabel: NSTextFieldCell!
+    @IBOutlet weak var lensMenu: NSMenu!
+    @IBOutlet weak var lensCell: NSPopUpButtonCell!
+    
+    var lensName: String = ""
+    var numSurfaces: UInt32 = 0
+    var focus: Float = 0
+    var sensorScale: Float = 1
+    var cameraScale: Float = 0.001
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -20,6 +30,42 @@ class RendererViewController: NSViewController {
         }
 
         mtkView.device = defaultDevice
+        
+        let lensURLs = Bundle.main.urls(forResourcesWithExtension: "len", subdirectory: "data/lenses")!
+        for lensURL in lensURLs {
+            let filename = String(lensURL.lastPathComponent.split(separator: ".").first!)
+            lensMenu.items.append(NSMenuItem(title: filename, action: nil, keyEquivalent: ""))
+        }
+    }
+    
+    @IBAction func chooseLens(_ sender: Any) {
+        loadLens(name: lensCell.selectedItem!.title)
+    }
+    
+    private func loadLens(name: String) {
+        lensCell.select(lensMenu.item(withTitle: name))
+        
+        let lensLoader = LensLoader()
+        let lensURL = Bundle.main.url(forResource: name, withExtension: "len", subdirectory: "data/lenses")!
+        let lens = lensLoader.load(lensURL, device: renderer.device)
+        lensName = lens.name
+        numSurfaces = lens.numSurfaces
+        renderer.setLens(lens)
+        
+        updateStatus()
+    }
+    
+    private func updateStatus() {
+        let sensorSize = String(format: "%.1fx%.1f", sensorScale * 36, sensorScale * 24)
+        statusLabel.title = """
+        \(lensName)
+        \(numSurfaces) surfaces
+        Focus: \(focus)
+        Sensor: \(sensorSize)
+        Scale: \(cameraScale)
+        """
+        
+        renderer.updateLens(focus, sensorScale, cameraScale)
     }
     
     func attach(scene: Scene) {
@@ -32,6 +78,8 @@ class RendererViewController: NSViewController {
         renderer = newRenderer
         renderer.mtkView(mtkView, drawableSizeWillChange: mtkView.drawableSize)
         mtkView.delegate = renderer
+        
+        loadLens(name: "dgauss")
     }
     
     override func magnify(with event: NSEvent) {
@@ -46,6 +94,24 @@ class RendererViewController: NSViewController {
     
     override func scrollWheel(with event: NSEvent) {
         if (event.scrollingDeltaX == 0 && event.scrollingDeltaY == 0) {
+            return
+        }
+        
+        if (event.modifierFlags.contains(.shift)) {
+            focus += Float(event.scrollingDeltaY) * 0.0005
+            updateStatus()
+            return
+        }
+        
+        if (event.modifierFlags.contains(.control)) {
+            cameraScale *= exp(0.0002 * Float(event.scrollingDeltaY))
+            updateStatus()
+            return
+        }
+        
+        if (event.modifierFlags.contains(.command)) {
+            sensorScale *= exp(0.0002 * Float(event.scrollingDeltaY))
+            updateStatus()
             return
         }
         

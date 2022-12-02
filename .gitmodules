@@ -1,3 +1,6 @@
 [submodule "dependencies/Rayjay"]
 	path = dependencies/Rayjay
 	url = ssh://git@69co.de:2222/research/rayjay.git
+[submodule "dependencies/lore"]
+	path = dependencies/lore
+	url = ssh://git@69co.de:2222/research/lore.git
