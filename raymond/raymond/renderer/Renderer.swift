@@ -66,6 +66,7 @@ class Renderer: NSObject, MTKViewDelegate {
         uniforms[0].cameraScale = 0.001
         uniforms[0].sensorScale = 1
         uniforms[0].focus = 0
+        uniforms[0].exposure = 1
                 
         metalKitView.depthStencilPixelFormat = MTLPixelFormat.depth32Float_stencil8
         metalKitView.colorPixelFormat = .rgba16Float

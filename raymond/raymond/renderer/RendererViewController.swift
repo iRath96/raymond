@@ -10,6 +10,7 @@ class RendererViewController: NSViewController {
     @IBOutlet weak var lensMenu: NSMenu!
     @IBOutlet weak var lensCell: NSPopUpButtonCell!
     
+    let lensLoader = LensLoader()
     var lensName: String = ""
     var numSurfaces: UInt32 = 0
     var focus: Float = 0
@@ -32,6 +33,15 @@ class RendererViewController: NSViewController {
 
         mtkView.device = defaultDevice
         
+        //let glassURLs = Bundle.main.urls(forResourcesWithExtension: "glc", subdirectory: "data/glass")!
+        let glassURLs = ["schott", "obsolete001", "hoya"].map {
+            Bundle.main.url(forResource: $0, withExtension: "glc", subdirectory: "data/glass")!
+        }
+        for glassURL in glassURLs {
+            let numGlasses = lensLoader.loadGlassCatalog(glassURL)
+            print("loaded \(numGlasses) from \(glassURL.lastPathComponent)")
+        }
+        
         let lensURLs = Bundle.main.urls(forResourcesWithExtension: "len", subdirectory: "data/lenses")!
         for lensURL in lensURLs {
             let filename = String(lensURL.lastPathComponent.split(separator: ".").first!)
@@ -46,7 +56,6 @@ class RendererViewController: NSViewController {
     private func loadLens(name: String) {
         lensCell.select(lensMenu.item(withTitle: name))
         
-        let lensLoader = LensLoader()
         let lensURL = Bundle.main.url(forResource: name, withExtension: "len", subdirectory: "data/lenses")!
         let lens = lensLoader.load(lensURL, device: renderer.device)
         lensName = lens.name

@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LensLoader : NSObject
 
+- (int)loadGlassCatalog:(NSURL *)url;
 - (Lens *)load:(NSURL *)url device:(id<MTLDevice>)device;
 
 @end

@@ -62,11 +62,11 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_006/AI55_006.json"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/raymond-scenes/italian/scene.json"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Downloads/normal_test.json"

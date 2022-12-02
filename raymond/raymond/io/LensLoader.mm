@@ -12,6 +12,10 @@
 @implementation LensLoader {
 }
 
+- (int)loadGlassCatalog:(NSURL *)url {
+    return lore::GlassCatalog::shared.read([url.path cStringUsingEncoding:NSASCIIStringEncoding]);
+}
+
 - (Lens *)load:(NSURL *)url device:(id<MTLDevice>)device {
     std::ifstream file { [url.path cStringUsingEncoding:NSASCIIStringEncoding] };
     
