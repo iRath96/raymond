@@ -87,7 +87,10 @@ kernel void generateRays(
     device auto &lastSurface = lens.surfaces[lens.surfaces.size() - 2];
     const float3 sensorPos = float3(-uv * uniforms.sensorScale * float2(36, 24)/2, uniforms.focus);
     const float3 sensorAim = float3(lastSurface.aperture * warp::uniformSquareToDisk(ray.prng.sample2d()), -lastSurface.thickness);
-    const float3 sensorDir = normalize(sensorAim - sensorPos);
+    const float3 sensorDirU = sensorAim - sensorPos;
+    const float sensorDirInvDistSqr = 1 / length_squared(sensorDirU);
+    const float3 sensorDir = sensorDirU * sqrt(sensorDirInvDistSqr);
+    const float sensorDirInvPdf = abs(sensorDir.z) * sensorDirInvDistSqr * (M_PI_F * sqr(lastSurface.aperture));
     
     lore::rt::Ray<float> lensRay;
     lensRay.origin = { sensorPos.x, sensorPos.y, sensorPos.z };
@@ -106,8 +109,8 @@ kernel void generateRays(
     //ray.direction = normalize((ctx.camera.transform * float4(uv.x, uv.y * aspect, -ctx.camera.focalLength, 0)).xyz);
     
 #ifdef SPECTRAL
-    ray.weight = float3(1.5, 2, 3) * spectral(wavelength * 1000);
+    ray.weight = sensorDirInvPdf * float3(1.5, 2, 3) * spectral(wavelength * 1000);
 #else
-    ray.weight = 1;//float3(M_PI_F) / sensorDir.z;
+    ray.weight = sensorDirInvPdf * 1;//float3(M_PI_F) / sensorDir.z;
 #endif
 }

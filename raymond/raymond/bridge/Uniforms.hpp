@@ -14,5 +14,6 @@ DEVICE_STRUCT(Uniforms) {
     float sensorScale;
     float cameraScale;
     float focus;
+    float exposure;
     SamplingMode samplingMode;
 };

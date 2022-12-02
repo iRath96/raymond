@@ -27,7 +27,7 @@ fragment float4 blitFragment(
     texture2d<float> image [[texture(0)]]
 ) {
     constexpr sampler linearSampler(coord::normalized, filter::nearest);
-    float4 color = image.sample(linearSampler, in.coords) / (uniforms.frameIndex + 1);
+    float4 color = uniforms.exposure * image.sample(linearSampler, in.coords) / (uniforms.frameIndex + 1);
     if (any(isnan(color))) color = float4(1, 0, 1, 1);
     return color;
 }

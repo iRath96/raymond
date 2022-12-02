@@ -440,6 +440,10 @@ class Renderer: NSObject, MTKViewDelegate {
         makeOutputImage()
     }
     
+    func setExposure(_ exposure: Float) {
+        uniforms[0].exposure = exposure
+    }
+    
     func setLens(_ lens: Lens) {
         self.lensBuffer = lens.buffer
         uniforms[0].numLensSurfaces = lens.numSurfaces

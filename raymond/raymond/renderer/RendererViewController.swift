@@ -15,6 +15,7 @@ class RendererViewController: NSViewController {
     var focus: Float = 0
     var sensorScale: Float = 1
     var cameraScale: Float = 0.001
+    var exposure: Float = 1
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -112,6 +113,12 @@ class RendererViewController: NSViewController {
         if (event.modifierFlags.contains(.command)) {
             sensorScale *= exp(0.0002 * Float(event.scrollingDeltaY))
             updateStatus()
+            return
+        }
+        
+        if (event.modifierFlags.contains(.option)) {
+            exposure *= exp(0.0002 * Float(event.scrollingDeltaY))
+            renderer.setExposure(exposure)
             return
         }
         
