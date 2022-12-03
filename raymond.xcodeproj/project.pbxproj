@@ -100,7 +100,7 @@
 		FA57791F2886009A003C10E7 /* SkyLoader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SkyLoader.h; sourceTree = "<group>"; };
 		FA7D5D5828E780F500912878 /* URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URL.swift; sourceTree = "<group>"; };
 		FA7D5D5B28E7813800912878 /* shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = shell.swift; sourceTree = "<group>"; };
-		FA7D5D6328E984BC00912878 /* Rayjay */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Rayjay; path = ../dependencies/Rayjay; sourceTree = "<group>"; };
+		FA7D5D6328E984BC00912878 /* Rayjay */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Rayjay; path = dependencies/Rayjay; sourceTree = "<group>"; };
 		FA7D5D6628E9A50800912878 /* ShapeLight.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ShapeLight.hpp; sourceTree = "<group>"; };
 		FA7D5D6728E9A80500912878 /* ShapeLight.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShapeLight.metal; sourceTree = "<group>"; };
 		FA7D5D6928E9AD5700912878 /* ShadingContext.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShadingContext.metal; sourceTree = "<group>"; };
@@ -431,7 +431,7 @@
 				FAC09C452938EAB30048D37F /* src */,
 			);
 			name = lore;
-			path = ../dependencies/lore;
+			path = dependencies/lore;
 			sourceTree = "<group>";
 		};
 		FAC09C112938EAB30048D37F /* include */ = {
@@ -626,18 +626,18 @@
 			path = lens;
 			sourceTree = "<group>";
 		};
-		FAC09C7A293BABA80048D37F /* build */ = {
+		FAC09C7A293BABA80048D37F /* buildtools */ = {
 			isa = PBXGroup;
 			children = (
 				FAC09C7B293BABDE0048D37F /* jit-relocate.rb */,
 			);
-			path = build;
+			path = buildtools;
 			sourceTree = "<group>";
 		};
 		FAC3AAE62875D4D800C0B0D0 = {
 			isa = PBXGroup;
 			children = (
-				FAC09C7A293BABA80048D37F /* build */,
+				FAC09C7A293BABA80048D37F /* buildtools */,
 				FAC09C0F2938EAB30048D37F /* lore */,
 				FAC3AAF12875D4D800C0B0D0 /* raymond */,
 				FA7D5D6228E984BC00912878 /* Packages */,
@@ -772,7 +772,7 @@
 			inputPaths = (
 				"$(SRCROOT)/raymond/bridge",
 				"$(SRCROOT)/raymond/device",
-				"$(SRCROOT)/../dependencies/lore/include/lore",
+				"$(SRCROOT)/dependencies/lore/include/lore",
 			);
 			outputFileListPaths = (
 			);
@@ -780,7 +780,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "ruby $SRCROOT/build/jit-relocate.rb\n";
+			shellScript = "ruby $SRCROOT/buildtools/jit-relocate.rb\n";
 		};
 		FAC09C7C293BADE00048D37F /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -798,7 +798,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cp -R \"$SRCROOT/../dependencies/lore/data\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
+			shellScript = "cp -R \"$SRCROOT/dependencies/lore/data\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -970,8 +970,8 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
-					$SRCROOT/../dependencies/lore/include/,
 					$SRCROOT/raymond/,
+					$SRCROOT/dependencies/lore/include/,
 				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
@@ -981,7 +981,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/raymond/ $SRCROOT/../dependencies/lore/include/";
+				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/raymond/ $SRCROOT/dependencies/lore/include/";
 				MTL_LANGUAGE_REVISION = UseDeploymentTarget;
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1004,8 +1004,8 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
-					$SRCROOT/../dependencies/lore/include/,
 					$SRCROOT/raymond/,
+					$SRCROOT/dependencies/lore/include/,
 				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
@@ -1016,7 +1016,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/raymond/ $SRCROOT/../dependencies/lore/include/";
+				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/raymond/ $SRCROOT/dependencies/lore/include/";
 				MTL_LANGUAGE_REVISION = UseDeploymentTarget;
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
