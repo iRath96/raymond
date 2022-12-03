@@ -1,7 +1,7 @@
-#include "../../bridge/lights/AreaLight.hpp"
-#include "../../bridge/PrngState.hpp"
-#include "../ShadingContext.hpp"
-#include "../Context.hpp"
+#include <bridge/lights/AreaLight.hpp>
+#include <bridge/PrngState.hpp>
+#include <device/ShadingContext.hpp>
+#include <device/Context.hpp>
 #include "LightSample.hpp"
 
 LightSample AreaLight::sample(

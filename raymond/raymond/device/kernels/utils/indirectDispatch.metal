@@ -1,4 +1,4 @@
-#include "../../../bridge/common.hpp"
+#include <bridge/common.hpp>
 
 kernel void makeIndirectDispatchArguments(
     device uint *rayCount [[buffer(0)]],

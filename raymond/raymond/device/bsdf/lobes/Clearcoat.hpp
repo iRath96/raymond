@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../../../bridge/common.hpp"
-#include "../../../bridge/Ray.hpp"
-#include "../../utils/math.hpp"
-#include "../../utils/warp.hpp"
-#include "../ShadingFrame.hpp"
-#include "../fresnel.hpp"
-#include "../microfacet.hpp"
-#include "../BsdfSample.hpp"
+#include <bridge/common.hpp>
+#include <bridge/Ray.hpp>
+#include <device/utils/math.hpp>
+#include <device/utils/warp.hpp>
+#include <device/bsdf/ShadingFrame.hpp>
+#include <device/bsdf/fresnel.hpp>
+#include <device/bsdf/microfacet.hpp>
+#include <device/bsdf/BsdfSample.hpp>
 
 /**
  * Not perfect yet: failure case for clearcoatRoughness=0.3.

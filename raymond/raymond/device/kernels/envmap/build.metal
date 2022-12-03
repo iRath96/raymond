@@ -1,5 +1,5 @@
-#include "../../../bridge/common.hpp"
-#include "../../Context.hpp"
+#include <bridge/common.hpp>
+#include <device/Context.hpp>
 
 kernel void buildEnvironmentMap(
     device Context &ctx [[buffer(0)]],

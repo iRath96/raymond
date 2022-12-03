@@ -4,8 +4,6 @@ $INPUT_FILES = (0...ENV["SCRIPT_INPUT_FILE_COUNT"].to_i).map { |i| ENV["SCRIPT_I
 $OUTPUT_PATH = File.join(ENV["BUILT_PRODUCTS_DIR"], ENV["UNLOCALIZED_RESOURCES_FOLDER_PATH"])
 
 $REWRITE_DIRECTORIES = $INPUT_FILES.map { |path| File.basename path }
-puts $INPUT_FILES.inspect
-puts $OUTPUT_PATH.inspect
 
 def is_source_file(filename)
     extension = filename.split(".").last.downcase
@@ -16,14 +14,13 @@ def process_file(input_path, output_path, depth)
     return unless is_source_file(File.basename(input_path))
 
     input = File.read(input_path, :encoding => "iso-8859-1")
-    puts "#{input_path} -> #{output_path}"
     output = input.gsub(/^#include <(.*)>$/) do |match|
         path = $1
         base = path.split("/").first
         next "#include <#{path}>" unless $REWRITE_DIRECTORIES.include? base
 
         new_path = "../" * depth + path
-        puts "rewriting #{path} -> #{new_path}"
+        #puts "rewriting #{path} -> #{new_path}"
         next "#include \"#{new_path}\""
     end
     File.write(output_path, output)

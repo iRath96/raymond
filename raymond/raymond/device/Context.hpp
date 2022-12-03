@@ -7,10 +7,10 @@ using namespace metal;
 #define NUMBER_OF_TEXTURES 1
 #endif
 
-#include "../bridge/common.hpp"
-#include "../bridge/PerInstanceData.hpp"
-#include "../bridge/Camera.hpp"
-#include "lights/Lights.hpp"
+#include <bridge/common.hpp>
+#include <bridge/PerInstanceData.hpp>
+#include <bridge/Camera.hpp>
+#include <device/lights/Lights.hpp>
 
 struct Context {
     device const Vertex *vertices                 [[id(ContextBufferVertices)]];

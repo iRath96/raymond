@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../bridge/common.hpp"
-#include "../bridge/PerInstanceData.hpp"
-#include "bsdf/UberShader.hpp"
+#include <bridge/common.hpp>
+#include <bridge/PerInstanceData.hpp>
+#include <device/bsdf/UberShader.hpp>
 
 struct ShadingContext {
     float3 uv;

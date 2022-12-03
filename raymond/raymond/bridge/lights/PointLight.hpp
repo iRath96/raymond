@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../common.hpp"
+#include <bridge/common.hpp>
 #include "LightInfo.hpp"
 
 DEVICE_STRUCT(PointLight) {

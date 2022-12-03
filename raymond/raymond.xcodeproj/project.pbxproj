@@ -969,7 +969,10 @@
 				DEVELOPMENT_TEAM = 2T76SG93HV;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = $SRCROOT/../dependencies/lore/include/;
+				HEADER_SEARCH_PATHS = (
+					$SRCROOT/../dependencies/lore/include/,
+					$SRCROOT/raymond/,
+				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -1000,7 +1003,10 @@
 				DEVELOPMENT_TEAM = 2T76SG93HV;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = $SRCROOT/../dependencies/lore/include/;
+				HEADER_SEARCH_PATHS = (
+					$SRCROOT/../dependencies/lore/include/,
+					$SRCROOT/raymond/,
+				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;

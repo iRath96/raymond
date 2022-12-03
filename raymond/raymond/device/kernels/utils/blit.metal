@@ -1,5 +1,5 @@
-#include "../../../bridge/common.hpp"
-#include "../../../bridge/Uniforms.hpp"
+#include <bridge/common.hpp>
+#include <bridge/Uniforms.hpp>
 
 struct BlitVertexOut {
     float4 pos [[position]];

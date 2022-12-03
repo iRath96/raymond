@@ -1,15 +1,15 @@
 #pragma once
 
-#include "../../bridge/common.hpp"
-#include "../../bridge/lights/AreaLight.hpp"
-#include "../../bridge/lights/PointLight.hpp"
-#include "../../bridge/lights/SunLight.hpp"
-#include "../../bridge/lights/SpotLight.hpp"
-#include "../../bridge/lights/ShapeLight.hpp"
-#include "../../bridge/ResourceIds.hpp"
-#include "../../bridge/PrngState.hpp"
-#include "../ShadingContext.hpp"
-#include "../shading.hpp"
+#include <bridge/common.hpp>
+#include <bridge/lights/AreaLight.hpp>
+#include <bridge/lights/PointLight.hpp>
+#include <bridge/lights/SunLight.hpp>
+#include <bridge/lights/SpotLight.hpp>
+#include <bridge/lights/ShapeLight.hpp>
+#include <bridge/ResourceIds.hpp>
+#include <bridge/PrngState.hpp>
+#include <device/ShadingContext.hpp>
+#include <device/shading.hpp>
 #include "LightSample.hpp"
 #include "WorldLight.hpp"
 

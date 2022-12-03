@@ -1,14 +1,14 @@
-#include "../../../bridge/common.hpp"
-#include "../../../bridge/Ray.hpp"
-#include "../../../bridge/Uniforms.hpp"
-#include "../../../bridge/ResourceIds.hpp"
-#include "../../../bridge/PerInstanceData.hpp"
-#include "../../utils/math.hpp"
-#include "../../lights/LightSample.hpp"
-#include "../../bsdf/BsdfSample.hpp"
-#include "../../ShadingContext.hpp"
-#include "../../Context.hpp"
-#include "../../constants.hpp"
+#include <bridge/common.hpp>
+#include <bridge/Ray.hpp>
+#include <bridge/Uniforms.hpp>
+#include <bridge/ResourceIds.hpp>
+#include <bridge/PerInstanceData.hpp>
+#include <device/utils/math.hpp>
+#include <device/lights/LightSample.hpp>
+#include <device/bsdf/BsdfSample.hpp>
+#include <device/ShadingContext.hpp>
+#include <device/Context.hpp>
+#include <device/constants.hpp>
 
 float computeMisWeight(float pdf, float other) {
     pdf *= pdf;

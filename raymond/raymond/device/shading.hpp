@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../bridge/common.hpp"
+#include <bridge/common.hpp>
 
 #ifdef JIT_COMPILED
 #define SHADE_STUB ;
