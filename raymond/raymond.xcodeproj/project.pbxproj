@@ -163,6 +163,7 @@
 		FAC09C6D293A1FF40048D37F /* CDGM-IR.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = "CDGM-IR.glc"; sourceTree = "<group>"; };
 		FAC09C6E293A1FF40048D37F /* schott_radhard.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = schott_radhard.glc; sourceTree = "<group>"; };
 		FAC09C70293A20040048D37F /* GlassCatalog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GlassCatalog.cpp; sourceTree = "<group>"; };
+		FAC09C7B293BABDE0048D37F /* jit-relocate.rb */ = {isa = PBXFileReference; lastKnownFileType = text.script.ruby; path = "jit-relocate.rb"; sourceTree = "<group>"; };
 		FAC3AAEF2875D4D800C0B0D0 /* raymond.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = raymond.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3AAF22875D4D800C0B0D0 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
 		FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendererViewController.swift; sourceTree = "<group>"; };
@@ -625,9 +626,18 @@
 			path = lens;
 			sourceTree = "<group>";
 		};
+		FAC09C7A293BABA80048D37F /* build */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C7B293BABDE0048D37F /* jit-relocate.rb */,
+			);
+			path = build;
+			sourceTree = "<group>";
+		};
 		FAC3AAE62875D4D800C0B0D0 = {
 			isa = PBXGroup;
 			children = (
+				FAC09C7A293BABA80048D37F /* build */,
 				FAC09C0F2938EAB30048D37F /* lore */,
 				FAC3AAF12875D4D800C0B0D0 /* raymond */,
 				FA7D5D6228E984BC00912878 /* Packages */,
@@ -687,6 +697,7 @@
 				FAC3AAEC2875D4D800C0B0D0 /* Frameworks */,
 				FAC3AAED2875D4D800C0B0D0 /* Resources */,
 				FA2BA2D428E6F2830083F61C /* ShellScript */,
+				FAC09C7C293BADE00048D37F /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -759,6 +770,9 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/raymond/bridge",
+				"$(SRCROOT)/raymond/device",
+				"$(SRCROOT)/../dependencies/lore/include/lore",
 			);
 			outputFileListPaths = (
 			);
@@ -766,7 +780,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\ncp -R \"$SRCROOT/raymond/bridge\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\ncp -R \"$SRCROOT/raymond/device\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\ncp -R \"$SRCROOT/../dependencies/lore/include/lore\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\ncp -R \"$SRCROOT/../dependencies/lore/data\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
+			shellScript = "ruby $SRCROOT/build/jit-relocate.rb\n";
+		};
+		FAC09C7C293BADE00048D37F /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cp -R \"$SRCROOT/../dependencies/lore/data\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
