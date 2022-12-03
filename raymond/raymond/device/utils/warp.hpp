@@ -4,7 +4,7 @@ namespace warp {
 
 float2 equirectSphereToSquare(float3 vector) {
     return float2(
-        (atan2(vector.x, vector.y) - M_PI_F) / (2 * M_PI_F),
+        (atan2(vector.x, vector.y) + M_PI_F / 2) / (2 * M_PI_F),
         acos(vector.z / length(vector)) / M_PI_F
     );
 }
