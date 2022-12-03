@@ -1,11 +1,11 @@
-#include "../../bridge/common.hpp"
-#include "../../bridge/PrngState.hpp"
-#include "../../bridge/lights/SpotLight.hpp"
-#include "../utils/math.hpp"
-#include "../utils/warp.hpp"
-#include "../lights/LightSample.hpp"
-#include "../ShadingContext.hpp"
-#include "../Context.hpp"
+#include <bridge/common.hpp>
+#include <bridge/PrngState.hpp>
+#include <bridge/lights/SpotLight.hpp>
+#include <device/utils/math.hpp>
+#include <device/utils/warp.hpp>
+#include <device/lights/LightSample.hpp>
+#include <device/ShadingContext.hpp>
+#include <device/Context.hpp>
 
 float ShapeLight::pdf(thread const ShadingContext &shading) const device {
     return 1 / (shading.geometryTerm() * emissiveArea);

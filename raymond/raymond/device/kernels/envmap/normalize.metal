@@ -1,5 +1,5 @@
-#include "../../../bridge/common.hpp"
-#include "../../utils/warp.hpp"
+#include <bridge/common.hpp>
+#include <device/utils/warp.hpp>
 
 kernel void normalizeEnvironmentMap(
     device float &sum [[buffer(0)]],

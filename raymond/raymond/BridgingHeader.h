@@ -1,5 +1,6 @@
 #include "tinyexr.h"
 #include "io/PLYReader.h"
+#include "io/LensLoader.h"
 #include "host/sky/SkyLoader.h"
 #include "host/lights/distribution.h"
 

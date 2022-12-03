@@ -1,4 +1,4 @@
-#include "../bridge/PrngState.hpp"
+#include <bridge/PrngState.hpp>
 
 /**
  * \brief Generate fast and reasonably good pseudorandom numbers using the

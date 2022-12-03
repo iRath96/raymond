@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../../bridge/common.hpp"
-#include "../../bridge/Ray.hpp"
-#include "../utils/noise.hpp"
-#include "../utils/math.hpp"
-#include "../utils/warp.hpp"
-#include "../utils/color.hpp"
-#include "../Context.hpp"
-#include "../ShadingContext.hpp"
+#include <bridge/common.hpp>
+#include <bridge/Ray.hpp>
+#include <device/utils/noise.hpp>
+#include <device/utils/math.hpp>
+#include <device/utils/warp.hpp>
+#include <device/utils/color.hpp>
+#include <device/Context.hpp>
+#include <device/ShadingContext.hpp>
 
 /**
  * @todo not properly supported!

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../bridge/common.hpp"
-#include "../utils/math.hpp"
-#include "../utils/warp.hpp"
+#include <bridge/common.hpp>
+#include <device/utils/math.hpp>
+#include <device/utils/warp.hpp>
 
 typedef struct {
     MaterialIndex shaderIndex [[ id(0) ]];

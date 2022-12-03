@@ -30,6 +30,7 @@ class Renderer: NSObject, MTKViewDelegate {
     var rayCount = 0
     let maxDepth = 8
     
+    var lensBuffer: MTLBuffer!
     var rayBuffer: MTLBuffer!
     var rayCountBuffer: MTLBuffer!
     var shadowRayBuffer: MTLBuffer!
@@ -62,7 +63,11 @@ class Renderer: NSObject, MTKViewDelegate {
         
         uniforms = UnsafeMutableRawPointer(dynamicUniformBuffer.contents()).bindMemory(to: DeviceUniforms.self, capacity: 1)
         uniforms[0].samplingMode = .mis
-        
+        uniforms[0].cameraScale = 0.001
+        uniforms[0].sensorScale = 1
+        uniforms[0].focus = 0
+        uniforms[0].exposure = 1
+                
         metalKitView.depthStencilPixelFormat = MTLPixelFormat.depth32Float_stencil8
         metalKitView.colorPixelFormat = .rgba16Float
         metalKitView.sampleCount = 1
@@ -168,6 +173,8 @@ class Renderer: NSObject, MTKViewDelegate {
     }
     
     func draw(in view: MTKView) {
+        guard self.lensBuffer != nil else { return }
+        
         /// Per frame updates hare
         
         _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
@@ -240,6 +247,10 @@ class Renderer: NSObject, MTKViewDelegate {
                     scene.contextBuffer,
                     offset: 0,
                     index: GeneratorBufferIndex.context.rawValue)
+                computeEncoder.setBuffer(
+                    lensBuffer,
+                    offset: 0,
+                    index: GeneratorBufferIndex.lens.rawValue)
                 computeEncoder.dispatchThreads(
                     outputImageSize,
                     threadsPerThreadgroup: MTLSizeMake(8, 8, 1))
@@ -428,6 +439,23 @@ class Renderer: NSObject, MTKViewDelegate {
     func reset() {
         frameIndex = 0
         makeOutputImage()
+    }
+    
+    func setExposure(_ exposure: Float) {
+        uniforms[0].exposure = exposure
+    }
+    
+    func setLens(_ lens: Lens) {
+        self.lensBuffer = lens.buffer
+        uniforms[0].numLensSurfaces = lens.numSurfaces
+    }
+    
+    func updateLens(_ focus: Float, _ sensorScale: Float, _ cameraScale: Float) {
+        uniforms[0].focus = focus
+        uniforms[0].sensorScale = sensorScale
+        uniforms[0].cameraScale = cameraScale
+        
+        reset()
     }
     
     func updateProjection(by multiplying: float4x4) {

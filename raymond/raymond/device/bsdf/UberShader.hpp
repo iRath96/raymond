@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../bridge/common.hpp"
+#include <bridge/common.hpp>
 #include "lobes/Diffuse.hpp"
 #include "lobes/Specular.hpp"
 #include "lobes/Transmission.hpp"

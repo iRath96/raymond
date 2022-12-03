@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="21223" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
+<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="21507" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21223"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21507"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -706,18 +706,18 @@
             <objects>
                 <viewController id="XfG-lQ-9wD" customClass="RendererViewController" customModule="raymond" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" id="m2S-Jp-Qdl" customClass="MTKView">
-                        <rect key="frame" x="0.0" y="0.0" width="960" height="540"/>
+                        <rect key="frame" x="0.0" y="0.0" width="960" height="640"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <subviews>
                             <box boxType="custom" cornerRadius="8" title="Sampling" id="duD-kn-rEC">
-                                <rect key="frame" x="769" y="20" width="171" height="77"/>
+                                <rect key="frame" x="769" y="20" width="171" height="196"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                                 <view key="contentView" id="ITd-6N-aw8">
-                                    <rect key="frame" x="1" y="1" width="169" height="75"/>
+                                    <rect key="frame" x="1" y="1" width="169" height="194"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="rKU-IQ-oSW">
-                                            <rect key="frame" x="0.0" y="-1" width="169" height="32"/>
+                                            <rect key="frame" x="0.0" y="118" width="169" height="32"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <buttonCell key="cell" type="push" title="Save Frame" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="61X-ZF-Gaf">
                                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
@@ -730,7 +730,7 @@
                                             </connections>
                                         </button>
                                         <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jCi-in-aDz">
-                                            <rect key="frame" x="7" y="61" width="81" height="11"/>
+                                            <rect key="frame" x="7" y="180" width="81" height="11"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <textFieldCell key="cell" lineBreakMode="clipping" title="Sampling Method" id="TLU-tF-aeZ">
                                                 <font key="font" metaFont="miniSystem"/>
@@ -739,7 +739,7 @@
                                             </textFieldCell>
                                         </textField>
                                         <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="et9-Lu-3xA" userLabel="Sampling Method">
-                                            <rect key="frame" x="4" y="33" width="162" height="25"/>
+                                            <rect key="frame" x="4" y="152" width="162" height="25"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <popUpButtonCell key="cell" type="push" title="MIS" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="MZA-Gy-Zbg" id="j8B-Pr-xoL">
                                                 <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
@@ -758,6 +758,27 @@
                                                 <action selector="selectSamplingMethod:" target="XfG-lQ-9wD" id="Ts7-aU-Okd"/>
                                             </connections>
                                         </popUpButton>
+                                        <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="AFe-Vi-Rwd" userLabel="Sampling Method">
+                                            <rect key="frame" x="4" y="90" width="162" height="25"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <popUpButtonCell key="cell" type="push" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" id="Clp-qq-WhM" userLabel="Lens">
+                                                <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
+                                                <font key="font" metaFont="menu"/>
+                                                <menu key="menu" id="BbP-RW-1ZQ"/>
+                                                <connections>
+                                                    <action selector="chooseLens:" target="XfG-lQ-9wD" id="ygs-Hp-rg1"/>
+                                                </connections>
+                                            </popUpButtonCell>
+                                        </popUpButton>
+                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3aR-Ie-s7l">
+                                            <rect key="frame" x="6" y="8" width="157" height="78"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                            <textFieldCell key="cell" lineBreakMode="clipping" title="Label" id="P52-bJ-lfG">
+                                                <font key="font" metaFont="smallSystem"/>
+                                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                            </textFieldCell>
+                                        </textField>
                                     </subviews>
                                 </view>
                                 <color key="borderColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
@@ -766,7 +787,10 @@
                         </subviews>
                     </view>
                     <connections>
+                        <outlet property="lensCell" destination="Clp-qq-WhM" id="PNX-sf-s6p"/>
+                        <outlet property="lensMenu" destination="BbP-RW-1ZQ" id="5R4-Db-SE7"/>
                         <outlet property="samplingMethod" destination="et9-Lu-3xA" id="NQr-7j-4kQ"/>
+                        <outlet property="statusLabel" destination="P52-bJ-lfG" id="0Rh-t6-bNU"/>
                     </connections>
                 </viewController>
                 <customObject id="rPt-NT-nkU" userLabel="First Responder" customClass="NSResponder" sceneMemberID="firstResponder"/>

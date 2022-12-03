@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../bridge/common.hpp"
-#include "../../bridge/lights/LightInfo.hpp"
+#include <bridge/common.hpp>
+#include <bridge/lights/LightInfo.hpp>
 
 struct LightSample {
     bool isLight;

@@ -254,12 +254,13 @@ struct Codegen {
             header += "#define TEX\(index)_PIXEL_FORMAT kTexImage::PIXEL_FORMAT_\(try mapPixelFormat(pixelFormat))\n"
         }
         
-        let dumpDirectory = URL.temporaryDirectory
+        let dumpDirectory = Bundle.main.resourceURL!.absoluteURL
+        // cannot use URL.temporaryDirectory here, because that uses symlinked paths that confuse the compiler (???)
         
         header += "\n"
         if options.externalCompile {
             /// not sure why, but our #includes need to be relative so that Xcode shader profiling works fully
-            let relativePath = metalEntryURL.relativePath(from: dumpDirectory.appending(path: "dummy.metal"))!
+            let relativePath = metalEntryURL.relativePath(from: dumpDirectory)!
             header += "#include \"\(relativePath)\"\n"
         } else {
             header += "#include \"\(metalEntryURL.relativePath)\"\n"

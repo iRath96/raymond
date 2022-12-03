@@ -23,6 +23,9 @@
 		FA7D5D5C28E7813800912878 /* shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D5B28E7813800912878 /* shell.swift */; };
 		FA7D5D6528E9850800912878 /* Rayjay in Frameworks */ = {isa = PBXBuildFile; productRef = FA7D5D6428E9850800912878 /* Rayjay */; };
 		FA7D5D6D28EA066E00912878 /* distribution.m in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D6C28EA066E00912878 /* distribution.m */; };
+		FAC09C0C2938D0B70048D37F /* LensLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C0A2938D0B70048D37F /* LensLoader.mm */; };
+		FAC09C5E2938EAB30048D37F /* LensReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C472938EAB30048D37F /* LensReader.cpp */; };
+		FAC09C71293A20040048D37F /* GlassCatalog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C70293A20040048D37F /* GlassCatalog.cpp */; };
 		FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF22875D4D800C0B0D0 /* Main.swift */; };
 		FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */; };
 		FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */; };
@@ -103,6 +106,64 @@
 		FA7D5D6928E9AD5700912878 /* ShadingContext.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ShadingContext.metal; sourceTree = "<group>"; };
 		FA7D5D6B28EA066E00912878 /* distribution.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = distribution.h; sourceTree = "<group>"; };
 		FA7D5D6C28EA066E00912878 /* distribution.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = distribution.m; sourceTree = "<group>"; };
+		FAC09C0A2938D0B70048D37F /* LensLoader.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = LensLoader.mm; sourceTree = "<group>"; };
+		FAC09C0B2938D0B70048D37F /* LensLoader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LensLoader.h; sourceTree = "<group>"; };
+		FAC09C102938EAB30048D37F /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		FAC09C142938EAB30048D37F /* Petzval.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Petzval.h; sourceTree = "<group>"; };
+		FAC09C152938EAB30048D37F /* Paraxial.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Paraxial.h; sourceTree = "<group>"; };
+		FAC09C172938EAB30048D37F /* LensReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LensReader.h; sourceTree = "<group>"; };
+		FAC09C192938EAB30048D37F /* FADFloat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FADFloat.h; sourceTree = "<group>"; };
+		FAC09C1B2938EAB30048D37F /* SequentialTrace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SequentialTrace.h; sourceTree = "<group>"; };
+		FAC09C1C2938EAB30048D37F /* ABCD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ABCD.h; sourceTree = "<group>"; };
+		FAC09C1D2938EAB30048D37F /* Ray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Ray.h; sourceTree = "<group>"; };
+		FAC09C1E2938EAB30048D37F /* GeometricalIntersector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GeometricalIntersector.h; sourceTree = "<group>"; };
+		FAC09C202938EAB30048D37F /* SurfaceSchema.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SurfaceSchema.h; sourceTree = "<group>"; };
+		FAC09C212938EAB30048D37F /* Lens.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Lens.h; sourceTree = "<group>"; };
+		FAC09C222938EAB30048D37F /* Surface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Surface.h; sourceTree = "<group>"; };
+		FAC09C232938EAB30048D37F /* GlassCatalog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GlassCatalog.h; sourceTree = "<group>"; };
+		FAC09C242938EAB30048D37F /* LensSchema.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LensSchema.h; sourceTree = "<group>"; };
+		FAC09C252938EAB30048D37F /* Glass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Glass.h; sourceTree = "<group>"; };
+		FAC09C262938EAB30048D37F /* math.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = math.h; sourceTree = "<group>"; };
+		FAC09C272938EAB30048D37F /* lore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lore.h; sourceTree = "<group>"; };
+		FAC09C292938EAB30048D37F /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		FAC09C2B2938EAB30048D37F /* Paraxial.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Paraxial.cpp; sourceTree = "<group>"; };
+		FAC09C2C2938EAB30048D37F /* math.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = math.cpp; sourceTree = "<group>"; };
+		FAC09C2E2938EAB30048D37F /* LensReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LensReader.cpp; sourceTree = "<group>"; };
+		FAC09C302938EAB30048D37F /* FADFloat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FADFloat.cpp; sourceTree = "<group>"; };
+		FAC09C322938EAB30048D37F /* ABCD.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ABCD.cpp; sourceTree = "<group>"; };
+		FAC09C332938EAB30048D37F /* SequentialTrace.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SequentialTrace.cpp; sourceTree = "<group>"; };
+		FAC09C342938EAB30048D37F /* GeometricalIntersector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GeometricalIntersector.cpp; sourceTree = "<group>"; };
+		FAC09C352938EAB30048D37F /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		FAC09C362938EAB30048D37F /* .gitignore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		FAC09C3B2938EAB30048D37F /* sonnar.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = sonnar.len; sourceTree = "<group>"; };
+		FAC09C3C2938EAB30048D37F /* simple.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = simple.len; sourceTree = "<group>"; };
+		FAC09C3D2938EAB30048D37F /* dgauss.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = dgauss.len; sourceTree = "<group>"; };
+		FAC09C3E2938EAB30048D37F /* fraunhofer.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = fraunhofer.len; sourceTree = "<group>"; };
+		FAC09C3F2938EAB30048D37F /* fisheye.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = fisheye.len; sourceTree = "<group>"; };
+		FAC09C402938EAB30048D37F /* triplet.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = triplet.len; sourceTree = "<group>"; };
+		FAC09C412938EAB30048D37F /* wideangle.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = wideangle.len; sourceTree = "<group>"; };
+		FAC09C422938EAB30048D37F /* split-triplet.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "split-triplet.len"; sourceTree = "<group>"; };
+		FAC09C432938EAB30048D37F /* petzval.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = petzval.len; sourceTree = "<group>"; };
+		FAC09C442938EAB30048D37F /* tessar.len */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tessar.len; sourceTree = "<group>"; };
+		FAC09C472938EAB30048D37F /* LensReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LensReader.cpp; sourceTree = "<group>"; };
+		FAC09C5F293A1FF40048D37F /* ohara.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = ohara.glc; sourceTree = "<group>"; };
+		FAC09C60293A1FF40048D37F /* CDGM.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = CDGM.glc; sourceTree = "<group>"; };
+		FAC09C61293A1FF40048D37F /* obsolete002.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = obsolete002.glc; sourceTree = "<group>"; };
+		FAC09C62293A1FF40048D37F /* vitron.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = vitron.glc; sourceTree = "<group>"; };
+		FAC09C63293A1FF40048D37F /* pilkington.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = pilkington.glc; sourceTree = "<group>"; };
+		FAC09C64293A1FF40048D37F /* obsolete001.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = obsolete001.glc; sourceTree = "<group>"; };
+		FAC09C65293A1FF40048D37F /* obsolete003.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = obsolete003.glc; sourceTree = "<group>"; };
+		FAC09C66293A1FF40048D37F /* shared.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.glc; sourceTree = "<group>"; };
+		FAC09C67293A1FF40048D37F /* corning.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = corning.glc; sourceTree = "<group>"; };
+		FAC09C68293A1FF40048D37F /* schott.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = schott.glc; sourceTree = "<group>"; };
+		FAC09C69293A1FF40048D37F /* misc.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = misc.glc; sourceTree = "<group>"; };
+		FAC09C6A293A1FF40048D37F /* hoya.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = hoya.glc; sourceTree = "<group>"; };
+		FAC09C6B293A1FF40048D37F /* sumita.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = sumita.glc; sourceTree = "<group>"; };
+		FAC09C6C293A1FF40048D37F /* hikari.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = hikari.glc; sourceTree = "<group>"; };
+		FAC09C6D293A1FF40048D37F /* CDGM-IR.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = "CDGM-IR.glc"; sourceTree = "<group>"; };
+		FAC09C6E293A1FF40048D37F /* schott_radhard.glc */ = {isa = PBXFileReference; lastKnownFileType = text; path = schott_radhard.glc; sourceTree = "<group>"; };
+		FAC09C70293A20040048D37F /* GlassCatalog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GlassCatalog.cpp; sourceTree = "<group>"; };
+		FAC09C7B293BABDE0048D37F /* jit-relocate.rb */ = {isa = PBXFileReference; lastKnownFileType = text.script.ruby; path = "jit-relocate.rb"; sourceTree = "<group>"; };
 		FAC3AAEF2875D4D800C0B0D0 /* raymond.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = raymond.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3AAF22875D4D800C0B0D0 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
 		FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendererViewController.swift; sourceTree = "<group>"; };
@@ -154,6 +215,8 @@
 				FA100A88287809B600884319 /* tinyexr.cpp */,
 				FA10CBB6287886B8004092CA /* PLYReader.h */,
 				FA10CBB7287886B8004092CA /* PLYReader.m */,
+				FAC09C0B2938D0B70048D37F /* LensLoader.h */,
+				FAC09C0A2938D0B70048D37F /* LensLoader.mm */,
 			);
 			path = io;
 			sourceTree = "<group>";
@@ -356,9 +419,226 @@
 			path = lights;
 			sourceTree = "<group>";
 		};
+		FAC09C0F2938EAB30048D37F /* lore */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C102938EAB30048D37F /* CMakeLists.txt */,
+				FAC09C112938EAB30048D37F /* include */,
+				FAC09C282938EAB30048D37F /* tests */,
+				FAC09C352938EAB30048D37F /* README.md */,
+				FAC09C362938EAB30048D37F /* .gitignore */,
+				FAC09C372938EAB30048D37F /* data */,
+				FAC09C452938EAB30048D37F /* src */,
+			);
+			name = lore;
+			path = ../dependencies/lore;
+			sourceTree = "<group>";
+		};
+		FAC09C112938EAB30048D37F /* include */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C122938EAB30048D37F /* lore */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		FAC09C122938EAB30048D37F /* lore */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C132938EAB30048D37F /* analysis */,
+				FAC09C162938EAB30048D37F /* io */,
+				FAC09C182938EAB30048D37F /* optim */,
+				FAC09C1A2938EAB30048D37F /* rt */,
+				FAC09C1F2938EAB30048D37F /* lens */,
+				FAC09C262938EAB30048D37F /* math.h */,
+				FAC09C272938EAB30048D37F /* lore.h */,
+			);
+			path = lore;
+			sourceTree = "<group>";
+		};
+		FAC09C132938EAB30048D37F /* analysis */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C142938EAB30048D37F /* Petzval.h */,
+				FAC09C152938EAB30048D37F /* Paraxial.h */,
+			);
+			path = analysis;
+			sourceTree = "<group>";
+		};
+		FAC09C162938EAB30048D37F /* io */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C172938EAB30048D37F /* LensReader.h */,
+			);
+			path = io;
+			sourceTree = "<group>";
+		};
+		FAC09C182938EAB30048D37F /* optim */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C192938EAB30048D37F /* FADFloat.h */,
+			);
+			path = optim;
+			sourceTree = "<group>";
+		};
+		FAC09C1A2938EAB30048D37F /* rt */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C1B2938EAB30048D37F /* SequentialTrace.h */,
+				FAC09C1C2938EAB30048D37F /* ABCD.h */,
+				FAC09C1D2938EAB30048D37F /* Ray.h */,
+				FAC09C1E2938EAB30048D37F /* GeometricalIntersector.h */,
+			);
+			path = rt;
+			sourceTree = "<group>";
+		};
+		FAC09C1F2938EAB30048D37F /* lens */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C202938EAB30048D37F /* SurfaceSchema.h */,
+				FAC09C212938EAB30048D37F /* Lens.h */,
+				FAC09C222938EAB30048D37F /* Surface.h */,
+				FAC09C232938EAB30048D37F /* GlassCatalog.h */,
+				FAC09C242938EAB30048D37F /* LensSchema.h */,
+				FAC09C252938EAB30048D37F /* Glass.h */,
+			);
+			path = lens;
+			sourceTree = "<group>";
+		};
+		FAC09C282938EAB30048D37F /* tests */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C292938EAB30048D37F /* CMakeLists.txt */,
+				FAC09C2A2938EAB30048D37F /* analysis */,
+				FAC09C2C2938EAB30048D37F /* math.cpp */,
+				FAC09C2D2938EAB30048D37F /* io */,
+				FAC09C2F2938EAB30048D37F /* optim */,
+				FAC09C312938EAB30048D37F /* rt */,
+			);
+			path = tests;
+			sourceTree = "<group>";
+		};
+		FAC09C2A2938EAB30048D37F /* analysis */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C2B2938EAB30048D37F /* Paraxial.cpp */,
+			);
+			path = analysis;
+			sourceTree = "<group>";
+		};
+		FAC09C2D2938EAB30048D37F /* io */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C2E2938EAB30048D37F /* LensReader.cpp */,
+			);
+			path = io;
+			sourceTree = "<group>";
+		};
+		FAC09C2F2938EAB30048D37F /* optim */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C302938EAB30048D37F /* FADFloat.cpp */,
+			);
+			path = optim;
+			sourceTree = "<group>";
+		};
+		FAC09C312938EAB30048D37F /* rt */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C322938EAB30048D37F /* ABCD.cpp */,
+				FAC09C332938EAB30048D37F /* SequentialTrace.cpp */,
+				FAC09C342938EAB30048D37F /* GeometricalIntersector.cpp */,
+			);
+			path = rt;
+			sourceTree = "<group>";
+		};
+		FAC09C372938EAB30048D37F /* data */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C382938EAB30048D37F /* glass */,
+				FAC09C3A2938EAB30048D37F /* lenses */,
+			);
+			path = data;
+			sourceTree = "<group>";
+		};
+		FAC09C382938EAB30048D37F /* glass */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C6D293A1FF40048D37F /* CDGM-IR.glc */,
+				FAC09C60293A1FF40048D37F /* CDGM.glc */,
+				FAC09C67293A1FF40048D37F /* corning.glc */,
+				FAC09C6C293A1FF40048D37F /* hikari.glc */,
+				FAC09C6A293A1FF40048D37F /* hoya.glc */,
+				FAC09C69293A1FF40048D37F /* misc.glc */,
+				FAC09C64293A1FF40048D37F /* obsolete001.glc */,
+				FAC09C61293A1FF40048D37F /* obsolete002.glc */,
+				FAC09C65293A1FF40048D37F /* obsolete003.glc */,
+				FAC09C5F293A1FF40048D37F /* ohara.glc */,
+				FAC09C63293A1FF40048D37F /* pilkington.glc */,
+				FAC09C6E293A1FF40048D37F /* schott_radhard.glc */,
+				FAC09C68293A1FF40048D37F /* schott.glc */,
+				FAC09C66293A1FF40048D37F /* shared.glc */,
+				FAC09C6B293A1FF40048D37F /* sumita.glc */,
+				FAC09C62293A1FF40048D37F /* vitron.glc */,
+			);
+			path = glass;
+			sourceTree = "<group>";
+		};
+		FAC09C3A2938EAB30048D37F /* lenses */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C3B2938EAB30048D37F /* sonnar.len */,
+				FAC09C3C2938EAB30048D37F /* simple.len */,
+				FAC09C3D2938EAB30048D37F /* dgauss.len */,
+				FAC09C3E2938EAB30048D37F /* fraunhofer.len */,
+				FAC09C3F2938EAB30048D37F /* fisheye.len */,
+				FAC09C402938EAB30048D37F /* triplet.len */,
+				FAC09C412938EAB30048D37F /* wideangle.len */,
+				FAC09C422938EAB30048D37F /* split-triplet.len */,
+				FAC09C432938EAB30048D37F /* petzval.len */,
+				FAC09C442938EAB30048D37F /* tessar.len */,
+			);
+			path = lenses;
+			sourceTree = "<group>";
+		};
+		FAC09C452938EAB30048D37F /* src */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C6F293A20040048D37F /* lens */,
+				FAC09C462938EAB30048D37F /* io */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		FAC09C462938EAB30048D37F /* io */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C472938EAB30048D37F /* LensReader.cpp */,
+			);
+			path = io;
+			sourceTree = "<group>";
+		};
+		FAC09C6F293A20040048D37F /* lens */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C70293A20040048D37F /* GlassCatalog.cpp */,
+			);
+			path = lens;
+			sourceTree = "<group>";
+		};
+		FAC09C7A293BABA80048D37F /* build */ = {
+			isa = PBXGroup;
+			children = (
+				FAC09C7B293BABDE0048D37F /* jit-relocate.rb */,
+			);
+			path = build;
+			sourceTree = "<group>";
+		};
 		FAC3AAE62875D4D800C0B0D0 = {
 			isa = PBXGroup;
 			children = (
+				FAC09C7A293BABA80048D37F /* build */,
+				FAC09C0F2938EAB30048D37F /* lore */,
 				FAC3AAF12875D4D800C0B0D0 /* raymond */,
 				FA7D5D6228E984BC00912878 /* Packages */,
 				FAC3AAF02875D4D800C0B0D0 /* Products */,
@@ -417,6 +697,7 @@
 				FAC3AAEC2875D4D800C0B0D0 /* Frameworks */,
 				FAC3AAED2875D4D800C0B0D0 /* Resources */,
 				FA2BA2D428E6F2830083F61C /* ShellScript */,
+				FAC09C7C293BADE00048D37F /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -489,6 +770,9 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/raymond/bridge",
+				"$(SRCROOT)/raymond/device",
+				"$(SRCROOT)/../dependencies/lore/include/lore",
 			);
 			outputFileListPaths = (
 			);
@@ -496,7 +780,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\ncp -R \"$SRCROOT/raymond/bridge\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\ncp -R \"$SRCROOT/raymond/device\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
+			shellScript = "ruby $SRCROOT/build/jit-relocate.rb\n";
+		};
+		FAC09C7C293BADE00048D37F /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cp -R \"$SRCROOT/../dependencies/lore/data\" \"${BUILT_PRODUCTS_DIR}/$UNLOCALIZED_RESOURCES_FOLDER_PATH/\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -507,6 +809,7 @@
 			files = (
 				FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */,
 				FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */,
+				FAC09C0C2938D0B70048D37F /* LensLoader.mm in Sources */,
 				FA44785228CA1B88004F5A66 /* Metal.swift in Sources */,
 				FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */,
 				FAC3AB1D2876D26700C0B0D0 /* MaterialBuilder.swift in Sources */,
@@ -514,6 +817,8 @@
 				FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */,
 				FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */,
 				FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */,
+				FAC09C71293A20040048D37F /* GlassCatalog.cpp in Sources */,
+				FAC09C5E2938EAB30048D37F /* LensReader.cpp in Sources */,
 				FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */,
 				FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */,
 				FA10CBB8287886B8004092CA /* PLYReader.m in Sources */,
@@ -664,6 +969,10 @@
 				DEVELOPMENT_TEAM = 2T76SG93HV;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					$SRCROOT/../dependencies/lore/include/,
+					$SRCROOT/raymond/,
+				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -672,7 +981,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/bridge/ $SRCROOT/device/";
+				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/raymond/ $SRCROOT/../dependencies/lore/include/";
+				MTL_LANGUAGE_REVISION = UseDeploymentTarget;
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -693,6 +1003,10 @@
 				DEVELOPMENT_TEAM = 2T76SG93HV;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					$SRCROOT/../dependencies/lore/include/,
+					$SRCROOT/raymond/,
+				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -702,7 +1016,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/bridge/ $SRCROOT/device/";
+				MTL_HEADER_SEARCH_PATHS = "$SRCROOT/raymond/ $SRCROOT/../dependencies/lore/include/";
+				MTL_LANGUAGE_REVISION = UseDeploymentTarget;
 				PRODUCT_BUNDLE_IDENTIFIER = cool.besonders.raymond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

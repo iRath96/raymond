@@ -7,6 +7,7 @@ typedef NS_ENUM(NSInteger, GeneratorBufferIndex) {
     GeneratorBufferRayCount = 1,
     GeneratorBufferUniforms = 2,
     GeneratorBufferContext  = 3,
+    GeneratorBufferLens     = 4,
 };
 
 typedef NS_ENUM(NSInteger, ContextBufferIndex) {

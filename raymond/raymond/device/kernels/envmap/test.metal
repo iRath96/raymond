@@ -1,7 +1,7 @@
-#include "../../../bridge/common.hpp"
-#include "../../../bridge/PrngState.hpp"
-#include "../../utils/warp.hpp"
-#include "../../Context.hpp"
+#include <bridge/common.hpp>
+#include <bridge/PrngState.hpp>
+#include <device/utils/warp.hpp>
+#include <device/Context.hpp>
 
 kernel void testEnvironmentMapSampling(
     device Context &ctx [[buffer(0)]],

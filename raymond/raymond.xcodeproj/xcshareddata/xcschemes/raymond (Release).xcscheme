@@ -61,11 +61,11 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/raymond-tests/nee-instancing-cumulative-distribution.json"
+            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_006/AI55_006.json"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_006/AI55_006.json"
+            argument = "/Users/alex/Desktop/raymond-scenes/test-bokeh2/scene.json"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -90,7 +90,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--external-compile"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>
    </LaunchAction>

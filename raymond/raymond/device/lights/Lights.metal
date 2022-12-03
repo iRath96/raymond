@@ -1,7 +1,7 @@
-#include "../../bridge/common.hpp"
-#include "../lights/Lights.hpp"
-#include "../ShadingContext.hpp"
-#include "../Context.hpp"
+#include <bridge/common.hpp>
+#include <device/lights/Lights.hpp>
+#include <device/ShadingContext.hpp>
+#include <device/Context.hpp>
 
 void Lights::evaluateEnvironment(device Context &ctx, thread ShadingContext &shading) const device {
     shading.position = shading.wo;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../common.hpp"
+#include <bridge/common.hpp>
 
 DEVICE_STRUCT(ShapeLight) {
     InstanceIndex instanceIndex;

@@ -1,10 +1,10 @@
-#include "../../bridge/common.hpp"
-#include "../../bridge/PrngState.hpp"
-#include "../../bridge/lights/PointLight.hpp"
-#include "../utils/math.hpp"
-#include "../lights/LightSample.hpp"
-#include "../ShadingContext.hpp"
-#include "../Context.hpp"
+#include <bridge/common.hpp>
+#include <bridge/PrngState.hpp>
+#include <bridge/lights/PointLight.hpp>
+#include <device/utils/math.hpp>
+#include <device/lights/LightSample.hpp>
+#include <device/ShadingContext.hpp>
+#include <device/Context.hpp>
 
 LightSample PointLight::sample(
     device Context &ctx,
