@@ -3,6 +3,8 @@ import Metal
 import MetalKit
 import Rayjay
 
+fileprivate let log = Logger(named: "codegen")
+
 extension Dictionary {
     mutating func get(_ key: Key, otherwise fallback: @autoclosure () -> Value) -> Value {
         if let value = self[key] {
@@ -196,7 +198,7 @@ struct Codegen {
     }
     
     private mutating func loadTextures() throws {
-        NSLog("loading textures")
+        log.info("loading textures")
         DispatchQueue.concurrentPerform(iterations: textureDescriptors.count) { index in
             if let url = textureDescriptors[index].url {
                 do {
@@ -205,7 +207,7 @@ struct Codegen {
                         options: textureDescriptors[index].options
                     )
                 } catch {
-                    print("Could not load texture \(url): \(error)")
+                    log.error("Could not load texture \(url): \(error)")
                     
                     let descriptor = MTLTextureDescriptor()
                     descriptor.width = 1
@@ -234,7 +236,7 @@ struct Codegen {
     mutating func build() throws -> MTLLibrary {
         try loadTextures()
         
-        NSLog("building code")
+        log.info("building code")
         let metalEntryURL = Bundle.main.url(
             forResource: "entry",
             withExtension: "metal",
@@ -305,15 +307,11 @@ struct Codegen {
         return library
     }
     
-    private func warn(_ message: String) {
-        print("Warning: \(message)")
-    }
-    
     private mutating func makeKernelInvocation(for kernel: any NodeKernel) throws -> KernelInvocation {
         switch kernel {
         case let kernel as TexSkyKernel:
             if kernel.type == "NISHITA" {
-                NSLog("generating sky texture")
+                log.debug("generating sky texture")
                 
                 let textureDescriptor = MTLTextureDescriptor()
                 textureDescriptor.width = 512
@@ -346,23 +344,23 @@ struct Codegen {
                 return invocation.assign(key: "Data", value: .vector(data))
             }
             
-            warn("SkyKernel: only Nishita supported")
+            log.warn("SkyKernel: only Nishita supported")
             throw CodegenError.unsupportedKernel(type(of: kernel))
         case let kernel as TexImageKernel:
             let slot = try registerTexture(kernel.filepath)
             if kernel.alpha != "STRAIGHT" {
-                warn("TexImage: alpha mode '\(kernel.alpha)' not supported")
+                log.warn("TexImage: alpha mode '\(kernel.alpha)' not supported")
             }
             switch kernel.colorspace {
             case "Linear": break
             case "sRGB": break
             default:
-                warn("TexImage: colorspace '\(kernel.colorspace)' not supported")
+                log.warn("TexImage: colorspace '\(kernel.colorspace)' not supported")
             }
             switch kernel.extension {
             case "REPEAT": break
             default:
-                warn("TexImage: extension '\(kernel.extension)' not supported")
+                log.warn("TexImage: extension '\(kernel.extension)' not supported")
             }
             return .init(kernel: "TexImage", parameters: [
                 .int(slot),
@@ -378,13 +376,13 @@ struct Codegen {
         case let kernel as TexEnvironmentKernel:
             let slot = try registerTexture(kernel.filepath)
             if kernel.alpha != "STRAIGHT" {
-                warn("TexEnvironment: alpha mode '\(kernel.alpha)' not supported")
+                log.warn("TexEnvironment: alpha mode '\(kernel.alpha)' not supported")
             }
             switch kernel.colorspace {
             case "Linear": break
             case "sRGB": break
             default:
-                warn("TexEnvironment: colorspace '\(kernel.colorspace)' not supported")
+                log.warn("TexEnvironment: colorspace '\(kernel.colorspace)' not supported")
             }
             return .init(kernel: "TexImage", parameters: [
                 .int(slot),
@@ -404,16 +402,16 @@ struct Codegen {
                 .enum("DIMENSION", kernel.dimension)
             ])
         case is TexIESKernel:
-            warn("TexIES: not supported yet")
+            log.warn("TexIES: not supported yet")
             return .init(kernel: "TexIES")
         case is TexMagicKernel:
-            warn("TexMagic: not supported yet")
+            log.warn("TexMagic: not supported yet")
             return .init(kernel: "TexMagic")
         case is TexVoronoiKernel:
-            warn("TexVoronoi: not supported yet")
+            log.warn("TexVoronoi: not supported yet")
             return .init(kernel: "TexVoronoi")
         case is TexMusgraveKernel:
-            warn("TexMusgrave: not supported yet")
+            log.warn("TexMusgrave: not supported yet")
             return .init(kernel: "TexMusgrave")
         case let kernel as TexGradientKernel:
             return .init(kernel: "TexGradient", parameters: [
@@ -426,7 +424,7 @@ struct Codegen {
                 .enum("PROFILE", kernel.profile)
             ])
         case is TexBrickKernel:
-            warn("TexBrick: unsupported")
+            log.warn("TexBrick: unsupported")
             return .init(kernel: "TexBrick")
         case let kernel as ColorRampKernel:
             let elementStrings = kernel.elements.map { element in
@@ -450,14 +448,14 @@ struct Codegen {
             ])
         case let kernel as BsdfPrincipledKernel:
             if kernel.distribution != "GGX" {
-                warn("BsdfPrincipled: only GGX distribution supported!")
+                log.warn("BsdfPrincipled: only GGX distribution supported!")
             }
             return .init(kernel: "BsdfPrincipled", parameters: [
                 .enum("DISTRIBUTION", "GGX"),
                 .enum("SUBSURFACE_METHOD", kernel.subsurfaceMethod)
             ])
         case is VolumeScatterKernel:
-            warn("VolumeScatter: unsupported")
+            log.warn("VolumeScatter: unsupported")
             return .init(kernel: "VolumeScatter")
         case let kernel as MappingKernel:
             return .init(kernel: "Mapping", parameters: [
@@ -465,39 +463,39 @@ struct Codegen {
             ])
         case let kernel as NormalMappingKernel:
             if !kernel.uvMap.isEmpty {
-                warn("NormalMapping: UV maps not yet supported")
+                log.warn("NormalMapping: UV maps not yet supported")
             }
             return .init(kernel: "NormalMap", parameters: [
                 .enum("SPACE", kernel.space)
             ])
         case is DisplacementKernel:
-            warn("Displacement: not supported")
+            log.warn("Displacement: not supported")
             return .init(kernel: "Displacement")
         case let kernel as BsdfGlassKernel:
             if kernel.distribution != "GGX" {
-                warn("BsdfGlass: only GGX distribution supported!");
+                log.warn("BsdfGlass: only GGX distribution supported!");
             }
             return .init(kernel: "BsdfGlass", parameters: [
                 .enum("DISTRIBUTION", "GGX")
             ])
         case let kernel as BsdfGlossyKernel:
             if kernel.distribution != "GGX" {
-                warn("BsdfGlossy: only GGX distribution supported!");
+                log.warn("BsdfGlossy: only GGX distribution supported!");
             }
             return .init(kernel: "BsdfGlossy", parameters: [
                 .enum("DISTRIBUTION", "GGX")
             ])
         case is BsdfDiffuseKernel:
-            warn("BsdfDiffuse: not tested")
+            log.warn("BsdfDiffuse: not tested")
             return .init(kernel: "BsdfDiffuse")
         case is BsdfVelvetKernel:
-            warn("BsdfVelvet: unsupported")
+            log.warn("BsdfVelvet: unsupported")
             return .init(kernel: "BsdfVelvet")
         case is BsdfTranslucentKernel:
-            warn("BsdfTranslucent: not implemented")
+            log.warn("BsdfTranslucent: not implemented")
             return .init(kernel: "BsdfTranslucent")
         case is BumpMappingKernel:
-            warn("BumpMapping: not yet supported")
+            log.warn("BumpMapping: not yet supported")
             return .init(kernel: "Bump")
         case is OutputMaterialKernel:
             return .init(kernel: "OutputMaterial")
@@ -506,7 +504,7 @@ struct Codegen {
         case is OutputLightKernel:
             return .init(kernel: "OutputLight")
         case is AttributeKernel:
-            warn("Attribute: not yet supported")
+            log.warn("Attribute: not yet supported")
             return .init(kernel: "Attribute")
         case let kernel as ValueKernel:
             var invocation: KernelInvocation = .init(kernel: "Value")
@@ -525,19 +523,19 @@ struct Codegen {
             return .init(kernel: "TextureCoordinate")
         case let kernel as UVMapKernel:
             if !kernel.uvMap.isEmpty {
-                warn("UVMap: UV maps not yet supported")
+                log.warn("UVMap: UV maps not yet supported")
             }
-            warn("UVMap: not tested")
+            log.warn("UVMap: not tested")
             return .init(kernel: "UVMapCoordinate")
         case is ColorInvertKernel:
             return .init(kernel: "ColorInvert")
         case is BsdfTransparentKernel:
             return .init(kernel: "BsdfTransparent")
         case is BsdfRefractionKernel:
-            warn("BsdfRefraction: not yet supported")
+            log.warn("BsdfRefraction: not yet supported")
             return .init(kernel: "BsdfRefraction")
         case is BsdfAnisotropicKernel:
-            warn("BsdfAnisotropic: not yet supported")
+            log.warn("BsdfAnisotropic: not yet supported")
             return .init(kernel: "BsdfAnisotropic")
         case is AddShaderKernel:
             return .init(kernel: "AddShader")
@@ -558,19 +556,19 @@ struct Codegen {
         case is GammaKernel:
             return .init(kernel: "Gamma")
         case is LightPathKernel:
-            warn("LightPath: support for this node is rudimentary")
+            log.warn("LightPath: support for this node is rudimentary")
             return .init(kernel: "LightPath")
         case is ObjectInfoKernel:
-            warn("ObjectInfo: unsupported")
+            log.warn("ObjectInfo: unsupported")
             return .init(kernel: "ObjectInfo")
         case is ParticleInfoKernel:
-            warn("ParticleInfo: unsupported")
+            log.warn("ParticleInfo: unsupported")
             return .init(kernel: "ParticleInfo")
         case is LightFalloffKernel:
-            warn("LightFalloff: unsupported")
+            log.warn("LightFalloff: unsupported")
             return .init(kernel: "LightFalloff")
         case is VertexColorKernel:
-            warn("VertexColor: unsupported")
+            log.warn("VertexColor: unsupported")
             return .init(kernel: "VertexColor")
         case is EmissionKernel:
             return .init(kernel: "Emission")
@@ -581,7 +579,7 @@ struct Codegen {
         case is BlackbodyKernel:
             return .init(kernel: "Blackbody")
         case is ColorCurvesKernel:
-            warn("ColorCurves: not yet supported")
+            log.warn("ColorCurves: not yet supported")
             return .init(kernel: "ColorCurves")
         case is FresnelKernel:
             return .init(kernel: "Fresnel")
@@ -622,7 +620,7 @@ struct Codegen {
         invocations = []
         
         if material.hasSurfaceEmission() {
-            print("Material \(name) has surface emission")
+            log.debug("Material \(name) has surface emission")
         }
         
         for node in material.nodes.sorted(by: { $0.0 < $1.0 }) {
@@ -689,7 +687,7 @@ struct Codegen {
         case .rgba16Unorm: return "RGBA"
         
         default:
-            warn("unsupported texture format: \(pixelFormat)")
+            log.warn("unsupported texture format: \(pixelFormat)")
             return "RGBA"
             //throw CodegenError.unsupportedTextureFormat
         }

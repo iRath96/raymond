@@ -1,36 +1,24 @@
 #import <Foundation/Foundation.h>
-
-extern "C" {
-#include "main.h"
-}
-
-#if TARGET_OS_OSX
-#import <Cocoa/Cocoa.h>
-#else
-#import <UIKit/UIKit.h>
-#endif
-
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
+#import <Cocoa/Cocoa.h>
+
+#include "main.h"
+
+#import "Raymond-Swift.h"
 
 #include "imgui.h"
 #include "implot.h"
 #include "imgui_impl_metal.h"
-#if TARGET_OS_OSX
 #include "imgui_impl_osx.h"
-@interface AppViewController : NSViewController<NSWindowDelegate>
-@end
-#else
-@interface AppViewController : UIViewController
-@end
-#endif
 
-#include "logging.h"
+#include "console.hpp"
 
 @interface AppViewController () <MTKViewDelegate>
 @property (nonatomic, readonly) MTKView *mtkView;
 @property (nonatomic, strong) id <MTLDevice> device;
 @property (nonatomic, strong) id <MTLCommandQueue> commandQueue;
+@property (nonatomic, retain) Renderer *renderer;
 @property (nonatomic) UIState state;
 @end
 
@@ -72,12 +60,12 @@ const char *makeCString(NSString *str) {
     return appDirectory;
 }
 
--(instancetype)initWithNibName:(nullable NSString *)nibNameOrNil bundle:(nullable NSBundle *)nibBundleOrNil
-{
-    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+-(instancetype)initWithRenderer:(Renderer *)renderer {
+    self = [super initWithNibName:nil bundle:nil];
     
     _device = MTLCreateSystemDefaultDevice();
     _commandQueue = [_device newCommandQueue];
+    _renderer = renderer;
 
     if (!self.device)
     {
@@ -89,9 +77,10 @@ const char *makeCString(NSString *str) {
     // FIXME: This example doesn't have proper cleanup...
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -100,29 +89,15 @@ const char *makeCString(NSString *str) {
     // Setup Renderer backend
     ImGui_ImplMetal_Init(_device);
 
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-    // - Read 'docs/FONTS.md' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-    //IM_ASSERT(font != NULL);
-    
     io.Fonts->AddFontFromFileTTF("/Library/Fonts/SF-Pro.ttf", 30);
+    io.Fonts->AddFontFromFileTTF("/System/Library/Fonts/Monaco.ttf", 26);
     io.FontGlobalScale = 0.5;
     
     NSURL *appDir = [self applicationDataDirectory];
     NSString *iniPath = [[appDir URLByAppendingPathComponent:@"imgui.ini"] relativePath];
     io.IniFilename = makeCString(iniPath);
-    printf("storing imgui config to %s\n", io.IniFilename);
+    
+    [Logger.shared debug:[NSString stringWithFormat:@"storing imgui config to %s", io.IniFilename]];
     
     return self;
 }
@@ -176,7 +151,6 @@ static void HelpMarker(const char* desc)
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize.x = view.bounds.size.width;
     io.DisplaySize.y = view.bounds.size.height;
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 #if TARGET_OS_OSX
     CGFloat framebufferScale = view.window.screen.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor;
@@ -212,7 +186,7 @@ static void HelpMarker(const char* desc)
         }
         
         if (ImGui::BeginMenu("Window")) {
-            ImGui::MenuItem("Show Log", nullptr, isLoggerOpen());
+            ImGui::MenuItem("Show Console", nullptr, isConsoleOpen());
             ImGui::EndMenu();
         }
         
@@ -229,7 +203,7 @@ static void HelpMarker(const char* desc)
         ImGui::EndMainMenuBar();
     }
     
-    drawLogger();
+    drawConsole();
 
     // Our state (make them static = more or less global) as a convenience to keep the example terse.
     static bool show_another_window = false;
@@ -261,13 +235,10 @@ static void HelpMarker(const char* desc)
         ImGui::End();
     }
 
-    // 3. Show another simple window.
-    if (show_another_window)
-    {
-        ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-        ImGui::Text("Hello from another window!");
-        if (ImGui::Button("Close Me"))
-            show_another_window = false;
+    if (ImGui::Begin("Viewport")) {
+        const ImVec2 windowSize = ImGui::GetWindowSize();
+        [_renderer setSizeWithWidth:int(windowSize.x) height:int(windowSize.y)];
+        [_renderer executeIn:commandBuffer];
         ImGui::End();
     }
 
@@ -295,8 +266,6 @@ static void HelpMarker(const char* desc)
 // Input processing
 //-----------------------------------------------------------------------------------
 
-#if TARGET_OS_OSX
-
 - (void)viewWillAppear
 {
     [super viewWillAppear];
@@ -310,46 +279,7 @@ static void HelpMarker(const char* desc)
     ImGui::DestroyContext();
 }
 
-#else
-
-// This touch mapping is super cheesy/hacky. We treat any touch on the screen
-// as if it were a depressed left mouse button, and we don't bother handling
-// multitouch correctly at all. This causes the "cursor" to behave very erratically
-// when there are multiple active touches. But for demo purposes, single-touch
-// interaction actually works surprisingly well.
--(void)updateIOWithTouchEvent:(UIEvent *)event
-{
-    UITouch *anyTouch = event.allTouches.anyObject;
-    CGPoint touchLocation = [anyTouch locationInView:self.view];
-    ImGuiIO &io = ImGui::GetIO();
-    io.AddMousePosEvent(touchLocation.x, touchLocation.y);
-
-    BOOL hasActiveTouch = NO;
-    for (UITouch *touch in event.allTouches)
-    {
-        if (touch.phase != UITouchPhaseEnded && touch.phase != UITouchPhaseCancelled)
-        {
-            hasActiveTouch = YES;
-            break;
-        }
-    }
-    io.AddMouseButtonEvent(0, hasActiveTouch);
-}
-
--(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event      { [self updateIOWithTouchEvent:event]; }
--(void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event      { [self updateIOWithTouchEvent:event]; }
--(void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event  { [self updateIOWithTouchEvent:event]; }
--(void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event      { [self updateIOWithTouchEvent:event]; }
-
-#endif
-
 @end
-
-//-----------------------------------------------------------------------------------
-// AppDelegate
-//-----------------------------------------------------------------------------------
-
-#if TARGET_OS_OSX
 
 @interface AppDelegate : NSObject <NSApplicationDelegate>
 @property (nonatomic, strong) NSWindow *window;
@@ -362,65 +292,4 @@ static void HelpMarker(const char* desc)
     return YES;
 }
 
--(instancetype)init
-{
-    if (self = [super init])
-    {
-        NSViewController *rootViewController = [[AppViewController alloc] initWithNibName:nil bundle:nil];
-        self.window = [[NSWindow alloc] initWithContentRect:NSZeroRect
-                                                  styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable
-                                                    backing:NSBackingStoreBuffered
-                                                      defer:NO];
-        self.window.contentViewController = rootViewController;
-        [self.window center];
-        [self.window makeKeyAndOrderFront:self];
-    }
-    return self;
-}
-
 @end
-
-#else
-
-@interface AppDelegate : UIResponder <UIApplicationDelegate>
-@property (strong, nonatomic) UIWindow *window;
-@end
-
-@implementation AppDelegate
-
--(BOOL)application:(UIApplication *)application
-    didFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey,id> *)launchOptions
-{
-    UIViewController *rootViewController = [[AppViewController alloc] init];
-    self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    self.window.rootViewController = rootViewController;
-    [self.window makeKeyAndVisible];
-    return YES;
-}
-
-@end
-
-#endif
-
-//-----------------------------------------------------------------------------------
-// Application main() function
-//-----------------------------------------------------------------------------------
-
-#if TARGET_OS_OSX
-
-int launchUI()
-{
-    return NSApplicationMain(0, {});
-}
-
-#else
-
-int launchUI()
-{
-    @autoreleasepool
-    {
-        return UIApplicationMain(0, {}, nil, NSStringFromClass([AppDelegate class]));
-    }
-}
-
-#endif

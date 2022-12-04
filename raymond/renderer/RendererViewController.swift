@@ -39,7 +39,6 @@ class RendererViewController: NSViewController {
         }
         for glassURL in glassURLs {
             let numGlasses = lensLoader.loadGlassCatalog(glassURL)
-            print("loaded \(numGlasses) from \(glassURL.lastPathComponent)")
         }
         
         let lensURLs = Bundle.main.urls(forResourcesWithExtension: "len", subdirectory: "data/lenses")!

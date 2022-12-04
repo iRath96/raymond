@@ -19,3 +19,4 @@
 #include "bridge/lights/ShapeLight.hpp"
 
 #include "ui/main.h"
+#include "logging/logging.h"

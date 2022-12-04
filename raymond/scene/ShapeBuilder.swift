@@ -3,6 +3,8 @@ import Metal
 import MetalPerformanceShaders
 import Rayjay
 
+fileprivate let log = Logger(named: "mesh")
+
 class ShapeBuilder {
     struct Result {
         let indices: UnsafeMutablePointer<IndexTriplet>
@@ -181,7 +183,7 @@ class ShapeBuilder {
         DispatchQueue.concurrentPerform(iterations: shapeHandles.count) { index in
         //for index in 0..<shapeHandles.count {
             var shapeHandle = shapeHandles[index]
-            NSLog("parsing shape \(shapeHandle.path)")
+            log.debug("parsing shape \(shapeHandle.path)")
             
             shapeHandle.fileReader.reopen()
             
@@ -213,7 +215,7 @@ class ShapeBuilder {
         let group = MPSAccelerationStructureGroup(device: device)
         
         let accelerationStructures = shapeHandles.map { shapeHandle in
-            NSLog("accelerating \(shapeHandle.path)")
+            log.debug("accelerating \(shapeHandle.path)")
             
             let triAccel = MPSTriangleAccelerationStructure(group: group)
             triAccel.vertexBuffer = vertexBuffer

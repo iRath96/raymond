@@ -3,6 +3,8 @@ import MetalKit
 import MetalPerformanceShaders
 import simd
 
+fileprivate let log = Logger(named: "renderer")
+
 // The 256 byte aligned size of our uniform structure
 let alignedUniformsSize = (MemoryLayout<DeviceUniforms>.size + 0xFF) & -0x100
 
@@ -10,7 +12,7 @@ enum RendererError: Error {
     case badVertexDescriptor
 }
 
-class Renderer: NSObject, MTKViewDelegate {
+@objc class Renderer: NSObject, MTKViewDelegate {
     public let device: MTLDevice
     let commandQueue: MTLCommandQueue
     var dynamicUniformBuffer: MTLBuffer
@@ -37,7 +39,7 @@ class Renderer: NSObject, MTKViewDelegate {
     var shadowRayCountBuffer: MTLBuffer!
     var indirectDispatchBuffer: MTLBuffer!
     var intersectionBuffer: MTLBuffer!
-    var outputImageSize: MTLSize!
+    var outputImageSize: MTLSize
     var outputImage: MTLTexture!
     
     var framesPerSecond: Float = 0
@@ -45,9 +47,19 @@ class Renderer: NSObject, MTKViewDelegate {
     
     var scene: Scene
     
-    init?(metalKitView: MTKView, scene: Scene) {
+    convenience init?(metalKitView: MTKView, scene: Scene) {
+        self.init(device: metalKitView.device!, scene: scene)
+        
+        metalKitView.depthStencilPixelFormat = MTLPixelFormat.depth32Float_stencil8
+        metalKitView.colorPixelFormat = .rgba16Float
+        metalKitView.sampleCount = 1
+        metalKitView.preferredFramesPerSecond = 120
+        metalKitView.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)
+    }
+    
+    required init?(device: MTLDevice, scene: Scene) {
         self.scene = scene
-        self.device = metalKitView.device!
+        self.device = device
         
         guard let queue = self.device.makeCommandQueue() else { return nil }
         self.commandQueue = queue
@@ -67,12 +79,6 @@ class Renderer: NSObject, MTKViewDelegate {
         uniforms[0].sensorScale = 1
         uniforms[0].focus = 0
         uniforms[0].exposure = 1
-                
-        metalKitView.depthStencilPixelFormat = MTLPixelFormat.depth32Float_stencil8
-        metalKitView.colorPixelFormat = .rgba16Float
-        metalKitView.sampleCount = 1
-        metalKitView.preferredFramesPerSecond = 120
-        metalKitView.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)
         
         let lastHandlerConstants = MTLFunctionConstantValues()
         let ptr = UnsafeMutablePointer<Bool>.allocate(capacity: 1)
@@ -84,12 +90,9 @@ class Renderer: NSObject, MTKViewDelegate {
         makeIndirectDispatch = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "makeIndirectDispatchArguments")!
         
         do {
-            pipelineState = try Renderer.buildBlitPipelineWithDevice(
-                library: scene.library,
-                metalKitView: metalKitView
-            )
+            pipelineState = try Renderer.buildBlitPipelineWithDevice(library: scene.library)
         } catch {
-            print("Unable to compile render pipeline state.  Error info: \(error)")
+            log.error("Unable to compile render pipeline state.  Error info: \(error)")
             return nil
         }
         
@@ -101,6 +104,8 @@ class Renderer: NSObject, MTKViewDelegate {
         depthStateDescriptor.isDepthWriteEnabled = true
         guard let state = device.makeDepthStencilState(descriptor:depthStateDescriptor) else { return nil }
         depthState = state
+        
+        outputImageSize = MTLSizeMake(0, 0, 1)
         
         super.init()
         
@@ -132,15 +137,12 @@ class Renderer: NSObject, MTKViewDelegate {
             descriptor.linkedFunctions = linkedFunctions
             return try library.device.makeComputePipelineState(descriptor: descriptor, options: [], reflection: nil)
         } catch {
-            print("Unable to compile compute pipeline state. Error info: \(error)")
+            log.error("Unable to compile compute pipeline state. Error info: \(error)")
             return nil
         }
     }
     
-    class func buildBlitPipelineWithDevice(
-        library: MTLLibrary,
-        metalKitView: MTKView
-    ) throws -> MTLRenderPipelineState {
+    class func buildBlitPipelineWithDevice(library: MTLLibrary) throws -> MTLRenderPipelineState {
         /// Build a render state pipeline object
         
         let vertexFunction = library.makeFunction(name: "blitVertex")
@@ -148,13 +150,12 @@ class Renderer: NSObject, MTKViewDelegate {
         
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.label = "BlitPipeline"
-        //pipelineDescriptor.sampleCount = metalKitView.sampleCount
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
         
-        pipelineDescriptor.colorAttachments[0].pixelFormat = metalKitView.colorPixelFormat
-        pipelineDescriptor.depthAttachmentPixelFormat = metalKitView.depthStencilPixelFormat
-        pipelineDescriptor.stencilAttachmentPixelFormat = metalKitView.depthStencilPixelFormat
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .rgba16Float
+        pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float_stencil8
+        pipelineDescriptor.stencilAttachmentPixelFormat = .depth32Float_stencil8
         
         return try library.device.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }
@@ -172,6 +173,175 @@ class Renderer: NSObject, MTKViewDelegate {
         frameIndex += 1
     }
     
+    @objc func execute(in commandBuffer: MTLCommandBuffer) {
+        self.updateDynamicBufferState()
+        self.updateState()
+        
+        if let computeEncoder = commandBuffer.makeBlitCommandEncoder() {
+            computeEncoder.label = "Clear Ray Count"
+            computeEncoder.fill(
+                buffer: rayCountBuffer, range: 0..<rayCountBuffer.length,
+                value: 0)
+            computeEncoder.endEncoding()
+        }
+        
+        if let computeEncoder = commandBuffer.makeBlitCommandEncoder() {
+            computeEncoder.label = "Clear Shadow Ray Count"
+            computeEncoder.fill(buffer: shadowRayCountBuffer!, range: 0..<shadowRayCountBuffer!.length, value: 0)
+            computeEncoder.endEncoding()
+        }
+        
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.label = "Primary Ray Generation"
+            computeEncoder.setComputePipelineState(rayGenerator)
+            computeEncoder.setBuffer(
+                rayBuffer, offset: 0,
+                index: GeneratorBufferIndex.rays.rawValue)
+            computeEncoder.setBuffer(
+                rayCountBuffer, offset: 0,
+                index: GeneratorBufferIndex.rayCount.rawValue)
+            computeEncoder.setBuffer(
+                dynamicUniformBuffer,
+                offset: 0,
+                index: GeneratorBufferIndex.uniforms.rawValue)
+            computeEncoder.setBuffer(
+                scene.contextBuffer,
+                offset: 0,
+                index: GeneratorBufferIndex.context.rawValue)
+            computeEncoder.setBuffer(
+                lensBuffer,
+                offset: 0,
+                index: GeneratorBufferIndex.lens.rawValue)
+            computeEncoder.dispatchThreads(
+                outputImageSize,
+                threadsPerThreadgroup: MTLSizeMake(8, 8, 1))
+            computeEncoder.endEncoding()
+        }
+        
+        var currentRayBufferOffset = 0
+        var nextRayBufferOffset = rayBuffer.length / 2
+        
+        for depth in 0..<maxDepth {
+            let rayCountBufferOffset = depth * MemoryLayout<UInt32>.stride
+            let isMaxDepth = (depth+1 == maxDepth)
+            
+            rayIntersector.encodeIntersection(
+                commandBuffer: commandBuffer,
+                intersectionType: .nearest,
+                rayBuffer: rayBuffer,
+                rayBufferOffset: currentRayBufferOffset,
+                intersectionBuffer: intersectionBuffer,
+                intersectionBufferOffset: 0,
+                rayCountBuffer: rayCountBuffer,
+                rayCountBufferOffset: rayCountBufferOffset,
+                accelerationStructure: scene.accelerationStructure)
+            
+            if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+                computeEncoder.label = "Ordinary Indirect Dispatch"
+                computeEncoder.setComputePipelineState(makeIndirectDispatch)
+                computeEncoder.setBuffer(rayCountBuffer, offset: rayCountBufferOffset, index: 0)
+                computeEncoder.setBuffer(indirectDispatchBuffer, offset: 0, index: 1)
+                computeEncoder.dispatchThreads(MTLSizeMake(1, 1, 1), threadsPerThreadgroup: MTLSizeMake(1, 1, 1))
+                computeEncoder.endEncoding()
+            }
+            
+            if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+                computeEncoder.label = "Shade Rays and Secondary Ray Generation"
+                computeEncoder.setTexture(outputImage, index: 0)
+                computeEncoder.setComputePipelineState(scene.intersectionHandler)
+                
+                // ray buffers
+                computeEncoder.setBuffer(
+                    intersectionBuffer, offset: 0,
+                    index: ShadingBufferIndex.intersections.rawValue)
+                computeEncoder.setBuffer(
+                    rayBuffer, offset: currentRayBufferOffset,
+                    index: ShadingBufferIndex.rays.rawValue)
+                computeEncoder.setBuffer(
+                    rayBuffer, offset: nextRayBufferOffset,
+                    index: ShadingBufferIndex.nextRays.rawValue)
+                computeEncoder.setBuffer(
+                    shadowRayBuffer, offset: 0,
+                    index: ShadingBufferIndex.shadowRays.rawValue)
+                
+                // ray counters
+                computeEncoder.setBuffer(
+                    rayCountBuffer,
+                    offset: rayCountBufferOffset, index: ShadingBufferIndex.currentRayCount.rawValue)
+                computeEncoder.setBuffer(
+                    rayCountBuffer,
+                    offset: rayCountBufferOffset + MemoryLayout<UInt32>.stride, index: ShadingBufferIndex.nextRayCount.rawValue)
+                computeEncoder.setBuffer(
+                    shadowRayCountBuffer, offset: rayCountBufferOffset,
+                    index: ShadingBufferIndex.shadowRayCount.rawValue)
+                
+                // scene buffers
+                computeEncoder.setBuffer(
+                    dynamicUniformBuffer,
+                    offset: 0, index: ShadingBufferIndex.uniforms.rawValue)
+                
+                // shader table
+                computeEncoder.setBuffer(
+                    scene.contextBuffer, offset: 0,
+                    index: ShadingBufferIndex.context.rawValue)
+                computeEncoder.useResources(
+                    scene.resourcesRead, usage: .read)
+                
+                computeEncoder.dispatchThreadgroups(
+                    indirectBuffer: indirectDispatchBuffer,
+                    indirectBufferOffset: 0,
+                    threadsPerThreadgroup: MTLSizeMake(64, 1, 1))
+                computeEncoder.endEncoding()
+            }
+            
+            if isMaxDepth {
+                break
+            }
+            
+            shadowRayIntersector.encodeIntersection(
+                commandBuffer: commandBuffer,
+                intersectionType: .any,
+                rayBuffer: shadowRayBuffer!,
+                rayBufferOffset: 0,
+                intersectionBuffer: intersectionBuffer!,
+                intersectionBufferOffset: 0,
+                rayCountBuffer: shadowRayCountBuffer!,
+                rayCountBufferOffset: depth * MemoryLayout<UInt32>.stride,
+                accelerationStructure: scene.accelerationStructure)
+            
+            if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+                computeEncoder.label = "Shadow Indirect Dispatch"
+                computeEncoder.setComputePipelineState(makeIndirectDispatch)
+                computeEncoder.setBuffer(shadowRayCountBuffer, offset: rayCountBufferOffset, index: 0)
+                computeEncoder.setBuffer(indirectDispatchBuffer, offset: 0, index: 1)
+                computeEncoder.dispatchThreads(MTLSizeMake(1, 1, 1), threadsPerThreadgroup: MTLSizeMake(1, 1, 1))
+                computeEncoder.endEncoding()
+            }
+            
+            if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+                computeEncoder.label = "Shade Shadow Rays"
+                computeEncoder.setTexture(outputImage, index: 0)
+                computeEncoder.setComputePipelineState(scene.shadowRayHandler)
+                computeEncoder.setBuffer(intersectionBuffer, offset: 0, index: ShadowBufferIndex.intersections.rawValue)
+                computeEncoder.setBuffer(shadowRayBuffer, offset: 0, index: ShadowBufferIndex.shadowRays.rawValue)
+                computeEncoder.setBuffer(shadowRayCountBuffer, offset: rayCountBufferOffset, index: ShadowBufferIndex.rayCount.rawValue)
+                computeEncoder.setBuffer(
+                    scene.contextBuffer, offset: 0,
+                    index: ShadingBufferIndex.context.rawValue)
+                computeEncoder.useResources(
+                    scene.resourcesRead, usage: .read)
+                computeEncoder.dispatchThreadgroups(
+                    indirectBuffer: indirectDispatchBuffer!,
+                    indirectBufferOffset: 0,
+                    threadsPerThreadgroup: MTLSizeMake(64, 1, 1))
+                computeEncoder.endEncoding()
+            }
+            
+            // ping pong
+            (currentRayBufferOffset, nextRayBufferOffset) = (nextRayBufferOffset, currentRayBufferOffset)
+        }
+    }
+    
     func draw(in view: MTKView) {
         guard self.lensBuffer != nil else { return }
         
@@ -185,7 +355,7 @@ class Renderer: NSObject, MTKViewDelegate {
             commandBuffer.addCompletedHandler { (_ commandBuffer) -> Swift.Void in
                 let frameTime = -Float(frameStart.timeIntervalSinceNow)
                 if frameTime > 1.0 {
-                    print("frame took more than \(frameTime) seconds. Sleeping 3 seconds to not lock up system!")
+                    log.warn("frame took more than \(frameTime) seconds. Sleeping 3 seconds to not lock up system!")
                     sleep(3)
                 }
                 
@@ -213,172 +383,7 @@ class Renderer: NSObject, MTKViewDelegate {
                 semaphore.signal()
             }
             
-            self.updateDynamicBufferState()
-            self.updateState()
-            
-            if let computeEncoder = commandBuffer.makeBlitCommandEncoder() {
-                computeEncoder.label = "Clear Ray Count"
-                computeEncoder.fill(
-                    buffer: rayCountBuffer, range: 0..<rayCountBuffer.length,
-                    value: 0)
-                computeEncoder.endEncoding()
-            }
-            
-            if let computeEncoder = commandBuffer.makeBlitCommandEncoder() {
-                computeEncoder.label = "Clear Shadow Ray Count"
-                computeEncoder.fill(buffer: shadowRayCountBuffer!, range: 0..<shadowRayCountBuffer!.length, value: 0)
-                computeEncoder.endEncoding()
-            }
-            
-            if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
-                computeEncoder.label = "Primary Ray Generation"
-                computeEncoder.setComputePipelineState(rayGenerator)
-                computeEncoder.setBuffer(
-                    rayBuffer, offset: 0,
-                    index: GeneratorBufferIndex.rays.rawValue)
-                computeEncoder.setBuffer(
-                    rayCountBuffer, offset: 0,
-                    index: GeneratorBufferIndex.rayCount.rawValue)
-                computeEncoder.setBuffer(
-                    dynamicUniformBuffer,
-                    offset: 0,
-                    index: GeneratorBufferIndex.uniforms.rawValue)
-                computeEncoder.setBuffer(
-                    scene.contextBuffer,
-                    offset: 0,
-                    index: GeneratorBufferIndex.context.rawValue)
-                computeEncoder.setBuffer(
-                    lensBuffer,
-                    offset: 0,
-                    index: GeneratorBufferIndex.lens.rawValue)
-                computeEncoder.dispatchThreads(
-                    outputImageSize,
-                    threadsPerThreadgroup: MTLSizeMake(8, 8, 1))
-                computeEncoder.endEncoding()
-            }
-            
-            var currentRayBufferOffset = 0
-            var nextRayBufferOffset = rayBuffer.length / 2
-            
-            for depth in 0..<maxDepth {
-                let rayCountBufferOffset = depth * MemoryLayout<UInt32>.stride
-                let isMaxDepth = (depth+1 == maxDepth)
-                
-                rayIntersector.encodeIntersection(
-                    commandBuffer: commandBuffer,
-                    intersectionType: .nearest,
-                    rayBuffer: rayBuffer,
-                    rayBufferOffset: currentRayBufferOffset,
-                    intersectionBuffer: intersectionBuffer,
-                    intersectionBufferOffset: 0,
-                    rayCountBuffer: rayCountBuffer,
-                    rayCountBufferOffset: rayCountBufferOffset,
-                    accelerationStructure: scene.accelerationStructure)
-                
-                if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
-                    computeEncoder.label = "Ordinary Indirect Dispatch"
-                    computeEncoder.setComputePipelineState(makeIndirectDispatch)
-                    computeEncoder.setBuffer(rayCountBuffer, offset: rayCountBufferOffset, index: 0)
-                    computeEncoder.setBuffer(indirectDispatchBuffer, offset: 0, index: 1)
-                    computeEncoder.dispatchThreads(MTLSizeMake(1, 1, 1), threadsPerThreadgroup: MTLSizeMake(1, 1, 1))
-                    computeEncoder.endEncoding()
-                }
-                
-                if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
-                    computeEncoder.label = "Shade Rays and Secondary Ray Generation"
-                    computeEncoder.setTexture(outputImage, index: 0)
-                    computeEncoder.setComputePipelineState(scene.intersectionHandler)
-                    
-                    // ray buffers
-                    computeEncoder.setBuffer(
-                        intersectionBuffer, offset: 0,
-                        index: ShadingBufferIndex.intersections.rawValue)
-                    computeEncoder.setBuffer(
-                        rayBuffer, offset: currentRayBufferOffset,
-                        index: ShadingBufferIndex.rays.rawValue)
-                    computeEncoder.setBuffer(
-                        rayBuffer, offset: nextRayBufferOffset,
-                        index: ShadingBufferIndex.nextRays.rawValue)
-                    computeEncoder.setBuffer(
-                        shadowRayBuffer, offset: 0,
-                        index: ShadingBufferIndex.shadowRays.rawValue)
-                    
-                    // ray counters
-                    computeEncoder.setBuffer(
-                        rayCountBuffer,
-                        offset: rayCountBufferOffset, index: ShadingBufferIndex.currentRayCount.rawValue)
-                    computeEncoder.setBuffer(
-                        rayCountBuffer,
-                        offset: rayCountBufferOffset + MemoryLayout<UInt32>.stride, index: ShadingBufferIndex.nextRayCount.rawValue)
-                    computeEncoder.setBuffer(
-                        shadowRayCountBuffer, offset: rayCountBufferOffset,
-                        index: ShadingBufferIndex.shadowRayCount.rawValue)
-                    
-                    // scene buffers
-                    computeEncoder.setBuffer(
-                        dynamicUniformBuffer,
-                        offset: 0, index: ShadingBufferIndex.uniforms.rawValue)
-                    
-                    // shader table
-                    computeEncoder.setBuffer(
-                        scene.contextBuffer, offset: 0,
-                        index: ShadingBufferIndex.context.rawValue)
-                    computeEncoder.useResources(
-                        scene.resourcesRead, usage: .read)
-                    
-                    computeEncoder.dispatchThreadgroups(
-                        indirectBuffer: indirectDispatchBuffer,
-                        indirectBufferOffset: 0,
-                        threadsPerThreadgroup: MTLSizeMake(64, 1, 1))
-                    computeEncoder.endEncoding()
-                }
-                
-                if isMaxDepth {
-                    break
-                }
-                
-                shadowRayIntersector.encodeIntersection(
-                    commandBuffer: commandBuffer,
-                    intersectionType: .any,
-                    rayBuffer: shadowRayBuffer!,
-                    rayBufferOffset: 0,
-                    intersectionBuffer: intersectionBuffer!,
-                    intersectionBufferOffset: 0,
-                    rayCountBuffer: shadowRayCountBuffer!,
-                    rayCountBufferOffset: depth * MemoryLayout<UInt32>.stride,
-                    accelerationStructure: scene.accelerationStructure)
-                
-                if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
-                    computeEncoder.label = "Shadow Indirect Dispatch"
-                    computeEncoder.setComputePipelineState(makeIndirectDispatch)
-                    computeEncoder.setBuffer(shadowRayCountBuffer, offset: rayCountBufferOffset, index: 0)
-                    computeEncoder.setBuffer(indirectDispatchBuffer, offset: 0, index: 1)
-                    computeEncoder.dispatchThreads(MTLSizeMake(1, 1, 1), threadsPerThreadgroup: MTLSizeMake(1, 1, 1))
-                    computeEncoder.endEncoding()
-                }
-                
-                if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
-                    computeEncoder.label = "Shade Shadow Rays"
-                    computeEncoder.setTexture(outputImage, index: 0)
-                    computeEncoder.setComputePipelineState(scene.shadowRayHandler)
-                    computeEncoder.setBuffer(intersectionBuffer, offset: 0, index: ShadowBufferIndex.intersections.rawValue)
-                    computeEncoder.setBuffer(shadowRayBuffer, offset: 0, index: ShadowBufferIndex.shadowRays.rawValue)
-                    computeEncoder.setBuffer(shadowRayCountBuffer, offset: rayCountBufferOffset, index: ShadowBufferIndex.rayCount.rawValue)
-                    computeEncoder.setBuffer(
-                        scene.contextBuffer, offset: 0,
-                        index: ShadingBufferIndex.context.rawValue)
-                    computeEncoder.useResources(
-                        scene.resourcesRead, usage: .read)
-                    computeEncoder.dispatchThreadgroups(
-                        indirectBuffer: indirectDispatchBuffer!,
-                        indirectBufferOffset: 0,
-                        threadsPerThreadgroup: MTLSizeMake(64, 1, 1))
-                    computeEncoder.endEncoding()
-                }
-                
-                // ping pong
-                (currentRayBufferOffset, nextRayBufferOffset) = (nextRayBufferOffset, currentRayBufferOffset)
-            }
+            self.execute(in: commandBuffer)
             
             /// Delay getting the currentRenderPassDescriptor until we absolutely need it to avoid
             ///   holding onto the drawable and blocking the display pipeline any longer than necessary
@@ -466,12 +471,13 @@ class Renderer: NSObject, MTKViewDelegate {
         reset()
     }
     
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        /// Respond to drawable size or orientation changes here
+    @objc func setSize(width: Int, height: Int) {
+        if outputImageSize.width == width && outputImageSize.height == height {
+            /// no need to resize
+            return
+        }
         
-        outputImageSize = MTLSizeMake(Int(size.width), Int(size.height), 1)
-        
-        makeOutputImage()
+        outputImageSize = MTLSizeMake(width, height, 1)
         
         rayCount = outputImageSize.width * outputImageSize.height
         rayBuffer = device.makeBuffer(
@@ -503,7 +509,11 @@ class Renderer: NSObject, MTKViewDelegate {
         shadowRayBuffer!.label = "Shadow rays"
         intersectionBuffer.label = "Intersections"
         
-        frameIndex = 0
+        reset()
+    }
+    
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        setSize(width: Int(size.width), height: Int(size.height))
     }
     
     func saveFrame() {
