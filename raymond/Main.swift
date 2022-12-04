@@ -18,7 +18,7 @@ struct Raymond: ParsableCommand {
     var externalCompile = false
     
     mutating func run() throws {
-        var sceneLoader = SceneLoader()
+        /*var sceneLoader = SceneLoader()
         sceneLoader.externalCompile = externalCompile
         
         let sceneURL = URL(filePath: scenePath)
@@ -35,7 +35,9 @@ struct Raymond: ParsableCommand {
         
         let delegate = AppDelegate()
         NSApplication.shared.delegate = delegate
-        NSApplication.shared.run()
+        NSApplication.shared.run()*/
+        
+        launchUI()
     }
     
 }

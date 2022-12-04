@@ -17,3 +17,5 @@
 #include "bridge/lights/SunLight.hpp"
 #include "bridge/lights/SpotLight.hpp"
 #include "bridge/lights/ShapeLight.hpp"
+
+#include "ui/main.h"
