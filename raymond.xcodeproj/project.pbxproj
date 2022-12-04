@@ -37,6 +37,7 @@
 		FA8616E3293BE9CA00550A57 /* MainMenu.storyboard in Sources */ = {isa = PBXBuildFile; fileRef = FA8615EB293BE3CD00550A57 /* MainMenu.storyboard */; };
 		FA8616E4293BEEEC00550A57 /* imgui_demo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA861618293BE3CD00550A57 /* imgui_demo.cpp */; };
 		FA8616E5293BF32D00550A57 /* implot_demo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA8616D0293BE3DC00550A57 /* implot_demo.cpp */; };
+		FA8616FB293CE98C00550A57 /* logging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA8616FA293CE98C00550A57 /* logging.cpp */; };
 		FAC09C0C2938D0B70048D37F /* LensLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C0A2938D0B70048D37F /* LensLoader.mm */; };
 		FAC09C5E2938EAB30048D37F /* LensReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C472938EAB30048D37F /* LensReader.cpp */; };
 		FAC09C71293A20040048D37F /* GlassCatalog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C70293A20040048D37F /* GlassCatalog.cpp */; };
@@ -351,6 +352,8 @@
 		FA8616DC293BE63F00550A57 /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = System/Library/Frameworks/GameController.framework; sourceTree = SDKROOT; };
 		FA8616DF293BE77000550A57 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		FA8616E1293BE7A200550A57 /* main.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = main.h; sourceTree = "<group>"; };
+		FA8616F9293CE97300550A57 /* logging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = logging.h; sourceTree = "<group>"; };
+		FA8616FA293CE98C00550A57 /* logging.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = logging.cpp; sourceTree = "<group>"; };
 		FAC09C0A2938D0B70048D37F /* LensLoader.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = LensLoader.mm; sourceTree = "<group>"; };
 		FAC09C0B2938D0B70048D37F /* LensLoader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LensLoader.h; sourceTree = "<group>"; };
 		FAC09C102938EAB30048D37F /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
@@ -1318,6 +1321,8 @@
 			children = (
 				FA8616E1293BE7A200550A57 /* main.h */,
 				FA8616DF293BE77000550A57 /* main.mm */,
+				FA8616F9293CE97300550A57 /* logging.h */,
+				FA8616FA293CE98C00550A57 /* logging.cpp */,
 			);
 			path = ui;
 			sourceTree = "<group>";
@@ -1748,6 +1753,7 @@
 				FA8616D4293BE3DC00550A57 /* implot.cpp in Sources */,
 				FA8616D5293BE3DC00550A57 /* implot_items.cpp in Sources */,
 				FA8616E5293BF32D00550A57 /* implot_demo.cpp in Sources */,
+				FA8616FB293CE98C00550A57 /* logging.cpp in Sources */,
 				FA861637293BE3CD00550A57 /* imgui_impl_metal.mm in Sources */,
 				FA861642293BE3CD00550A57 /* imgui_impl_osx.mm in Sources */,
 				FA861652293BE3CD00550A57 /* imgui.cpp in Sources */,

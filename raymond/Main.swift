@@ -37,6 +37,16 @@ struct Raymond: ParsableCommand {
         NSApplication.shared.delegate = delegate
         NSApplication.shared.run()*/
         
+        //let glassURLs = Bundle.main.urls(forResourcesWithExtension: "glc", subdirectory: "data/glass")!
+        let glassURLs = ["schott", "obsolete001", "hoya"].map {
+            Bundle.main.url(forResource: $0, withExtension: "glc", subdirectory: "data/glass")!
+        }
+        let lensLoader = LensLoader()
+        for glassURL in glassURLs {
+            let numGlasses = lensLoader.loadGlassCatalog(glassURL)
+            print("loaded \(numGlasses) from \(glassURL.lastPathComponent)")
+        }
+        
         launchUI()
     }
     
