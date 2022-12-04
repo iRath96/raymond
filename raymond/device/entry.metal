@@ -19,3 +19,4 @@
 #include "kernels/envmap/test.metal"
 #include "kernels/utils/indirectDispatch.metal"
 #include "kernels/utils/blit.metal"
+#include "kernels/utils/normalizeImage.metal"

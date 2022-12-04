@@ -361,6 +361,7 @@
 		FA8616FF293D35E300550A57 /* logging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = logging.h; sourceTree = "<group>"; };
 		FA861701293D369E00550A57 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		FA861703293D3B9C00550A57 /* lore.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = lore.cpp; sourceTree = "<group>"; };
+		FA861705293D52D700550A57 /* normalizeImage.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = normalizeImage.metal; sourceTree = "<group>"; };
 		FAC09C0A2938D0B70048D37F /* LensLoader.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = LensLoader.mm; sourceTree = "<group>"; };
 		FAC09C0B2938D0B70048D37F /* LensLoader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LensLoader.h; sourceTree = "<group>"; };
 		FAC09C102938EAB30048D37F /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
@@ -608,6 +609,7 @@
 			children = (
 				FA2BA2C528E6E1A70083F61C /* indirectDispatch.metal */,
 				FA2BA2C728E6E1BE0083F61C /* blit.metal */,
+				FA861705293D52D700550A57 /* normalizeImage.metal */,
 			);
 			path = utils;
 			sourceTree = "<group>";

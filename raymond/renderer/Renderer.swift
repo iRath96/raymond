@@ -20,6 +20,7 @@ enum RendererError: Error {
     
     let pipelineState: MTLRenderPipelineState
     let rayGenerator: MTLComputePipelineState
+    let imageNormalizer: MTLComputePipelineState
     let makeIndirectDispatch: MTLComputePipelineState
     
     let rayIntersector: MPSRayIntersector
@@ -39,8 +40,9 @@ enum RendererError: Error {
     var shadowRayCountBuffer: MTLBuffer!
     var indirectDispatchBuffer: MTLBuffer!
     var intersectionBuffer: MTLBuffer!
-    var outputImageSize: MTLSize
+    @objc var outputImageSize: MTLSize
     var outputImage: MTLTexture!
+    @objc var normalizedImage: MTLTexture!
     
     var framesPerSecond: Float = 0
     var fpsSamples = 0
@@ -87,6 +89,7 @@ enum RendererError: Error {
         ptr.deallocate()
         
         rayGenerator = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "generateRays")!
+        imageNormalizer = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "normalizeImage")!
         makeIndirectDispatch = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "makeIndirectDispatchArguments")!
         
         do {
@@ -153,9 +156,9 @@ enum RendererError: Error {
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
         
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .rgba16Float
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm // .rgba16Float
         pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float_stencil8
-        pipelineDescriptor.stencilAttachmentPixelFormat = .depth32Float_stencil8
+        //pipelineDescriptor.stencilAttachmentPixelFormat = .depth32Float_stencil8
         
         return try library.device.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }
@@ -340,6 +343,30 @@ enum RendererError: Error {
             // ping pong
             (currentRayBufferOffset, nextRayBufferOffset) = (nextRayBufferOffset, currentRayBufferOffset)
         }
+        
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.label = "Normalize output image"
+            computeEncoder.setTexture(outputImage, index: 0)
+            computeEncoder.setTexture(normalizedImage, index: 1)
+            computeEncoder.setBuffer(dynamicUniformBuffer, offset: 0, index: 0)
+            computeEncoder.setComputePipelineState(imageNormalizer)
+            computeEncoder.dispatchThreads(outputImageSize, threadsPerThreadgroup: MTLSizeMake(8, 8, 1))
+            computeEncoder.endEncoding()
+        }
+    }
+    
+    @objc func draw(encoder renderEncoder: MTLRenderCommandEncoder) {
+        /// Final pass rendering code here
+        renderEncoder.label = "Blit Render"
+        
+        renderEncoder.setCullMode(.back)
+        renderEncoder.setFrontFacing(.counterClockwise)
+        renderEncoder.setRenderPipelineState(pipelineState)
+        renderEncoder.setDepthStencilState(depthState)
+        
+        renderEncoder.setFragmentBuffer(dynamicUniformBuffer, offset: 0, index: 0)
+        renderEncoder.setFragmentTexture(outputImage, index: 0)
+        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     }
     
     func draw(in view: MTKView) {
@@ -390,19 +417,7 @@ enum RendererError: Error {
             let renderPassDescriptor = view.currentRenderPassDescriptor
             
             if let renderPassDescriptor = renderPassDescriptor, let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) {
-                
-                /// Final pass rendering code here
-                renderEncoder.label = "Blit Render"
-                
-                renderEncoder.setCullMode(.back)
-                renderEncoder.setFrontFacing(.counterClockwise)
-                renderEncoder.setRenderPipelineState(pipelineState)
-                renderEncoder.setDepthStencilState(depthState)
-                
-                renderEncoder.setFragmentBuffer(dynamicUniformBuffer, offset: 0, index: 0)
-                renderEncoder.setFragmentTexture(outputImage, index: 0)
-                renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-                
+                draw(encoder: renderEncoder)
                 renderEncoder.endEncoding()
                 
                 if let drawable = view.currentDrawable {
@@ -437,8 +452,12 @@ enum RendererError: Error {
         outputImageDescriptor.height = outputImageSize.height
         outputImageDescriptor.usage = [ .shaderRead, .shaderWrite ]
         outputImageDescriptor.storageMode = .shared
+        
         outputImage = device.makeTexture(descriptor: outputImageDescriptor)!
         outputImage.label = "Output image"
+        
+        normalizedImage = device.makeTexture(descriptor: outputImageDescriptor)!
+        normalizedImage.label = "Normalized output image"
     }
     
     func reset() {

@@ -35,6 +35,16 @@ const char *makeCString(NSString *str) {
 // AppViewController
 //-----------------------------------------------------------------------------------
 
+struct DrawCallbackContext {
+    Renderer *renderer;
+    id<MTLRenderCommandEncoder> renderEncoder;
+};
+
+void drawCallback(const ImDrawList *parent_list, const ImDrawCmd *cmd) {
+    auto dcc = (DrawCallbackContext *)cmd->UserCallbackData;
+    [dcc->renderer drawWithEncoder:dcc->renderEncoder];
+}
+
 @implementation AppViewController
 
 - (NSURL *)applicationDataDirectory {
@@ -119,11 +129,11 @@ const char *makeCString(NSString *str) {
     self.mtkView.device = self.device;
     self.mtkView.delegate = self;
     
-    //self.mtkView.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
-    //self.mtkView.colorPixelFormat = MTLPixelFormatRGBA16Float;
+    self.mtkView.depthStencilPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
+    self.mtkView.colorPixelFormat = MTLPixelFormatRGBA16Float;
     self.mtkView.sampleCount = 1;
     self.mtkView.preferredFramesPerSecond = 120;
-    //self.mtkView.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceLinearDisplayP3);
+    self.mtkView.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceLinearDisplayP3);
 
 #if TARGET_OS_OSX
     ImGui_ImplOSX_Init(self.view);
@@ -213,32 +223,26 @@ static void HelpMarker(const char* desc)
     if (_state.showImguiDemo) ImGui::ShowDemoWindow(&_state.showImguiDemo);
     if (_state.showImplotDemo) ImPlot::ShowDemoWindow();
     
-    // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-    {
-        static float f = 0.0f;
-        static int counter = 0;
+    DrawCallbackContext dcc;
+    dcc.renderer = _renderer;
 
-        ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-        ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-        ImGui::Checkbox("Window", &show_another_window);
-
-        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-        ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-        if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-            counter++;
-        ImGui::SameLine();
-        ImGui::Text("counter = %d", counter);
-
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        ImGui::End();
-    }
-
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     if (ImGui::Begin("Viewport")) {
-        const ImVec2 windowSize = ImGui::GetWindowSize();
-        [_renderer setSizeWithWidth:int(windowSize.x) height:int(windowSize.y)];
+        const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+        const ImVec2 scale = ImGui::GetIO().DisplayFramebufferScale;
+        
+        [_renderer setSizeWithWidth:int(scale.x * viewportSize.x) height:int(scale.y * viewportSize.y)];
         [_renderer executeIn:commandBuffer];
+        ImGui::Image((__bridge void *)_renderer.normalizedImage, viewportSize);
+        //ImGui::GetWindowDrawList()->AddCallback(drawCallback, &dcc);
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+    
+    {
+        ImGui::Begin("Statistics");
+        ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        ImGui::Text("Resolution: %d x %d", int(_renderer.outputImageSize.width), int(_renderer.outputImageSize.height));
         ImGui::End();
     }
 
@@ -247,13 +251,15 @@ static void HelpMarker(const char* desc)
     ImDrawData* draw_data = ImGui::GetDrawData();
 
     renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-    id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+    id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+    dcc.renderEncoder = renderEncoder;
     [renderEncoder pushDebugGroup:@"Dear ImGui rendering"];
     ImGui_ImplMetal_RenderDrawData(draw_data, commandBuffer, renderEncoder);
     [renderEncoder popDebugGroup];
     [renderEncoder endEncoding];
 
 	// Present
+    view.currentDrawable.layer.wantsExtendedDynamicRangeContent = true;
     [commandBuffer presentDrawable:view.currentDrawable];
     [commandBuffer commit];
 }

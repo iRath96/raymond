@@ -74,7 +74,15 @@ kernel void generateRays(
     ray.y = coordinates.y;
     
     const float2 jitteredCoordinates = float2(coordinates) + ray.prng.sample2d();
-    const float2 uv = (jitteredCoordinates / float2(imageSize) + ctx.camera.shift) * 2.0f - 1.0f;
+    const float2 uv = float2(1,-1) * ((jitteredCoordinates / float2(imageSize) + ctx.camera.shift) * 2.0f - 1.0f);
+
+    if (true) {
+        const float aspect = float(imageSize.y) / float(imageSize.x);
+        ray.origin = (ctx.camera.transform * float4(0, 0, 0, 1.f)).xyz;
+        ray.direction = normalize((ctx.camera.transform * float4(uv.x, uv.y * aspect, -ctx.camera.focalLength, 0)).xyz);
+        ray.weight = 1;
+        return;
+    }
 
     lore::Lens<> lens;
     lens.surfaces.m_size = uniforms.numLensSurfaces;
@@ -104,9 +112,6 @@ kernel void generateRays(
     const float3 origin = uniforms.cameraScale * float3(lensRay.origin.x(), lensRay.origin.y(), lensRay.origin.z());
     ray.origin = (ctx.camera.transform * float4(origin, 1)).xyz;
     ray.direction = normalize((ctx.camera.transform * float4(lensRay.direction.x(), lensRay.direction.y(), lensRay.direction.z(), 0)).xyz);
-    //const float aspect = float(imageSize.y) / float(imageSize.x);
-    //ray.origin = (ctx.camera.transform * float4(0, 0, 0, 1.f)).xyz;
-    //ray.direction = normalize((ctx.camera.transform * float4(uv.x, uv.y * aspect, -ctx.camera.focalLength, 0)).xyz);
     
 #ifdef SPECTRAL
     ray.weight = sensorDirInvPdf * float3(1.5, 2, 3) * spectral(wavelength * 1000);
