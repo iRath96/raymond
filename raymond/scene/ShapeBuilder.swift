@@ -60,7 +60,7 @@ class ShapeBuilder {
             materialIndices: [MaterialIndex], emissiveMaterials: [Bool], hasEmission: Bool,
             vertexOffset: VertexIndex, faceOffset: FaceIndex
         ) throws {
-            self.path = url.relativeString
+            self.path = url.relativePath
             self.fileReader = PLYReader(url: url)
             
             self.materialIndices = materialIndices
