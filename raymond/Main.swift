@@ -2,6 +2,8 @@ import Cocoa
 import ArgumentParser
 import Metal
 
+fileprivate let log = SwiftLogger(named: "raymond")
+
 @main
 struct Raymond: ParsableCommand {
 
@@ -18,40 +20,39 @@ struct Raymond: ParsableCommand {
     var externalCompile = false
     
     mutating func run() throws {
+        log.info("Welcome to raymond")
+        
         var sceneLoader = SceneLoader()
         sceneLoader.externalCompile = externalCompile
         
         let sceneURL = URL(filePath: scenePath)
         let scene = try sceneLoader.loadScene(fromURL: sceneURL, onDevice: MTLCreateSystemDefaultDevice()!)
+        let renderer = Renderer(device: MTLCreateSystemDefaultDevice()!, scene: scene)!
         
-        let storyboard = NSStoryboard(name: "Main", bundle: nil)
-        let windowController = storyboard.instantiateInitialController() as! NSWindowController
-        let viewController = windowController.contentViewController as! RendererViewController
-        viewController.gestureAmplification = gestureAmplification
-        viewController.attach(scene: scene)
+        //let glassURLs = Bundle.main.urls(forResourcesWithExtension: "glc", subdirectory: "data/glass")!
+        let glassURLs = ["schott", "obsolete001", "hoya"].map {
+            Bundle.main.url(forResource: $0, withExtension: "glc", subdirectory: "data/glass")!
+        }
+        let lensLoader = LensLoader()
+        _ = glassURLs.map(lensLoader.loadGlassCatalog)
         
-        windowController.showWindow(nil)
-        windowController.window?.makeKeyAndOrderFront(nil)
+        //let lensURL = Bundle.main.url(forResource: "dgauss", withExtension: "len", subdirectory: "data/lenses")!
+        //let lens = lensLoader.load(lensURL, device: renderer.device)
+        //renderer.setLens(lens)
         
-        let delegate = AppDelegate()
-        NSApplication.shared.delegate = delegate
-        NSApplication.shared.run()
-    }
-    
-}
-
-class AppDelegate: NSObject, NSApplicationDelegate {
-    
-    func applicationDidFinishLaunching(_ aNotification: Notification) {
+        let rootViewController = AppViewController(renderer: renderer)
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: [ .titled, .closable, .resizable, .miniaturizable ],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = rootViewController
+        window.center()
+        window.makeKeyAndOrderFront(nil)
         
-    }
-
-    func applicationWillTerminate(_ aNotification: Notification) {
-        
-    }
-    
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        return true
+        var cchar: UnsafeMutablePointer<CChar>?
+        _ = NSApplicationMain(0, &cchar)
     }
     
 }

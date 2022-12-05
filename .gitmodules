@@ -4,3 +4,9 @@
 [submodule "dependencies/lore"]
 	path = dependencies/lore
 	url = ssh://git@69co.de:2222/research/lore.git
+[submodule "dependencies/imgui"]
+	path = dependencies/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "dependencies/implot"]
+	path = dependencies/implot
+	url = https://github.com/epezent/implot.git

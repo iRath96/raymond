@@ -2,6 +2,8 @@ import Metal
 import MetalKit
 import Foundation
 
+fileprivate let log = SwiftLogger(named: "extensions")
+
 extension MTLArgumentEncoder {
     func get<T>(at offset: Int, _ type: T.Type) -> T {
         return constantData(at: offset).assumingMemoryBound(to: T.self).pointee
@@ -47,9 +49,9 @@ extension MTLBuffer {
         )
         
         if let p = err.pointee {
-            print(NSString(utf8String: p)!)
+            log.error(String(utf8String: p)!)
         } else {
-            print("Saved to EXR file")
+            log.info("Saved to EXR file")
         }
     }
     
@@ -117,9 +119,9 @@ extension MTLTexture {
         )
         
         if let p = err.pointee {
-            print(NSString(utf8String: p)!)
+            log.error(String(utf8String: p)!)
         } else {
-            print("Saved to EXR file")
+            log.info("Saved to EXR file")
         }
     }
 }

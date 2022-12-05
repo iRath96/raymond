@@ -1,6 +1,8 @@
 import Foundation
 import Rayjay
 
+fileprivate let log = SwiftLogger(named: "light")
+
 class LightBuilder {
     struct ShapeLight {
         let instanceIndex: InstanceIndex
@@ -34,7 +36,7 @@ class LightBuilder {
     
     private func makeLightInfo(for light: Light) throws -> DeviceLightInfo {
         if light.useMIS && !(light.kernel is WorldLight) {
-            print("MIS not supported for lights yet")
+            log.warn("MIS not supported for lights yet")
         }
         
         return .init(
@@ -88,7 +90,7 @@ class LightBuilder {
         let exponent = 11
         let resolution = 1 << exponent
         let mipmapSize = (0...exponent).map { (1 << (2 * $0)) }.reduce(0, +)
-        NSLog("Building environment map of size \(resolution)^2")
+        log.debug("Building environment map of size \(resolution)^2")
         
         let device = library.device
         let mipmapBuffer = device.makeBuffer(type: Float.self, count: mipmapSize)!

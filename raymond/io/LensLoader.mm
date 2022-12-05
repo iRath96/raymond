@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include <lore/io/LensReader.h>
+#include <lore/logging.h>
 #include <fstream>
 
 @implementation Lens {
@@ -23,7 +24,7 @@
     auto lens = reader.read(file).front();
     auto &surfaces = lens.surfaces;
     
-    std::cout << "loaded lens " << lens.name << " with " << lens.surfaces.size() << " surfaces" << std::endl;
+    lore::log::info() << "loaded lens " << lens.name << " with " << lens.surfaces.size() << " surfaces" << std::flush;
     
     Lens *result = [Lens new];
     result.name = [NSString stringWithCString:lens.name.c_str() encoding:NSASCIIStringEncoding];

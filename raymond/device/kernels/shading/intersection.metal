@@ -43,6 +43,15 @@ kernel void handleIntersections(
     device Ray &ray = rays[rayIndex];
     const bool needsToCollectEmission = isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee;
     
+    /*{
+        uint2 coordinates = uint2(ray.x, ray.y);
+        image.write(
+            image.read(coordinates) + float4(0.5, 0.2, 0.7, 1),
+            coordinates
+        );
+        return;
+    }*/
+    
 #define DO_COMPACTION
 #ifndef DO_COMPACTION
     uint nextRayIndex = rayIndex;
