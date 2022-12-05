@@ -76,12 +76,15 @@ enum RendererError: Error {
         self.dynamicUniformBuffer.label = "UniformBuffer"
         
         uniforms = UnsafeMutableRawPointer(dynamicUniformBuffer.contents()).bindMemory(to: DeviceUniforms.self, capacity: 1)
-        uniforms[0].samplingMode = .mis
-        uniforms[0].cameraScale = 0.001
-        uniforms[0].sensorScale = 1
-        uniforms[0].focus = 0
-        uniforms[0].exposure = 1
-        uniforms[0].numLensSurfaces = 0
+        uniforms[0] = DeviceUniforms(
+            numLensSurfaces: 0,
+            frameIndex: 0,
+            lensSpectral: true,
+            sensorScale: 1,
+            cameraScale: 0.001,
+            focus: 0,
+            exposure: 1,
+            samplingMode: .mis)
         
         let lastHandlerConstants = MTLFunctionConstantValues()
         let ptr = UnsafeMutablePointer<Bool>.allocate(capacity: 1)

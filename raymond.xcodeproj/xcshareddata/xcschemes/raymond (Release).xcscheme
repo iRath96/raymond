@@ -57,11 +57,11 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/raymond-scenes/test-bokeh2/scene.json"
+            argument = "/Users/alex/Desktop/raymond-scenes/AI55_006/scene.json"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/raymond-scenes/italian/scene.json"
+            argument = "/Users/alex/Desktop/raymond-scenes/test-bokeh2/scene.json"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -78,7 +78,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--external-compile"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
    </LaunchAction>

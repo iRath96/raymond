@@ -10,8 +10,6 @@
 #include <lore/rt/GeometricalIntersector.h>
 #include <lore/rt/SequentialTrace.h>
 
-#define SPECTRAL 1
-
 kernel void generateRays(
     device Ray *rays            [[buffer(GeneratorBufferRays)]],
     device uint *rayCount       [[buffer(GeneratorBufferRayCount)]],
@@ -87,9 +85,10 @@ kernel void generateRays(
     ray.origin = (ctx.camera.transform * float4(origin, 1)).xyz;
     ray.direction = normalize((ctx.camera.transform * float4(lensRay.direction.x(), lensRay.direction.y(), lensRay.direction.z(), 0)).xyz);
     
-#ifdef SPECTRAL
-    ray.weight = sensorDirInvPdf * xyz_to_rgb(wavelength_to_xyz(1000 * wavelength)) * cie_integral_norm_rgb * wavelength_ipdf_nm;
-#else
-    ray.weight = sensorDirInvPdf * 1;//float3(M_PI_F) / sensorDir.z;
-#endif
+    const float sensorW = abs(sensorDir.z);
+    if (uniforms.lensSpectral) {
+        ray.weight = sensorW * sensorDirInvPdf * xyz_to_rgb(wavelength_to_xyz(1000 * wavelength)) * cie_integral_norm_rgb * wavelength_ipdf_nm;
+    } else {
+        ray.weight = sensorW * sensorDirInvPdf;
+    }
 }

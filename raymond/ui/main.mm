@@ -305,6 +305,8 @@ static void HelpMarker(const char* desc)
             ImGui::EndCombo();
         }
         
+        uniformsChanged |= ImGui::Checkbox("Spectral sampling", &_renderer.uniforms->lensSpectral);
+        
         if (uniformsChanged) {
             [_renderer reset];
         }
