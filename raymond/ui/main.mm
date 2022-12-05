@@ -81,6 +81,7 @@ const char *makeCString(NSString *str) {
         NSString *filename = [[lensURL lastPathComponent] stringByDeletingPathExtension];
         [_availableLenses addObject:filename];
     }
+    [_availableLenses sortUsingSelector:@selector(caseInsensitiveCompare:)];
 
     if (!self.device)
     {
@@ -269,7 +270,7 @@ static void HelpMarker(const char* desc)
         static int currentLensIndex = 0;
         static std::string currentLens = "(none)";
         
-        if (ImGui::BeginCombo("combo 1", currentLens.c_str())) {
+        if (ImGui::BeginCombo("Lens", currentLens.c_str())) {
             int index = 0;
             if (ImGui::Selectable("(none)", currentLensIndex == index)) {
                 currentLensIndex = index;
