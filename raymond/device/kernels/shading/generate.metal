@@ -4,41 +4,13 @@
 #include <bridge/PrngState.hpp>
 #include <bridge/Uniforms.hpp>
 #include <device/Context.hpp>
+#include <device/utils/color.hpp>
 
 #include <lore/lens/Lens.h>
 #include <lore/rt/GeometricalIntersector.h>
 #include <lore/rt/SequentialTrace.h>
 
 #define SPECTRAL 1
-
-/// @todo replace this with proper CIE curves
-float3 spectral(float wavelength) {
-    float3 result = 0;
-    if ((wavelength >= 380) && (wavelength < 440)) {
-        result = float3(-(wavelength - 440) / (440 - 380), 0, 1);
-    } else if ((wavelength >= 440) && (wavelength < 490)) {
-        result = float3(0, (wavelength - 440) / (490 - 440), 1);
-    } else if ((wavelength >= 490) && (wavelength < 510)) {
-        result = float3(0, 1, -(wavelength - 510) / (510 - 490));
-    } else if ((wavelength >= 510) && (wavelength < 580)) {
-        result = float3((wavelength - 510) / (580 - 510), 1, 0);
-    } else if ((wavelength >= 580) && (wavelength < 645)) {
-        result = float3(1, -(wavelength - 645) / (645 - 580), 0);
-    } else if ((wavelength >= 645) && (wavelength < 781)) {
-        result = float3(1, 0, 0);
-    }
-
-    // Let the intensity fall off near the vision limits
-    if ((wavelength >= 380) && (wavelength < 420)) {
-        result *= 0.3f + 0.7f * (wavelength - 380) / (420 - 380);
-    } else if ((wavelength >= 420) && (wavelength < 701)) {
-        result *= 1;
-    } else if ((wavelength >= 701) && (wavelength < 781)) {
-        result *= 0.3f + 0.7f * (780 - wavelength) / (780 - 700);
-    }
-    
-    return result;
-}
 
 kernel void generateRays(
     device Ray *rays            [[buffer(GeneratorBufferRays)]],
@@ -88,7 +60,9 @@ kernel void generateRays(
     lens.surfaces.m_size = uniforms.numLensSurfaces;
     lens.surfaces.m_data = surfaces;
     
-    const float wavelength = lerp(0.38f, 0.75f, ray.prng.sample());
+    const float wavelength = lerp(0.38f, 0.78f, ray.prng.sample());
+    const float wavelength_ipdf_nm = 400;
+    
     lore::rt::GeometricalIntersector<float> isect;
     lore::rt::InverseSequentialTrace<float> trace(wavelength);
 
@@ -114,7 +88,7 @@ kernel void generateRays(
     ray.direction = normalize((ctx.camera.transform * float4(lensRay.direction.x(), lensRay.direction.y(), lensRay.direction.z(), 0)).xyz);
     
 #ifdef SPECTRAL
-    ray.weight = sensorDirInvPdf * float3(1.5, 2, 3) * spectral(wavelength * 1000);
+    ray.weight = sensorDirInvPdf * xyz_to_rgb(wavelength_to_xyz(1000 * wavelength)) * cie_integral_norm_rgb * wavelength_ipdf_nm;
 #else
     ray.weight = sensorDirInvPdf * 1;//float3(M_PI_F) / sensorDir.z;
 #endif
