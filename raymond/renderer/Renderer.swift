@@ -3,7 +3,7 @@ import MetalKit
 import MetalPerformanceShaders
 import simd
 
-fileprivate let log = Logger(named: "renderer")
+fileprivate let log = SwiftLogger(named: "renderer")
 
 // The 256 byte aligned size of our uniform structure
 let alignedUniformsSize = (MemoryLayout<DeviceUniforms>.size + 0xFF) & -0x100
@@ -27,7 +27,7 @@ enum RendererError: Error {
     let shadowRayIntersector: MPSRayIntersector
     
     let inFlightSemaphore = DispatchSemaphore(value: 1)
-    var uniforms: UnsafeMutablePointer<DeviceUniforms>
+    @objc var uniforms: UnsafeMutablePointer<DeviceUniforms>
     
     var frameIndex = UInt32(0)
     var rayCount = 0
@@ -81,6 +81,7 @@ enum RendererError: Error {
         uniforms[0].sensorScale = 1
         uniforms[0].focus = 0
         uniforms[0].exposure = 1
+        uniforms[0].numLensSurfaces = 0
         
         let lastHandlerConstants = MTLFunctionConstantValues()
         let ptr = UnsafeMutablePointer<Bool>.allocate(capacity: 1)
@@ -109,6 +110,7 @@ enum RendererError: Error {
         depthState = state
         
         outputImageSize = MTLSizeMake(0, 0, 1)
+        lensBuffer = device.makeBuffer(length: 100) /// @todo hack
         
         super.init()
         
@@ -177,6 +179,9 @@ enum RendererError: Error {
     }
     
     @objc func execute(in commandBuffer: MTLCommandBuffer) {
+        let semaphore = inFlightSemaphore
+        _ = semaphore.wait(timeout: DispatchTime.distantFuture)
+        
         self.updateDynamicBufferState()
         self.updateState()
         
@@ -353,6 +358,10 @@ enum RendererError: Error {
             computeEncoder.dispatchThreads(outputImageSize, threadsPerThreadgroup: MTLSizeMake(8, 8, 1))
             computeEncoder.endEncoding()
         }
+        
+        commandBuffer.addCompletedHandler { (_ commandBuffer) -> Swift.Void in
+            semaphore.signal()
+        }
     }
     
     @objc func draw(encoder renderEncoder: MTLRenderCommandEncoder) {
@@ -370,8 +379,6 @@ enum RendererError: Error {
     }
     
     func draw(in view: MTKView) {
-        guard self.lensBuffer != nil else { return }
-        
         /// Per frame updates hare
         
         _ = inFlightSemaphore.wait(timeout: DispatchTime.distantFuture)
@@ -460,7 +467,7 @@ enum RendererError: Error {
         normalizedImage.label = "Normalized output image"
     }
     
-    func reset() {
+    @objc func reset() {
         frameIndex = 0
         makeOutputImage()
     }
@@ -469,7 +476,12 @@ enum RendererError: Error {
         uniforms[0].exposure = exposure
     }
     
-    func setLens(_ lens: Lens) {
+    @objc func setLens(_ lens: Lens?) {
+        guard let lens = lens else {
+            uniforms[0].numLensSurfaces = 0
+            return
+        }
+        
         self.lensBuffer = lens.buffer
         uniforms[0].numLensSurfaces = lens.numSurfaces
     }
@@ -482,7 +494,7 @@ enum RendererError: Error {
         reset()
     }
     
-    func updateProjection(by multiplying: float4x4) {
+    @objc func updateProjection(by multiplying: float4x4) {
         var camera = scene.camera
         camera.transform = camera.transform * multiplying.transpose
         scene.camera = camera

@@ -3,7 +3,7 @@ import Metal
 import MetalKit
 import Rayjay
 
-fileprivate let log = Logger(named: "codegen")
+fileprivate let log = SwiftLogger(named: "codegen")
 
 extension Dictionary {
     mutating func get(_ key: Key, otherwise fallback: @autoclosure () -> Value) -> Value {

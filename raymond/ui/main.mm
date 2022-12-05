@@ -3,6 +3,8 @@
 #import <MetalKit/MetalKit.h>
 #import <Cocoa/Cocoa.h>
 
+#include <string>
+
 #include "main.h"
 
 #import "Raymond-Swift.h"
@@ -18,8 +20,12 @@
 @property (nonatomic, readonly) MTKView *mtkView;
 @property (nonatomic, strong) id <MTLDevice> device;
 @property (nonatomic, strong) id <MTLCommandQueue> commandQueue;
+@property (nonatomic, strong) LensLoader *lensLoader;
+@property (nonatomic, strong) NSMutableArray *availableLenses;
 @property (nonatomic, retain) Renderer *renderer;
 @property (nonatomic) UIState state;
+@property (nonatomic) bool viewportHovered;
+@property (nonatomic) float gestureSpeed;
 @end
 
 const char *makeCString(NSString *str) {
@@ -34,16 +40,6 @@ const char *makeCString(NSString *str) {
 //-----------------------------------------------------------------------------------
 // AppViewController
 //-----------------------------------------------------------------------------------
-
-struct DrawCallbackContext {
-    Renderer *renderer;
-    id<MTLRenderCommandEncoder> renderEncoder;
-};
-
-void drawCallback(const ImDrawList *parent_list, const ImDrawCmd *cmd) {
-    auto dcc = (DrawCallbackContext *)cmd->UserCallbackData;
-    [dcc->renderer drawWithEncoder:dcc->renderEncoder];
-}
 
 @implementation AppViewController
 
@@ -76,6 +72,15 @@ void drawCallback(const ImDrawList *parent_list, const ImDrawCmd *cmd) {
     _device = MTLCreateSystemDefaultDevice();
     _commandQueue = [_device newCommandQueue];
     _renderer = renderer;
+    _gestureSpeed = 0.01f;
+    _lensLoader = [LensLoader new];
+    
+    _availableLenses = [NSMutableArray new];
+    NSArray *lensURLs = [[NSBundle mainBundle] URLsForResourcesWithExtension:@"len" subdirectory:@"data/lenses"];
+    for (NSURL *lensURL in lensURLs) {
+        NSString *filename = [[lensURL lastPathComponent] stringByDeletingPathExtension];
+        [_availableLenses addObject:filename];
+    }
 
     if (!self.device)
     {
@@ -95,6 +100,14 @@ void drawCallback(const ImDrawList *parent_list, const ImDrawCmd *cmd) {
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
+    
+    // FIXME: hack so that colors look good
+    auto &colors = ImGui::GetStyle().Colors;
+    for (int i = 0; i < ImGuiCol_COUNT; i++) {
+        colors[i].x = pow(colors[i].x, 2.4f);
+        colors[i].y = pow(colors[i].y, 2.4f);
+        colors[i].z = pow(colors[i].z, 2.4f);
+    }
 
     // Setup Renderer backend
     ImGui_ImplMetal_Init(_device);
@@ -107,7 +120,7 @@ void drawCallback(const ImDrawList *parent_list, const ImDrawCmd *cmd) {
     NSString *iniPath = [[appDir URLByAppendingPathComponent:@"imgui.ini"] relativePath];
     io.IniFilename = makeCString(iniPath);
     
-    [Logger.shared debug:[NSString stringWithFormat:@"storing imgui config to %s", io.IniFilename]];
+    [SwiftLogger.shared debug:[NSString stringWithFormat:@"storing imgui config to %s", io.IniFilename]];
     
     return self;
 }
@@ -156,7 +169,7 @@ static void HelpMarker(const char* desc)
     }
 }
 
--(void)drawInMTKView:(MTKView*)view
+-(void)drawInMTKView:(MTKView *)view
 {
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize.x = view.bounds.size.width;
@@ -216,16 +229,13 @@ static void HelpMarker(const char* desc)
     drawConsole();
 
     // Our state (make them static = more or less global) as a convenience to keep the example terse.
-    static bool show_another_window = false;
     static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
     if (_state.showImguiDemo) ImGui::ShowDemoWindow(&_state.showImguiDemo);
     if (_state.showImplotDemo) ImPlot::ShowDemoWindow();
     
-    DrawCallbackContext dcc;
-    dcc.renderer = _renderer;
-
+    _viewportHovered = false;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     if (ImGui::Begin("Viewport")) {
         const ImVec2 viewportSize = ImGui::GetContentRegionAvail();
@@ -234,15 +244,70 @@ static void HelpMarker(const char* desc)
         [_renderer setSizeWithWidth:int(scale.x * viewportSize.x) height:int(scale.y * viewportSize.y)];
         [_renderer executeIn:commandBuffer];
         ImGui::Image((__bridge void *)_renderer.normalizedImage, viewportSize);
-        //ImGui::GetWindowDrawList()->AddCallback(drawCallback, &dcc);
+        
+        if (ImGui::IsWindowHovered()) {
+            _viewportHovered = true;
+        }
     }
     ImGui::End();
     ImGui::PopStyleVar();
     
     {
         ImGui::Begin("Statistics");
+        
+        ImGui::Text("%d frames", _renderer.uniforms->frameIndex);
         ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::Text("Resolution: %d x %d", int(_renderer.outputImageSize.width), int(_renderer.outputImageSize.height));
+        ImGui::DragFloat("Speed", &_gestureSpeed, 0.001f, 0, 100);
+        ImGui::DragFloat("Exposure", &_renderer.uniforms->exposure, 0.001f, 0, 100);
+        
+        bool uniformsChanged = false;
+        uniformsChanged |= ImGui::DragFloat("Camera scale", &_renderer.uniforms->cameraScale, 0.001f, 0, 100);
+        uniformsChanged |= ImGui::DragFloat("Sensor scale", &_renderer.uniforms->sensorScale, 0.001f, 0, 100);
+        uniformsChanged |= ImGui::DragFloat("Focus", &_renderer.uniforms->focus, 0.001f, -100, 100);
+        
+        static int currentLensIndex = 0;
+        static std::string currentLens = "(none)";
+        
+        if (ImGui::BeginCombo("combo 1", currentLens.c_str())) {
+            int index = 0;
+            if (ImGui::Selectable("(none)", currentLensIndex == index)) {
+                currentLensIndex = index;
+                currentLens = "(none)";
+                
+                [_renderer setLens:nil];
+                uniformsChanged = true;
+            }
+            if (currentLensIndex == index) {
+                ImGui::SetItemDefaultFocus();
+            }
+            
+            for (NSString *filename in _availableLenses) {
+                index++;
+                
+                const bool isSelected = currentLensIndex == index;
+                const char *filenameCStr = [filename cStringUsingEncoding:NSASCIIStringEncoding];
+                if (ImGui::Selectable(filenameCStr, isSelected)) {
+                    currentLensIndex = index;
+                    currentLens = filenameCStr;
+                    
+                    NSURL *url = [[NSBundle mainBundle] URLForResource:filename withExtension:@"len" subdirectory:@"data/lenses"];
+                    Lens *lens = [_lensLoader load:url device:_device];
+                    [_renderer setLens:lens];
+                    uniformsChanged = true;
+                }
+
+                if (isSelected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        
+        if (uniformsChanged) {
+            [_renderer reset];
+        }
+        
         ImGui::End();
     }
 
@@ -252,7 +317,6 @@ static void HelpMarker(const char* desc)
 
     renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
     id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-    dcc.renderEncoder = renderEncoder;
     [renderEncoder pushDebugGroup:@"Dear ImGui rendering"];
     ImGui_ImplMetal_RenderDrawData(draw_data, commandBuffer, renderEncoder);
     [renderEncoder popDebugGroup];
@@ -264,8 +328,80 @@ static void HelpMarker(const char* desc)
     [commandBuffer commit];
 }
 
--(void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size
-{
+-(void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size {
+}
+
+-(void)rotateWithEvent:(NSEvent *)event {
+    if (!_viewportHovered) return;
+    
+    const float radians = event.rotation * M_PI / 180;
+    const float c = std::cos(radians);
+    const float s = std::sin(radians);
+    
+    const simd_float4x4 rotation {{
+        { c, s, 0, 0 },
+        {-s, c, 0, 0 },
+        { 0, 0, 1, 0 },
+        { 0, 0, 0, 1 }
+    }};
+    
+    [_renderer updateProjectionBy:rotation];
+}
+
+- (void)magnifyWithEvent:(NSEvent *)event {
+    if (!_viewportHovered) return;
+    
+    const simd_float4x4 zoom {{
+        { 1, 0, 0, 0 },
+        { 0, 1, 0, 0 },
+        { 0, 0, 1, -float(event.magnification) * 100 * _gestureSpeed },
+        { 0, 0, 0, 1 }
+    }};
+    
+    [_renderer updateProjectionBy:zoom];
+}
+
+- (void)scrollWheel:(NSEvent *)event {
+    if (!_viewportHovered) return;
+    
+    if (event.scrollingDeltaX == 0 && event.scrollingDeltaY == 0) {
+        return;
+    }
+    
+    const simd_float4x4 shift {{
+        { 1, 0, 0,-float(event.scrollingDeltaX) * 0.2f * _gestureSpeed },
+        { 0, 1, 0, float(event.scrollingDeltaY) * 0.2f * _gestureSpeed },
+        { 0, 0, 1, 0 },
+        { 0, 0, 0, 1 }
+    }};
+    
+    [_renderer updateProjectionBy:shift];
+}
+
+- (void)mouseDragged:(NSEvent *)event {
+    if (!_viewportHovered) return;
+    
+    const float radiansX = float(event.deltaX) * M_PI / 180;
+    const float cX = std::cos(radiansX);
+    const float sX = std::sin(radiansX);
+    const simd_float4x4 rotationX {{
+        { cX, 0,-sX, 0 },
+        {  0, 1,  0, 0 },
+        { sX, 0, cX, 0 },
+        {  0, 0,  0, 1 }
+    }};
+    
+    const float radiansY = float(event.deltaY) * M_PI / 180;
+    const float cY = std::cos(radiansY);
+    const float sY = std::sin(radiansY);
+    const simd_float4x4 rotationY {{
+        { 1,  0,  0, 0 },
+        { 0, cY, sY, 0 },
+        { 0,-sY, cY, 0 },
+        { 0,  0,  0, 1 }
+    }};
+    
+    [_renderer updateProjectionBy:simd_mul(rotationX, rotationY)];
 }
 
 //-----------------------------------------------------------------------------------

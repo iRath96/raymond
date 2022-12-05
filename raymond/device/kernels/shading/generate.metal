@@ -74,10 +74,10 @@ kernel void generateRays(
     ray.y = coordinates.y;
     
     const float2 jitteredCoordinates = float2(coordinates) + ray.prng.sample2d();
-    const float2 uv = float2(1,-1) * ((jitteredCoordinates / float2(imageSize) + ctx.camera.shift) * 2.0f - 1.0f);
+    const float2 uv = float2(+1, -1) * ((jitteredCoordinates / float2(imageSize) + ctx.camera.shift) * 2.0f - 1.0f);
+    const float aspect = float(imageSize.y) / float(imageSize.x);
 
-    if (true) {
-        const float aspect = float(imageSize.y) / float(imageSize.x);
+    if (uniforms.numLensSurfaces == 0) {
         ray.origin = (ctx.camera.transform * float4(0, 0, 0, 1.f)).xyz;
         ray.direction = normalize((ctx.camera.transform * float4(uv.x, uv.y * aspect, -ctx.camera.focalLength, 0)).xyz);
         ray.weight = 1;
@@ -93,7 +93,7 @@ kernel void generateRays(
     lore::rt::InverseSequentialTrace<float> trace(wavelength);
 
     device auto &lastSurface = lens.surfaces[lens.surfaces.size() - 2];
-    const float3 sensorPos = float3(-uv * uniforms.sensorScale * float2(36, 24)/2, uniforms.focus);
+    const float3 sensorPos = float3(-uv * uniforms.sensorScale * float2(36, 36 * aspect) / 2, uniforms.focus);
     const float3 sensorAim = float3(lastSurface.aperture * warp::uniformSquareToDisk(ray.prng.sample2d()), -lastSurface.thickness);
     const float3 sensorDirU = sensorAim - sensorPos;
     const float sensorDirInvDistSqr = 1 / length_squared(sensorDirU);

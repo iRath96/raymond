@@ -2,7 +2,7 @@ import Metal
 import MetalKit
 import Foundation
 
-fileprivate let log = Logger(named: "extensions")
+fileprivate let log = SwiftLogger(named: "extensions")
 
 extension MTLArgumentEncoder {
     func get<T>(at offset: Int, _ type: T.Type) -> T {

@@ -1,7 +1,7 @@
 import Foundation
 import Rayjay
 
-fileprivate let log = Logger(named: "light")
+fileprivate let log = SwiftLogger(named: "light")
 
 class LightBuilder {
     struct ShapeLight {

@@ -1,7 +1,7 @@
 import Foundation
 
-@objc class Logger: NSObject {
-    @objc static let shared = Logger(named: "global")
+@objc class SwiftLogger: NSObject {
+    @objc static let shared = SwiftLogger(named: "global")
     
     let logger: OpaquePointer
     @objc public init(named name: String) {

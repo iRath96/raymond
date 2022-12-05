@@ -2,7 +2,7 @@ import Cocoa
 import ArgumentParser
 import Metal
 
-fileprivate let log = Logger(named: "raymond")
+fileprivate let log = SwiftLogger(named: "raymond")
 
 @main
 struct Raymond: ParsableCommand {
@@ -36,9 +36,9 @@ struct Raymond: ParsableCommand {
         let lensLoader = LensLoader()
         _ = glassURLs.map(lensLoader.loadGlassCatalog)
         
-        let lensURL = Bundle.main.url(forResource: "dgauss", withExtension: "len", subdirectory: "data/lenses")!
-        let lens = lensLoader.load(lensURL, device: renderer.device)
-        renderer.setLens(lens)
+        //let lensURL = Bundle.main.url(forResource: "dgauss", withExtension: "len", subdirectory: "data/lenses")!
+        //let lens = lensLoader.load(lensURL, device: renderer.device)
+        //renderer.setLens(lens)
         
         let rootViewController = AppViewController(renderer: renderer)
         let window = NSWindow(

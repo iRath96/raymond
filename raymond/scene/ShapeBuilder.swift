@@ -3,7 +3,7 @@ import Metal
 import MetalPerformanceShaders
 import Rayjay
 
-fileprivate let log = Logger(named: "mesh")
+fileprivate let log = SwiftLogger(named: "mesh")
 
 class ShapeBuilder {
     struct Result {

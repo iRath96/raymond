@@ -39,7 +39,7 @@
 		FA8616E5293BF32D00550A57 /* implot_demo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA8616D0293BE3DC00550A57 /* implot_demo.cpp */; };
 		FA8616FB293CE98C00550A57 /* console.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA8616FA293CE98C00550A57 /* console.cpp */; };
 		FA861700293D35E300550A57 /* logging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA8616FE293D35E300550A57 /* logging.cpp */; };
-		FA861702293D369E00550A57 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA861701293D369E00550A57 /* Logger.swift */; };
+		FA861702293D369E00550A57 /* SwiftLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA861701293D369E00550A57 /* SwiftLogger.swift */; };
 		FA861704293D3B9C00550A57 /* lore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA861703293D3B9C00550A57 /* lore.cpp */; };
 		FAC09C0C2938D0B70048D37F /* LensLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C0A2938D0B70048D37F /* LensLoader.mm */; };
 		FAC09C5E2938EAB30048D37F /* LensReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C472938EAB30048D37F /* LensReader.cpp */; };
@@ -359,7 +359,7 @@
 		FA8616FA293CE98C00550A57 /* console.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = console.cpp; sourceTree = "<group>"; };
 		FA8616FE293D35E300550A57 /* logging.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = logging.cpp; sourceTree = "<group>"; };
 		FA8616FF293D35E300550A57 /* logging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = logging.h; sourceTree = "<group>"; };
-		FA861701293D369E00550A57 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		FA861701293D369E00550A57 /* SwiftLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftLogger.swift; sourceTree = "<group>"; };
 		FA861703293D3B9C00550A57 /* lore.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = lore.cpp; sourceTree = "<group>"; };
 		FA861705293D52D700550A57 /* normalizeImage.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = normalizeImage.metal; sourceTree = "<group>"; };
 		FAC09C0A2938D0B70048D37F /* LensLoader.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = LensLoader.mm; sourceTree = "<group>"; };
@@ -1341,7 +1341,7 @@
 			children = (
 				FA8616FF293D35E300550A57 /* logging.h */,
 				FA8616FE293D35E300550A57 /* logging.cpp */,
-				FA861701293D369E00550A57 /* Logger.swift */,
+				FA861701293D369E00550A57 /* SwiftLogger.swift */,
 				FA861703293D3B9C00550A57 /* lore.cpp */,
 			);
 			path = logging;
@@ -1778,7 +1778,7 @@
 				FA861637293BE3CD00550A57 /* imgui_impl_metal.mm in Sources */,
 				FA861642293BE3CD00550A57 /* imgui_impl_osx.mm in Sources */,
 				FA861652293BE3CD00550A57 /* imgui.cpp in Sources */,
-				FA861702293D369E00550A57 /* Logger.swift in Sources */,
+				FA861702293D369E00550A57 /* SwiftLogger.swift in Sources */,
 				FA861633293BE3CD00550A57 /* imgui_widgets.cpp in Sources */,
 				FA8616C2293BE3CD00550A57 /* imgui_tables.cpp in Sources */,
 				FA8616E4293BEEEC00550A57 /* imgui_demo.cpp in Sources */,
