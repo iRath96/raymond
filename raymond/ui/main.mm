@@ -20,8 +20,11 @@
 @property (nonatomic, readonly) MTKView *mtkView;
 @property (nonatomic, strong) id <MTLDevice> device;
 @property (nonatomic, strong) id <MTLCommandQueue> commandQueue;
+
+@property (nonatomic, strong) Lens *lens;
 @property (nonatomic, strong) LensLoader *lensLoader;
 @property (nonatomic, strong) NSMutableArray *availableLenses;
+
 @property (nonatomic, retain) Renderer *renderer;
 @property (nonatomic) UIState state;
 @property (nonatomic) bool viewportHovered;
@@ -256,13 +259,15 @@ static void HelpMarker(const char* desc)
     {
         ImGui::Begin("Statistics");
         
+        static float exposure = 0;
+        bool uniformsChanged = false;
+        
         ImGui::Text("%d frames", _renderer.uniforms->frameIndex);
         ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::Text("Resolution: %d x %d", int(_renderer.outputImageSize.width), int(_renderer.outputImageSize.height));
-        ImGui::DragFloat("Speed", &_gestureSpeed, 0.001f, 0, 100);
-        ImGui::DragFloat("Exposure", &_renderer.uniforms->exposure, 0.001f, 0, 100);
+        ImGui::DragFloat("Speed", &_gestureSpeed, _gestureSpeed / 1000, 0, 100);
+        ImGui::DragFloat("EV", &exposure, 0.01f, -20, 20);
         
-        bool uniformsChanged = false;
         uniformsChanged |= ImGui::DragFloat("Camera scale", &_renderer.uniforms->cameraScale, 0.001f, 0, 100);
         uniformsChanged |= ImGui::DragFloat("Sensor scale", &_renderer.uniforms->sensorScale, 0.001f, 0, 100);
         uniformsChanged |= ImGui::DragFloat("Focus", &_renderer.uniforms->focus, 0.001f, -100, 100);
@@ -276,7 +281,8 @@ static void HelpMarker(const char* desc)
                 currentLensIndex = index;
                 currentLens = "(none)";
                 
-                [_renderer setLens:nil];
+                _lens = nil;
+                [_renderer setLens:_lens];
                 uniformsChanged = true;
             }
             if (currentLensIndex == index) {
@@ -293,8 +299,9 @@ static void HelpMarker(const char* desc)
                     currentLens = filenameCStr;
                     
                     NSURL *url = [[NSBundle mainBundle] URLForResource:filename withExtension:@"len" subdirectory:@"data/lenses"];
-                    Lens *lens = [_lensLoader load:url device:_device];
-                    [_renderer setLens:lens];
+                    _lens = [_lensLoader load:url device:_device];
+                    _renderer.uniforms->stopIndex = _lens.stopIndex;
+                    [_renderer setLens:_lens];
                     uniformsChanged = true;
                 }
 
@@ -305,7 +312,25 @@ static void HelpMarker(const char* desc)
             ImGui::EndCombo();
         }
         
-        uniformsChanged |= ImGui::Checkbox("Spectral sampling", &_renderer.uniforms->lensSpectral);
+        float lensEVCorrection = 1;
+        static float aperture = 1.8f;
+        if (_lens != nil) {
+            ImGui::Text("%s", [_lens.name cStringUsingEncoding:NSASCIIStringEncoding]);
+            ImGui::Text("EFL: %.1fmm", _lens.efl);
+            ImGui::Text("F/#: %.1f", _lens.fstop);
+            uniformsChanged |= ImGui::SliderInt("Stop #", &_renderer.uniforms->stopIndex, 1, _lens.numSurfaces - 1);
+            
+            aperture = std::max(aperture, _lens.fstop);
+            _renderer.uniforms->relativeStop = _lens.fstop / aperture;
+            
+            uniformsChanged |= ImGui::DragFloat("Aperture", &aperture, aperture / 1000, _lens.fstop, 40.f);
+            uniformsChanged |= ImGui::DragInt("Aperture blades", &_renderer.uniforms->numApertureBlades, 1, 3, 32);
+            uniformsChanged |= ImGui::Checkbox("Spectral sampling", &_renderer.uniforms->lensSpectral);
+            
+            lensEVCorrection = M_PI/2 * std::pow(aperture, 2);
+        }
+        
+        _renderer.uniforms->exposure = pow(2, exposure) * lensEVCorrection;
         
         if (uniformsChanged) {
             [_renderer reset];

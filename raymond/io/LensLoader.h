@@ -6,6 +6,9 @@ NS_ASSUME_NONNULL_BEGIN
 @interface Lens : NSObject
 
 @property NSString *name;
+@property float efl;
+@property float fstop;
+@property int stopIndex;
 @property uint32_t numSurfaces;
 @property id<MTLBuffer> buffer;
 

@@ -10,6 +10,61 @@
 #include <lore/rt/GeometricalIntersector.h>
 #include <lore/rt/SequentialTrace.h>
 
+template<typename Float>
+struct CustomTrace {
+    Float wavelength;
+    constant Uniforms &uniforms;
+
+    CustomTrace(MTL_THREAD const Float &wavelength, constant Uniforms &uniforms)
+        : wavelength(wavelength), uniforms(uniforms) {}
+
+    bool testAperture(float2 pos) const {
+        const float phi = fmod((atan2(pos.y, pos.x) / (2 * M_PI_F) + 1) * uniforms.numApertureBlades, 1) - 0.5;
+        const float r = length(pos);
+        
+        const float x = M_PI_F / uniforms.numApertureBlades;
+        const float norm = sqrt(tan(x) / x); // @todo compute this on host
+        
+        const float coolR = r * lerp(norm * cos(2 * phi * x), float(1), sqr(uniforms.relativeStop));
+        return coolR <= uniforms.relativeStop;
+    }
+
+    template<typename Intersector>
+    bool operator()(
+        MTL_THREAD lore::rt::Ray<Float> &ray,
+        MTL_THREAD const lore::Lens<Float> &lens,
+        MTL_THREAD const Intersector &intersector
+    ) const {
+        int surfaceIndex = lens.surfaces.size() - 1;
+        Float n2 = lens.surfaces[surfaceIndex].ior(wavelength);
+        for (; surfaceIndex > 0; surfaceIndex--) {
+            MTL_DEVICE auto &surface = lens.surfaces[surfaceIndex];
+            ray.origin.z() += surface.thickness;
+
+            if (!lore::rt::TraceUtils<Float>::propagate(ray, surface, intersector)) {
+                return false;
+            }
+            
+            if (surfaceIndex == uniforms.stopIndex) {
+                const float2 pos = float2(ray.origin.x(), ray.origin.y()) / surface.aperture;
+                if (!testAperture(pos)) {
+                    return false;
+                }
+            }
+
+            const lore::Vector3<Float> normal = lore::rt::TraceUtils<Float>::normal(ray, surface);
+            const Float n1 = lens.surfaces[surfaceIndex - 1].ior(wavelength);
+            if (!lore::refract(ray.direction, normal, ray.direction, n2 / n1)) {
+                return false;
+            }
+
+            n2 = n1;
+        }
+
+        return true;
+    }
+};
+
 kernel void generateRays(
     device Ray *rays            [[buffer(GeneratorBufferRays)]],
     device uint *rayCount       [[buffer(GeneratorBufferRayCount)]],
@@ -62,7 +117,7 @@ kernel void generateRays(
     const float wavelength_ipdf_nm = 400;
     
     lore::rt::GeometricalIntersector<float> isect;
-    lore::rt::InverseSequentialTrace<float> trace(wavelength);
+    CustomTrace<float> trace(wavelength, uniforms);
 
     device auto &lastSurface = lens.surfaces[lens.surfaces.size() - 2];
     const float3 sensorPos = float3(-uv * uniforms.sensorScale * float2(36, 36 * aspect) / 2, uniforms.focus);

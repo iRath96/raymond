@@ -84,6 +84,9 @@ enum RendererError: Error {
             cameraScale: 0.001,
             focus: 0,
             exposure: 1,
+            stopIndex: 0,
+            relativeStop: 1,
+            numApertureBlades: 7,
             samplingMode: .mis)
         
         let lastHandlerConstants = MTLFunctionConstantValues()

@@ -16,5 +16,8 @@ DEVICE_STRUCT(Uniforms) {
     float cameraScale;
     float focus;
     float exposure;
+    int stopIndex;
+    float relativeStop;
+    int numApertureBlades;
     SamplingMode samplingMode;
 };

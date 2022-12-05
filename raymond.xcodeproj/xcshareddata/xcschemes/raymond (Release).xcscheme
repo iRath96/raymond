@@ -53,28 +53,8 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/evermotion/unzipped/AI55_006/AI55_006.json"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/alex/Desktop/raymond-scenes/AI55_006/scene.json"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
             argument = "/Users/alex/Desktop/raymond-scenes/test-bokeh2/scene.json"
             isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/alex/Downloads/Attic_NVIDIA_725/Attic_NVIDIA/Attic.json"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-g"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "1.0"
-            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--external-compile"
