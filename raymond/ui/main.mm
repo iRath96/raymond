@@ -268,9 +268,11 @@ static void HelpMarker(const char* desc)
         ImGui::DragFloat("Speed", &_gestureSpeed, _gestureSpeed / 1000, 0, 100);
         ImGui::DragFloat("EV", &exposure, 0.01f, -20, 20);
         
-        uniformsChanged |= ImGui::DragFloat("Camera scale", &_renderer.uniforms->cameraScale, 0.001f, 0, 100);
-        uniformsChanged |= ImGui::DragFloat("Sensor scale", &_renderer.uniforms->sensorScale, 0.001f, 0, 100);
+        float cameraScale = 1000 * _renderer.uniforms->cameraScale;
+        uniformsChanged |= ImGui::DragFloat("Camera scale", &cameraScale, cameraScale / 1000, 0, 100);
+        uniformsChanged |= ImGui::DragFloat("Sensor scale", &_renderer.uniforms->sensorScale, _renderer.uniforms->sensorScale / 1000, 0, 100);
         uniformsChanged |= ImGui::DragFloat("Focus", &_renderer.uniforms->focus, 0.001f, -100, 100);
+        _renderer.uniforms->cameraScale = cameraScale / 1000;
         
         static int currentLensIndex = 0;
         static std::string currentLens = "(none)";
