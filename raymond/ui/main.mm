@@ -117,7 +117,7 @@ const char *makeCString(NSString *str) {
     // Setup Renderer backend
     ImGui_ImplMetal_Init(_device);
 
-    io.Fonts->AddFontFromFileTTF("/Library/Fonts/SF-Pro.ttf", 30);
+    io.Fonts->AddFontFromFileTTF("/System/Library/Fonts/SFNS.ttf", 30);
     io.Fonts->AddFontFromFileTTF("/System/Library/Fonts/Monaco.ttf", 26);
     io.FontGlobalScale = 0.5;
     
