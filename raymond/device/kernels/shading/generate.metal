@@ -19,13 +19,14 @@ struct CustomTrace {
         : wavelength(wavelength), uniforms(uniforms) {}
 
     bool testAperture(float2 pos) const {
-        const float phi = fmod((atan2(pos.y, pos.x) / (2 * M_PI_F) + 1) * uniforms.numApertureBlades, 1) - 0.5;
+        const float phi = atan2(pos.y, pos.x) / (2 * M_PI_F) + (1 - uniforms.relativeStop) / 4;
+        const float phiL = fmod((phi + 1) * uniforms.numApertureBlades, 1) - 0.5;
         const float r = length(pos);
         
         const float x = M_PI_F / uniforms.numApertureBlades;
         const float norm = sqrt(tan(x) / x); // @todo compute this on host
         
-        const float coolR = r * lerp(norm * cos(2 * phi * x), float(1), sqr(uniforms.relativeStop));
+        const float coolR = r * lerp(norm * cos(2 * phiL * x), float(1), sqr(uniforms.relativeStop));
         return coolR <= uniforms.relativeStop;
     }
 

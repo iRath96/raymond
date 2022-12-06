@@ -187,7 +187,7 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
         const float phi = i / float(n);
         const float phiL = fmod(phi * numBlades, float(1)) - 0.5f;
         const float r = relstop / (relstop2 + (1 - relstop2) * norm * std::cos(2 * piOverBlades * phiL));
-        const float phiRadians = 2 * M_PI * phi;
+        const float phiRadians = 2 * M_PI * (phi + (1 - relstop) / 4);
         
         points[i] = ImVec2(
             pos.x + scale * (r * std::cos(phiRadians) + 1) / 2 + (region.x - scale) / 2,
