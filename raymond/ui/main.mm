@@ -4,6 +4,7 @@
 #import <Cocoa/Cocoa.h>
 
 #include <string>
+#include <vector>
 
 #include "main.h"
 
@@ -160,17 +161,46 @@ const char *makeCString(NSString *str) {
     ImPlot::CreateContext();
 }
 
-static void HelpMarker(const char* desc)
-{
+static void HelpMarker(const char *desc) {
     ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-    {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
         ImGui::TextUnformatted(desc);
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
     }
+}
+
+static void drawAperture(float relstop, int numBlades, float scale = 100) {
+    static std::vector<ImVec2> points;
+    const int n = numBlades * (128 / numBlades);
+    points.resize(n);
+    
+    const float piOverBlades = M_PI / numBlades;
+    const float norm = std::sqrt(std::tan(piOverBlades) / piOverBlades);
+    const float relstop2 = pow(relstop, 2);
+    
+    const ImVec2 region = ImGui::GetContentRegionAvail();
+    const ImVec2 pos = ImGui::GetCursorScreenPos();
+    for (int i = 0; i < n; i++) {
+        const float phi = i / float(n);
+        const float phiL = fmod(phi * numBlades, float(1)) - 0.5f;
+        const float r = relstop / (relstop2 + (1 - relstop2) * norm * std::cos(2 * piOverBlades * phiL));
+        const float phiRadians = 2 * M_PI * phi;
+        
+        points[i] = ImVec2(
+            pos.x + scale * (r * std::cos(phiRadians) + 1) / 2 + (region.x - scale) / 2,
+            pos.y + scale * (r * std::sin(phiRadians) + 1) / 2
+        );
+    }
+    
+    const ImU32 color = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
+    const ImU32 color2 = ImGui::GetColorU32(IM_COL32(255, 255, 255, 64));
+    ImDrawList *drawList = ImGui::GetWindowDrawList();
+    drawList->AddCircle(ImVec2(pos.x + region.x / 2, pos.y + scale / 2), scale / 2, color2);
+    drawList->AddPolyline(points.data(), int(points.size()), color, ImDrawFlags_Closed, 1.0f);
+    ImGui::Dummy(ImVec2(region.x, scale));
 }
 
 -(void)drawInMTKView:(MTKView *)view
@@ -329,7 +359,11 @@ static void HelpMarker(const char* desc)
             uniformsChanged |= ImGui::DragInt("Aperture blades", &_renderer.uniforms->numApertureBlades, 1, 3, 32);
             uniformsChanged |= ImGui::Checkbox("Spectral sampling", &_renderer.uniforms->lensSpectral);
             
+            drawAperture(_renderer.uniforms->relativeStop, _renderer.uniforms->numApertureBlades);
+            
             lensEVCorrection = M_PI/2 * std::pow(aperture, 2);
+            
+            ImGui::Text("Lens exposure: %+.2f EV", log2(lensEVCorrection));
         }
         
         _renderer.uniforms->exposure = pow(2, exposure) * lensEVCorrection;
