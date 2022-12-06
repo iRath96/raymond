@@ -634,18 +634,11 @@
 			path = sky;
 			sourceTree = "<group>";
 		};
-		FA7D5D5728E780EB00912878 /* extensions */ = {
-			isa = PBXGroup;
-			children = (
-				FA44785128CA1B88004F5A66 /* Metal.swift */,
-				FA7D5D5828E780F500912878 /* URL.swift */,
-			);
-			path = extensions;
-			sourceTree = "<group>";
-		};
 		FA7D5D5A28E7812C00912878 /* utils */ = {
 			isa = PBXGroup;
 			children = (
+				FA7D5D5828E780F500912878 /* URL.swift */,
+				FA44785128CA1B88004F5A66 /* Metal.swift */,
 				FA7D5D5B28E7813800912878 /* shell.swift */,
 			);
 			path = utils;
@@ -1584,7 +1577,6 @@
 				FA2BA29128E6DA520083F61C /* bridge */,
 				FA100A84287790CD00884319 /* device */,
 				FA7D5D5A28E7812C00912878 /* utils */,
-				FA7D5D5728E780EB00912878 /* extensions */,
 				FAC3AAF22875D4D800C0B0D0 /* Main.swift */,
 				FA100A89287809B600884319 /* BridgingHeader.h */,
 				FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */,
