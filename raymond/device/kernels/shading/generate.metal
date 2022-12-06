@@ -66,30 +66,24 @@ struct CustomTrace {
 };
 
 kernel void generateRays(
-    device Ray *rays            [[buffer(GeneratorBufferRays)]],
-    device uint *rayCount       [[buffer(GeneratorBufferRayCount)]],
-    constant Uniforms &uniforms [[buffer(GeneratorBufferUniforms)]],
-    device Context &ctx         [[buffer(GeneratorBufferContext)]],
+    device Ray *rays                 [[buffer(GeneratorBufferRays)]],
+    device atomic_uint *rayCount     [[buffer(GeneratorBufferRayCount)]],
+    constant Uniforms &uniforms      [[buffer(GeneratorBufferUniforms)]],
+    device Context &ctx              [[buffer(GeneratorBufferContext)]],
     device lore::Surface<> *surfaces [[buffer(GeneratorBufferLens)]],
-    uint2 coordinates           [[thread_position_in_grid]],
-    uint2 imageSize             [[threads_per_grid]],
-    uint2 threadIndex           [[thread_position_in_threadgroup]],
-    uint2 warpIndex             [[threadgroup_position_in_grid]],
-    uint2 actualWarpSize        [[threads_per_threadgroup]],
-    uint2 warpSize              [[dispatch_threads_per_threadgroup]]
+    uint2 coordinates                [[thread_position_in_grid]],
+    uint2 imageSize                  [[threads_per_grid]],
+    uint2 threadIndex                [[thread_position_in_threadgroup]],
+    uint2 warpIndex                  [[threadgroup_position_in_grid]],
+    uint2 actualWarpSize             [[threads_per_threadgroup]],
+    uint2 warpSize                   [[dispatch_threads_per_threadgroup]]
 ) {
-    if (coordinates.x == 0 && coordinates.y == 0) {
-        *rayCount = imageSize.x * imageSize.y;
-    }
-    
-    //const int rayIndex = coordinates.x + coordinates.y * imageSize.x;
-    
     /// gain a few percents of performance by using block linear indexing for improved coherency
     const int rayIndex = threadIndex.x + threadIndex.y * actualWarpSize.x +
-            warpIndex.x * warpSize.x * actualWarpSize.y +
-            warpIndex.y * warpSize.y * imageSize.x;
-    device Ray &ray = rays[rayIndex];
+        warpIndex.x * warpSize.x * actualWarpSize.y +
+        warpIndex.y * warpSize.y * imageSize.x;
     
+    Ray ray;
     ray.prng = PrngState(uniforms.frameIndex, rayIndex);
     ray.minDistance = ctx.camera.nearClip;
     ray.maxDistance = ctx.camera.farClip;
@@ -103,12 +97,18 @@ kernel void generateRays(
     const float aspect = float(imageSize.y) / float(imageSize.x);
 
     if (uniforms.numLensSurfaces == 0) {
+        if (coordinates.x == 0 && coordinates.y == 0) {
+            atomic_store_explicit(rayCount, imageSize.x * imageSize.y, memory_order_relaxed);
+        }
+        
         ray.origin = (ctx.camera.transform * float4(0, 0, 0, 1.f)).xyz;
         ray.direction = normalize((ctx.camera.transform * float4(uv.x, uv.y * aspect, -ctx.camera.focalLength, 0)).xyz);
         ray.weight = 1;
+        
+        rays[rayIndex] = ray;
         return;
     }
-
+    
     lore::Lens<> lens;
     lens.surfaces.m_size = uniforms.numLensSurfaces;
     lens.surfaces.m_data = surfaces;
@@ -132,7 +132,7 @@ kernel void generateRays(
     lensRay.direction = { sensorDir.x, sensorDir.y, sensorDir.z };
     
     if (!trace(lensRay, lens, isect)) {
-        ray.weight = float3(0);
+        // do not commit ray
         return;
     }
 
@@ -146,4 +146,7 @@ kernel void generateRays(
     } else {
         ray.weight = sensorW * sensorDirInvPdf;
     }
+    
+    const uint compactedRayIndex = atomic_fetch_add_explicit(rayCount, 1, memory_order_relaxed);
+    rays[compactedRayIndex] = ray;
 }

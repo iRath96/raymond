@@ -7,6 +7,7 @@ DEVICE_STRUCT(PrngState) {
     uint16_t index;
 
 #ifdef __METAL_VERSION__
+    PrngState() : seed(0), index(0) {}
     PrngState(uint32_t a, uint32_t b);
     
     float sample();
