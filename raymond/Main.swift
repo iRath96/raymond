@@ -10,9 +10,6 @@ struct Raymond: ParsableCommand {
     @Argument(help: "Path to scene")
     var scenePath: String
     
-    @Option(name: .short, help: "Gesture amplification")
-    var gestureAmplification: Float = 0.02
-    
     @Flag(name: .shortAndLong, help: ArgumentHelp(
         "Compile shaders using xcrun",
         discussion: "Enables better profiling information in Xcode"
@@ -36,10 +33,10 @@ struct Raymond: ParsableCommand {
         let lensLoader = LensLoader()
         _ = glassURLs.map(lensLoader.loadGlassCatalog)
         
-        //let lensURL = Bundle.main.url(forResource: "dgauss", withExtension: "len", subdirectory: "data/lenses")!
-        //let lens = lensLoader.load(lensURL, device: renderer.device)
-        //renderer.setLens(lens)
-        
+        launchUI(with: renderer)
+    }
+    
+    private func launchUI(with renderer: Renderer) {
         let rootViewController = AppViewController(renderer: renderer)
         let window = NSWindow(
             contentRect: .zero,

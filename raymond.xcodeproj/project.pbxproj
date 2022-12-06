@@ -45,7 +45,6 @@
 		FAC09C5E2938EAB30048D37F /* LensReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C472938EAB30048D37F /* LensReader.cpp */; };
 		FAC09C71293A20040048D37F /* GlassCatalog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FAC09C70293A20040048D37F /* GlassCatalog.cpp */; };
 		FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF22875D4D800C0B0D0 /* Main.swift */; };
-		FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */; };
 		FAC3AAF72875D4D800C0B0D0 /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */; };
 		FAC3AB1D2876D26700C0B0D0 /* MaterialBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC3AB1C2876D26700C0B0D0 /* MaterialBuilder.swift */; };
 /* End PBXBuildFile section */
@@ -422,10 +421,8 @@
 		FAC09C7B293BABDE0048D37F /* jit-relocate.rb */ = {isa = PBXFileReference; lastKnownFileType = text.script.ruby; path = "jit-relocate.rb"; sourceTree = "<group>"; };
 		FAC3AAEF2875D4D800C0B0D0 /* raymond.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = raymond.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3AAF22875D4D800C0B0D0 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
-		FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendererViewController.swift; sourceTree = "<group>"; };
 		FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		FAC3AAFE2875D4D900C0B0D0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		FAC3AB002875D4D900C0B0D0 /* raymond.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = raymond.entitlements; sourceTree = "<group>"; };
 		FAC3AB1C2876D26700C0B0D0 /* MaterialBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaterialBuilder.swift; sourceTree = "<group>"; };
 		FADBFA9228817A9900727183 /* noise.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = noise.hpp; sourceTree = "<group>"; };
@@ -614,20 +611,13 @@
 			path = utils;
 			sourceTree = "<group>";
 		};
-		FA5779142883F635003C10E7 /* renderer */ = {
-			isa = PBXGroup;
-			children = (
-				FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */,
-				FAC3AAF42875D4D800C0B0D0 /* RendererViewController.swift */,
-			);
-			path = renderer;
-			sourceTree = "<group>";
-		};
 		FA5779162885FF7B003C10E7 /* host */ = {
 			isa = PBXGroup;
 			children = (
+				FAC3AB062875D53800C0B0D0 /* scene */,
 				FA7D5D6A28EA064B00912878 /* lights */,
 				FA5779192885FFD3003C10E7 /* sky */,
+				FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */,
 			);
 			path = host;
 			sourceTree = "<group>";
@@ -1593,14 +1583,11 @@
 				FA5779162885FF7B003C10E7 /* host */,
 				FA2BA29128E6DA520083F61C /* bridge */,
 				FA100A84287790CD00884319 /* device */,
-				FAC3AB062875D53800C0B0D0 /* scene */,
-				FA5779142883F635003C10E7 /* renderer */,
 				FA7D5D5A28E7812C00912878 /* utils */,
 				FA7D5D5728E780EB00912878 /* extensions */,
 				FAC3AAF22875D4D800C0B0D0 /* Main.swift */,
 				FA100A89287809B600884319 /* BridgingHeader.h */,
 				FAC3AAFB2875D4D900C0B0D0 /* Assets.xcassets */,
-				FAC3AAFD2875D4D900C0B0D0 /* Main.storyboard */,
 				FAC3AB002875D4D900C0B0D0 /* raymond.entitlements */,
 			);
 			path = raymond;
@@ -1803,7 +1790,6 @@
 				FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */,
 				FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */,
 				FAC3AAF32875D4D800C0B0D0 /* Main.swift in Sources */,
-				FAC3AAF52875D4D800C0B0D0 /* RendererViewController.swift in Sources */,
 				FA7D5D5C28E7813800912878 /* shell.swift in Sources */,
 				FA7D5D5628E77B5B00912878 /* entry.metal in Sources */,
 				FA8616E3293BE9CA00550A57 /* MainMenu.storyboard in Sources */,
@@ -1812,17 +1798,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXVariantGroup section */
-		FAC3AAFD2875D4D900C0B0D0 /* Main.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				FAC3AAFE2875D4D900C0B0D0 /* Base */,
-			);
-			name = Main.storyboard;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		FAC3AB012875D4D900C0B0D0 /* Debug */ = {
