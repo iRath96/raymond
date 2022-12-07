@@ -10,6 +10,8 @@
 		FA100A8A287809B600884319 /* tinyexr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA100A88287809B600884319 /* tinyexr.cpp */; };
 		FA100A8D28780BA900884319 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = FA100A8C28780BA300884319 /* libz.tbd */; };
 		FA10CBB8287886B8004092CA /* PLYReader.m in Sources */ = {isa = PBXBuildFile; fileRef = FA10CBB7287886B8004092CA /* PLYReader.m */; };
+		FA2B7CAC2940BE3400A46518 /* printf_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA2B7CAA2940BE3400A46518 /* printf_buffer.cpp */; };
+		FA2B7CAE2940C23E00A46518 /* PrintfBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2B7CAD2940C23E00A46518 /* PrintfBuffer.swift */; };
 		FA2BA27A28E31A520083F61C /* SceneLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27928E31A520083F61C /* SceneLoader.swift */; };
 		FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */; };
 		FA2BA28128E65BF50083F61C /* EntityBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA28028E65BF50083F61C /* EntityBuilder.swift */; };
@@ -83,6 +85,11 @@
 		FA100A922878314400884319 /* Context.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Context.hpp; sourceTree = "<group>"; };
 		FA10CBB6287886B8004092CA /* PLYReader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PLYReader.h; sourceTree = "<group>"; };
 		FA10CBB7287886B8004092CA /* PLYReader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PLYReader.m; sourceTree = "<group>"; };
+		FA2B7CA82940BD1000A46518 /* printf.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = printf.hpp; sourceTree = "<group>"; };
+		FA2B7CA92940BDCA00A46518 /* printf.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = printf.hpp; sourceTree = "<group>"; };
+		FA2B7CAA2940BE3400A46518 /* printf_buffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = printf_buffer.cpp; sourceTree = "<group>"; };
+		FA2B7CAB2940BE3400A46518 /* printf_buffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = printf_buffer.h; sourceTree = "<group>"; };
+		FA2B7CAD2940C23E00A46518 /* PrintfBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintfBuffer.swift; sourceTree = "<group>"; };
 		FA2BA27928E31A520083F61C /* SceneLoader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SceneLoader.swift; sourceTree = "<group>"; };
 		FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShapeBuilder.swift; sourceTree = "<group>"; };
 		FA2BA28028E65BF50083F61C /* EntityBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityBuilder.swift; sourceTree = "<group>"; };
@@ -458,6 +465,7 @@
 				FA2BA2C128E6E1360083F61C /* constants.hpp */,
 				FA2BA2CF28E6EFDB0083F61C /* shading.hpp */,
 				FA2BA2D028E6F0C50083F61C /* entry.metal */,
+				FA2B7CA82940BD1000A46518 /* printf.hpp */,
 			);
 			path = device;
 			sourceTree = "<group>";
@@ -507,6 +515,7 @@
 				FA2BA29028E6D83B0083F61C /* PrngState.hpp */,
 				FA2BA28E28E6D7DB0083F61C /* Ray.hpp */,
 				FA2BA28F28E6D8060083F61C /* common.hpp */,
+				FA2B7CA92940BDCA00A46518 /* printf.hpp */,
 			);
 			path = bridge;
 			sourceTree = "<group>";
@@ -618,6 +627,9 @@
 				FA7D5D6A28EA064B00912878 /* lights */,
 				FA5779192885FFD3003C10E7 /* sky */,
 				FAC3AAF62875D4D800C0B0D0 /* Renderer.swift */,
+				FA2B7CAD2940C23E00A46518 /* PrintfBuffer.swift */,
+				FA2B7CAA2940BE3400A46518 /* printf_buffer.cpp */,
+				FA2B7CAB2940BE3400A46518 /* printf_buffer.h */,
 			);
 			path = host;
 			sourceTree = "<group>";
@@ -1764,6 +1776,7 @@
 				FA8616C4293BE3CD00550A57 /* imgui_draw.cpp in Sources */,
 				FA86162A293BE3CD00550A57 /* imgui_stdlib.cpp in Sources */,
 				FAC09C5E2938EAB30048D37F /* LensReader.cpp in Sources */,
+				FA2B7CAE2940C23E00A46518 /* PrintfBuffer.swift in Sources */,
 				FA8616E0293BE77000550A57 /* main.mm in Sources */,
 				FAC09C71293A20040048D37F /* GlassCatalog.cpp in Sources */,
 				FA100A8A287809B600884319 /* tinyexr.cpp in Sources */,
@@ -1773,6 +1786,7 @@
 				FA10CBB8287886B8004092CA /* PLYReader.m in Sources */,
 				FA7D5D6D28EA066E00912878 /* distribution.m in Sources */,
 				FA2BA28328E65C190083F61C /* LightBuilder.swift in Sources */,
+				FA2B7CAC2940BE3400A46518 /* printf_buffer.cpp in Sources */,
 				FA861700293D35E300550A57 /* logging.cpp in Sources */,
 				FA2BA27F28E65BDF0083F61C /* ShapeBuilder.swift in Sources */,
 				FA44785228CA1B88004F5A66 /* Metal.swift in Sources */,
@@ -1899,6 +1913,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";

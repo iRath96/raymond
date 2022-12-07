@@ -5,6 +5,7 @@
 #include <bridge/Uniforms.hpp>
 #include <device/Context.hpp>
 #include <device/utils/color.hpp>
+#include <device/printf.hpp>
 
 #include <lore/lens/Lens.h>
 #include <lore/rt/GeometricalIntersector.h>

@@ -53,7 +53,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/raymond-scenes/italian/scene.json"
+            argument = "/Users/alex/Desktop/raymond-scenes/bmw27/scene.json"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

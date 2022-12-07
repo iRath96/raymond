@@ -772,9 +772,12 @@ class MaterialBuilder {
         let textures: [MTLTexture]
         let library: MTLLibrary
         
-        func makeComputePipelineState(for function: String) throws -> (MTLFunction, MTLComputePipelineState) {
+        func makeComputePipelineState(
+            for function: String,
+            constants: MTLFunctionConstantValues
+        ) throws -> (MTLFunction, MTLComputePipelineState) {
             let descriptor = MTLComputePipelineDescriptor()
-            descriptor.computeFunction = library.makeFunction(name: function)
+            descriptor.computeFunction = try library.makeFunction(name: function, constantValues: constants)
             descriptor.label = function
             
             return (descriptor.computeFunction!, try library.device.makeComputePipelineState(

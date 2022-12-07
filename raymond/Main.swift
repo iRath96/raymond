@@ -19,12 +19,18 @@ struct Raymond: ParsableCommand {
     mutating func run() throws {
         log.info("Welcome to raymond")
         
+        let device = MTLCreateSystemDefaultDevice()!
+        let printfBuffer = PrintfBuffer(on: device, sized: 1024 * 1024)
+        
         var sceneLoader = SceneLoader()
         sceneLoader.externalCompile = externalCompile
         
         let sceneURL = URL(filePath: scenePath)
-        let scene = try sceneLoader.loadScene(fromURL: sceneURL, onDevice: MTLCreateSystemDefaultDevice()!)
-        let renderer = Renderer(device: MTLCreateSystemDefaultDevice()!, scene: scene)!
+        let scene = try sceneLoader.loadScene(
+            fromURL: sceneURL,
+            onDevice: MTLCreateSystemDefaultDevice()!,
+            constants: printfBuffer.constants)
+        let renderer = Renderer(device: device, printfBuffer: printfBuffer, scene: scene)!
         
         //let glassURLs = Bundle.main.urls(forResourcesWithExtension: "glc", subdirectory: "data/glass")!
         let glassURLs = ["schott", "obsolete001", "hoya"].map {

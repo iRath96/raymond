@@ -40,7 +40,11 @@ struct SceneLoader {
             shift: simd_float2(0, 0))
     }
     
-    func loadScene(fromURL url: URL, onDevice device: MTLDevice) throws -> Scene {
+    func loadScene(
+        fromURL url: URL,
+        onDevice device: MTLDevice,
+        constants: MTLFunctionConstantValues
+    ) throws -> Scene {
         let sceneDescription = try Rayjay.SceneLoader().makeScene(fromURL: url)
         
         let materialBuilder = MaterialBuilder(
@@ -61,8 +65,12 @@ struct SceneLoader {
             withDevice: device,
             options: .init(externalCompile: externalCompile))
         
-        let (intersectionFunction, intersectionHandler) = try shading.makeComputePipelineState(for: "handleIntersections")
-        let (_, shadowRayHandler) = try shading.makeComputePipelineState(for: "handleShadowRays")
+        let (intersectionFunction, intersectionHandler) = try shading.makeComputePipelineState(
+            for: "handleIntersections",
+            constants: constants)
+        let (_, shadowRayHandler) = try shading.makeComputePipelineState(
+            for: "handleShadowRays",
+            constants: constants)
         
         let argumentEncoder = intersectionFunction.makeArgumentEncoder(
             bufferIndex: ShadingBufferIndex.context.rawValue)

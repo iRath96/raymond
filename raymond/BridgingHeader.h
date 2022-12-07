@@ -3,6 +3,7 @@
 #include "io/LensLoader.h"
 #include "host/sky/SkyLoader.h"
 #include "host/lights/distribution.h"
+#include "host/printf_buffer.h"
 
 #include "bridge/common.hpp"
 #include "bridge/ResourceIds.hpp"
@@ -17,6 +18,7 @@
 #include "bridge/lights/SunLight.hpp"
 #include "bridge/lights/SpotLight.hpp"
 #include "bridge/lights/ShapeLight.hpp"
+#include "bridge/printf.hpp"
 
 #include "ui/main.h"
 #include "logging/logging.h"

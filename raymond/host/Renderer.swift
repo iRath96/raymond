@@ -33,6 +33,7 @@ enum RendererError: Error {
     var rayCount = 0
     let maxDepth = 8
     
+    var printfBuffer: PrintfBuffer
     var lensBuffer: MTLBuffer!
     var rayBuffer: MTLBuffer!
     var rayCountBuffer: MTLBuffer!
@@ -49,8 +50,8 @@ enum RendererError: Error {
     
     var scene: Scene
     
-    convenience init?(metalKitView: MTKView, scene: Scene) {
-        self.init(device: metalKitView.device!, scene: scene)
+    convenience init?(metalKitView: MTKView, printfBuffer: PrintfBuffer, scene: Scene) {
+        self.init(device: metalKitView.device!, printfBuffer: printfBuffer, scene: scene)
         
         metalKitView.depthStencilPixelFormat = MTLPixelFormat.depth32Float_stencil8
         metalKitView.colorPixelFormat = .rgba16Float
@@ -59,9 +60,10 @@ enum RendererError: Error {
         metalKitView.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)
     }
     
-    required init?(device: MTLDevice, scene: Scene) {
+    required init?(device: MTLDevice, printfBuffer: PrintfBuffer, scene: Scene) {
         self.scene = scene
         self.device = device
+        self.printfBuffer = printfBuffer
         
         guard let queue = self.device.makeCommandQueue() else { return nil }
         self.commandQueue = queue
@@ -95,9 +97,18 @@ enum RendererError: Error {
         lastHandlerConstants.setConstantValue(ptr, type: .bool, index: 0)
         ptr.deallocate()
         
-        rayGenerator = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "generateRays")!
-        imageNormalizer = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "normalizeImage")!
-        makeIndirectDispatch = Renderer.buildComputePipelineWithDevice(library: scene.library, name: "makeIndirectDispatchArguments")!
+        rayGenerator = Renderer.buildComputePipelineWithDevice(
+            library: scene.library,
+            name: "generateRays",
+            constantValues: printfBuffer.constants)!
+        imageNormalizer = Renderer.buildComputePipelineWithDevice(
+            library: scene.library,
+            name: "normalizeImage",
+            constantValues: printfBuffer.constants)!
+        makeIndirectDispatch = Renderer.buildComputePipelineWithDevice(
+            library: scene.library,
+            name: "makeIndirectDispatchArguments",
+            constantValues: printfBuffer.constants)!
         
         do {
             pipelineState = try Renderer.buildBlitPipelineWithDevice(library: scene.library)
@@ -226,6 +237,7 @@ enum RendererError: Error {
                 lensBuffer,
                 offset: 0,
                 index: GeneratorBufferIndex.lens.rawValue)
+            computeEncoder.useResource(printfBuffer.buffer, usage: [ .read, .write ])
             computeEncoder.dispatchThreads(
                 outputImageSize,
                 threadsPerThreadgroup: MTLSizeMake(8, 8, 1))
@@ -366,6 +378,7 @@ enum RendererError: Error {
         }
         
         commandBuffer.addCompletedHandler { (_ commandBuffer) -> Swift.Void in
+            self.printfBuffer.execute()
             semaphore.signal()
         }
     }

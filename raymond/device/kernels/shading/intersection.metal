@@ -9,11 +9,16 @@
 #include <device/ShadingContext.hpp>
 #include <device/Context.hpp>
 #include <device/constants.hpp>
+#include <device/printf.hpp>
 
 float computeMisWeight(float pdf, float other) {
-    pdf *= pdf;
-    other *= other;
-    return pdf / (pdf + other);
+    if (isinf(pdf)) return 1;
+    
+    const float weight = sqr(pdf) / (sqr(pdf) + sqr(other));
+    if (!(weight >= 0)) {
+        printf("Invalid MIS weight: %.3e (pdf:%.3e, other:%.3e)", weight, pdf, other);
+    }
+    return weight;
 }
 
 constant bool isMaxDepth [[function_constant(0)]];
@@ -76,11 +81,10 @@ kernel void handleIntersections(
                 computeMisWeight(ray.bsdfPdf, ctx.lights.envmapPdf(ray.direction));
             
             ctx.lights.evaluateEnvironment(ctx, shading);
-            uint2 coordinates = uint2(ray.x, ray.y);
+            const uint2 coordinates = uint2(ray.x, ray.y);
+            const float3 contribution = misWeight * ray.weight * shading.material.emission;
             image.write(
-                image.read(coordinates) + float4(
-                    misWeight * ray.weight * shading.material.emission,
-                    1),
+                image.read(coordinates) + float4(contribution, 1),
                 coordinates
             );
         }
@@ -164,6 +168,10 @@ kernel void handleIntersections(
                 shadowRay.weight = neeWeight;
                 shadowRay.x = ray.x;
                 shadowRay.y = ray.y;
+                
+                if (!all(shadowRay.weight >= 0)) {
+                    printf("negative shadow ray weight!");
+                }
             }
         } else {
             uint2 coordinates = uint2(ray.x, ray.y);
@@ -173,6 +181,9 @@ kernel void handleIntersections(
                     1),
                 coordinates
             );
+            if (!all(contribution >= 0)) {
+                printf("negative contribution!");
+            }
         }
     }
     
@@ -200,6 +211,10 @@ kernel void handleIntersections(
         nextRay.y = ray.y;
         nextRay.prng = prng;
         nextRay.bsdfPdf = sample.pdf;
+        
+        if (!all(ray.weight >= 0)) {
+            printf("negative ray weight!");
+        }
     }
     
     return;
