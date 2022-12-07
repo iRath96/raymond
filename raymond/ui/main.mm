@@ -17,6 +17,8 @@
 #include "imgui_impl_osx.h"
 
 #include "console.hpp"
+#include "utils/inspector.hpp"
+
 
 @interface AppViewController () <MTKViewDelegate>
 @property (nonatomic, readonly) MTKView *mtkView;
@@ -278,9 +280,15 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
         
         [_renderer setSizeWithWidth:int(scale.x * viewportSize.x) height:int(scale.y * viewportSize.y)];
         [_renderer executeIn:commandBuffer];
+        
+        const ImVec2 mouse = ImVec2(
+            scale.x * (ImGui::GetMousePos().x - ImGui::GetCursorScreenPos().x),
+            scale.y * (ImGui::GetMousePos().y - ImGui::GetCursorScreenPos().y)
+        );
         ImGui::Image((__bridge void *)_renderer.normalizedImage, viewportSize);
         
         if (ImGui::IsWindowHovered()) {
+            ui_inspect_image(mouse.x, mouse.y, _renderer.normalizedImage);
             _viewportHovered = true;
         }
     }

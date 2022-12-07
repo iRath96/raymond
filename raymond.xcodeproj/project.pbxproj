@@ -90,6 +90,7 @@
 		FA2B7CAA2940BE3400A46518 /* printf_buffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = printf_buffer.cpp; sourceTree = "<group>"; };
 		FA2B7CAB2940BE3400A46518 /* printf_buffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = printf_buffer.h; sourceTree = "<group>"; };
 		FA2B7CAD2940C23E00A46518 /* PrintfBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintfBuffer.swift; sourceTree = "<group>"; };
+		FA2B7CB02941285B00A46518 /* inspector.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = inspector.hpp; sourceTree = "<group>"; };
 		FA2BA27928E31A520083F61C /* SceneLoader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SceneLoader.swift; sourceTree = "<group>"; };
 		FA2BA27E28E65BDF0083F61C /* ShapeBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShapeBuilder.swift; sourceTree = "<group>"; };
 		FA2BA28028E65BF50083F61C /* EntityBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityBuilder.swift; sourceTree = "<group>"; };
@@ -490,6 +491,14 @@
 				FA100A8C28780BA300884319 /* libz.tbd */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		FA2B7CAF2941284700A46518 /* utils */ = {
+			isa = PBXGroup;
+			children = (
+				FA2B7CB02941285B00A46518 /* inspector.hpp */,
+			);
+			path = utils;
 			sourceTree = "<group>";
 		};
 		FA2BA28528E6D6B90083F61C /* lights */ = {
@@ -1323,6 +1332,7 @@
 		FA8616DE293BE72200550A57 /* ui */ = {
 			isa = PBXGroup;
 			children = (
+				FA2B7CAF2941284700A46518 /* utils */,
 				FA8616E1293BE7A200550A57 /* main.h */,
 				FA8616DF293BE77000550A57 /* main.mm */,
 				FA8616F9293CE97300550A57 /* console.hpp */,
