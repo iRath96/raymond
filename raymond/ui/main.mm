@@ -285,9 +285,11 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
             scale.x * (ImGui::GetMousePos().x - ImGui::GetCursorScreenPos().x),
             scale.y * (ImGui::GetMousePos().y - ImGui::GetCursorScreenPos().y)
         );
-        ImGui::Image((__bridge void *)_renderer.normalizedImage, viewportSize);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+        ImGui::ImageButton((__bridge void *)_renderer.normalizedImage, viewportSize);
+        ImGui::PopStyleVar();
         
-        if (ImGui::IsWindowHovered()) {
+        if (ImGui::IsItemHovered()) {
             ui_inspect_image(mouse.x, mouse.y, _renderer.normalizedImage);
             _viewportHovered = true;
         }
@@ -297,6 +299,8 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
     
     {
         ImGui::Begin("Statistics");
+        
+        ImGui::Text("yolo: %d\n", _viewportHovered);
         
         static float exposure = 0;
         bool uniformsChanged = false;
