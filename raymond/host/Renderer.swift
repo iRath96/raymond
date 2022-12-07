@@ -89,7 +89,8 @@ enum RendererError: Error {
             stopIndex: 0,
             relativeStop: 1,
             numApertureBlades: 7,
-            samplingMode: .mis)
+            samplingMode: .mis,
+            tonemapping: .linear)
         
         let lastHandlerConstants = MTLFunctionConstantValues()
         let ptr = UnsafeMutablePointer<Bool>.allocate(capacity: 1)

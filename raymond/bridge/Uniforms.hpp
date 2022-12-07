@@ -5,7 +5,13 @@
 typedef NS_ENUM(uint32_t, SamplingMode) {
     SamplingModeBsdf,
     SamplingModeNee,
-    SamplingModeMis
+    SamplingModeMis,
+};
+
+typedef NS_ENUM(uint32_t, Tonemapping) {
+    TonemappingLinear,
+    TonemappingHable,
+    TonemappingAces,
 };
 
 DEVICE_STRUCT(Uniforms) {
@@ -20,4 +26,5 @@ DEVICE_STRUCT(Uniforms) {
     float relativeStop;
     int numApertureBlades;
     SamplingMode samplingMode;
+    Tonemapping tonemapping;
 };

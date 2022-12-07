@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "main.h"
 
@@ -366,6 +367,27 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
             ImGui::Text("Lens exposure: %+.2f EV", log2(lensEVCorrection));
         }
         
+        static std::map<Tonemapping, const char *> tonemappingNames = {
+            { TonemappingLinear, "Linear" },
+            { TonemappingHable, "Hable" },
+            { TonemappingAces, "ACES" },
+        };
+        
+        auto &tonemapping = _renderer.uniforms->tonemapping;
+        if (ImGui::BeginCombo("Tonemapping", tonemappingNames[tonemapping])) {
+            for (const auto &option : tonemappingNames) {
+                if (ImGui::Selectable(option.second, tonemapping == option.first)) {
+                    tonemapping = option.first;
+                }
+
+                if (tonemapping == option.first) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            
+            ImGui::EndCombo();
+        }
+
         _renderer.uniforms->exposure = pow(2, exposure) * lensEVCorrection;
         
         if (uniformsChanged) {
