@@ -23,7 +23,8 @@ extension String {
                 return ""
             }
             
-            return self.first!.lowercased() + self.capitalized.replacing(" ", with: "").dropFirst()
+            let trimmed = self.trimmingCharacters(in: [" "])
+            return trimmed.first!.lowercased() + trimmed.capitalized.replacing(" ", with: "").dropFirst()
         }
     }
 }
@@ -309,7 +310,27 @@ struct Codegen {
     
     private mutating func makeKernelInvocation(for kernel: any NodeKernel) throws -> KernelInvocation {
         switch kernel {
-        case let kernel as TexSkyKernel:
+        case let originalKernel as TexSkyKernel:
+            var kernel = originalKernel
+            var scale: Float = 1
+            
+            if kernel.type == "HOSEK_WILKIE" {
+                log.warn("SkyKernel: ad-hoc mapping of Hosek-Wilkie to Nishita")
+                
+                let sunRotation = atan2(kernel.sunDirection[0], kernel.sunDirection[1])
+                let sunElevation = asin(kernel.sunDirection[2])
+                
+                kernel.type = "NISHITA"
+                kernel.sunDisc = false
+                kernel.airDensity = 2
+                kernel.dustDensity = 0.5
+                kernel.ozoneDensity = 1
+                kernel.sunElevation = max(sunElevation, 5 * Float.pi / 180)
+                kernel.sunRotation = sunRotation
+                
+                scale = 0.08
+            }
+            
             if kernel.type == "NISHITA" {
                 log.debug("generating sky texture")
                 
@@ -341,10 +362,11 @@ struct Codegen {
                 var invocation: KernelInvocation = .init(kernel: "TexNishita", parameters: [
                     .int(slot)
                 ])
-                return invocation.assign(key: "Data", value: .vector(data))
+                invocation.assign(key: "Data", value: .vector(data))
+                invocation.assign(key: "Scale", value: .scalar(scale))
+                return invocation
             }
             
-            log.warn("SkyKernel: only Nishita supported")
             throw CodegenError.unsupportedKernel(type(of: kernel))
         case let kernel as TexImageKernel:
             let slot = try registerTexture(kernel.filepath)
@@ -454,12 +476,21 @@ struct Codegen {
                 .enum("DISTRIBUTION", "GGX"),
                 .enum("SUBSURFACE_METHOD", kernel.subsurfaceMethod)
             ])
+        case is AmbientOcclusionKernel:
+            log.warn("AmbientOcclusion: unsupported")
+            return .init(kernel: "AmbientOcclusion")
         case is VolumeScatterKernel:
             log.warn("VolumeScatter: unsupported")
             return .init(kernel: "VolumeScatter")
         case let kernel as MappingKernel:
             return .init(kernel: "Mapping", parameters: [
                 .enum("TYPE", kernel.type)
+            ])
+        case let kernel as MapRangeKernel:
+            return .init(kernel: "MapRange", parameters: [
+                .bool(kernel.clamp),
+                .enum("DATA_TYPE", kernel.dataType),
+                .enum("INTERPOLATION_TYPE", kernel.interpolationType)
             ])
         case let kernel as NormalMappingKernel:
             if !kernel.uvMap.isEmpty {
@@ -521,6 +552,8 @@ struct Codegen {
             return .init(kernel: "RGBToBW")
         case is TexCoordKernel:
             return .init(kernel: "TextureCoordinate")
+        case is NormalKernel:
+            return .init(kernel: "NormalProduct")
         case let kernel as UVMapKernel:
             if !kernel.uvMap.isEmpty {
                 log.warn("UVMap: UV maps not yet supported")

@@ -54,7 +54,19 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/raymond-scenes/bmw27/scene.json"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Desktop/scenes/Cosy\ Living\ Room/Cosy\ Living\ Room.json"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Desktop/scenes/AI48_002/AI48_002.json"
             isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/alex/Desktop/raymond-tests/auto-smooth.json"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--external-compile"

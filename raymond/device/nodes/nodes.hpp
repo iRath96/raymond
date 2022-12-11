@@ -53,6 +53,24 @@ struct ObjectInfo {
     void compute(device Context &ctx, ShadingContext shading) {}
 };
 
+/**
+ * @todo not supported!
+ */
+struct AmbientOcclusion {
+    float4 color;
+    float distance;
+    float3 normal;
+    
+    float ao;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        ao = 1;
+    }
+};
+
+/**
+ * @todo not supported!
+ */
 struct VolumeScatter {
     float anisotropy;
     float4 color;
@@ -250,6 +268,48 @@ struct Bump {
     }
 };
 
+struct kMapRange {
+    enum DataType {
+        DATA_TYPE_FLOAT
+    };
+    
+    enum InterpolationType {
+        INTERPOLATION_TYPE_LINEAR
+    };
+};
+
+template<
+    bool Clamp,
+    kMapRange::DataType DataType,
+    kMapRange::InterpolationType InterpolationType
+>
+struct MapRange {
+    float fromMin;
+    float fromMax;
+    float toMin;
+    float toMax;
+    
+    float steps;
+    float3 steps_Float3;
+    
+    float3 from_Min_Float3;
+    float3 from_Max_Float3;
+    float3 to_Min_Float3;
+    float3 to_Max_Float3;
+    
+    float value;
+    float3 vector;
+    
+    float result;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        /// @todo not tested
+        float v = (value - fromMin) / (fromMax - fromMin);
+        if (Clamp) v = saturate(v);
+        result = lerp(toMin, toMax, v);
+    }
+};
+
 struct kMapping {
     enum Type {
         TYPE_MAPPING
@@ -340,6 +400,7 @@ struct kTexImage {
     enum Projection {
         // TexImage
         PROJECTION_FLAT,
+        PROJECTION_BOX,
         
         // TexEnvironment
         PROJECTION_EQUIRECTANGULAR,
@@ -399,6 +460,7 @@ struct TexImage {
             projected = warp::equirectSphereToSquare(vector);
             break;
         
+        case kTexImage::PROJECTION_BOX:
         case kTexImage::PROJECTION_MIRROR_BALL:
             /// @todo not implemented
             break;
@@ -486,10 +548,12 @@ struct TexVoronoi {
     float w;
     
     float4 color;
+    float distance;
     
     void compute(device Context &ctx, ShadingContext shading) {
         /// @todo
         color = 1;
+        distance = 0;
     }
 };
 
@@ -746,12 +810,14 @@ template<
     int TextureIndex
 >
 struct TexNishita {
+    float scale;
+    
     float3 vector;
     float4 color;
     float data[10];
     
     void compute(device Context &ctx, ShadingContext shading) {
-        color = float4(sky_radiance_nishita(shading.wo * float3(1, -1, -1), data, ctx.textures[TextureIndex]), 1);
+        color = float4(scale * sky_radiance_nishita(shading.wo * float3(1, -1, -1), data, ctx.textures[TextureIndex]), 1);
     }
 };
 
@@ -931,6 +997,18 @@ struct ColorRamp {
     }
 };
 
+/**
+ * @todo not supported
+ */
+struct NormalProduct {
+    float3 normal;
+    float dot;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        dot = 1;
+    }
+};
+
 struct kNormalMap {
     enum Space {
         SPACE_TANGENT,
@@ -1011,7 +1089,8 @@ struct kMath {
         OPERATION_MAXIMUM,
         OPERATION_TANGENT,
         OPERATION_LESS_THAN,
-        OPERATION_GREATER_THAN
+        OPERATION_GREATER_THAN,
+        OPERATION_MODULO
     };
 };
 
@@ -1054,6 +1133,9 @@ struct Math {
         case kMath::OPERATION_GREATER_THAN:
             /// @todo verify
             value = value > value_001; break;
+        case kMath::OPERATION_MODULO:
+            /// @todo verify
+            value = fmod(value, value_001); break;
         }
         
         if (Clamp) {

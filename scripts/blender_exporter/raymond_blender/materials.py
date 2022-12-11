@@ -361,6 +361,23 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
                 "squash": node.squash,
                 "squash_frequency": node.squash_frequency
             }
+        elif isinstance(node, bpy.types.ShaderNodeTexVoronoi):
+            result_node["parameters"] = {
+                "distance": node.distance,
+                "feature": node.feature,
+                "dimensions": node.voronoi_dimensions
+            }
+        elif isinstance(node, bpy.types.ShaderNodeTexMusgrave):
+            result_node["parameters"] = {
+                "type": node.musgrave_type,
+                "dimensions": node.musgrave_dimensions
+            }
+        elif isinstance(node, bpy.types.ShaderNodeAmbientOcclusion):
+            result_node["parameters"] = {
+                "inside": node.inside,
+                "only_local": node.only_local,
+                "samples": node.samples
+            }
         elif isinstance(node, bpy.types.ShaderNodeMath):
             result_node["parameters"] = {
                 "operation": node.operation,
@@ -424,12 +441,26 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             result_node["parameters"] = {
                 "type": node.type
             }
+        elif isinstance(node, bpy.types.ShaderNodeMapRange):
+            result_node["parameters"] = {
+                "clamp": node.clamp,
+                "data_type": node.data_type,
+                "interpolation_type": node.interpolation_type
+            }
+        elif isinstance(node, bpy.types.ShaderNodeVertexColor):
+            result_node["parameters"] = {
+                "layer_name": node.layer_name
+            }
         elif isinstance(node, bpy.types.ShaderNodeNormalMap):
             result_node["parameters"] = {
                 "space": node.space,
                 "uv_map": node.uv_map
             }
         elif isinstance(node, bpy.types.ShaderNodeBsdfGlass):
+            result_node["parameters"] = {
+                "distribution": node.distribution
+            }
+        elif isinstance(node, bpy.types.ShaderNodeBsdfRefraction):
             result_node["parameters"] = {
                 "distribution": node.distribution
             }
@@ -490,7 +521,9 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             bpy.types.ShaderNodeBsdfVelvet,
             bpy.types.ShaderNodeRGBToBW,
             bpy.types.ShaderNodeLayerWeight,
-            bpy.types.ShaderNodeVolumeScatter
+            bpy.types.ShaderNodeVolumeScatter,
+            bpy.types.ShaderNodeObjectInfo,
+            bpy.types.ShaderNodeNormal
         )):
             # no parameters
             pass
