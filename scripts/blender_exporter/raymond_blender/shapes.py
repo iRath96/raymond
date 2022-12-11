@@ -2,6 +2,7 @@ import os
 from warnings import warn
 import bmesh
 import bpy
+import math
 
 from .registry import SceneRegistry
 from .materials import export_default_material, export_material
@@ -38,7 +39,7 @@ def _write_ascii(fw, ply_verts: list, ply_faces: list) -> None:
         fw(b"\n")
 
 
-def ply_save(filepath, bm: bmesh.types.BMesh):
+def ply_save(filepath, bm: bmesh.types.BMesh, auto_smooth: float):
     uv_lay = bm.loops.layers.uv.active
 
     normal = uv = None
@@ -58,7 +59,14 @@ def ply_save(filepath, bm: bmesh.types.BMesh):
         for loop in f.loops:
             v = map_id = loop.vert
 
-            if f.smooth:
+            use_smooth = f.smooth
+            if auto_smooth < 1:
+                dot = v.normal[0] * f.normal[0] + v.normal[1] * f.normal[1] + v.normal[2] * f.normal[2]
+                use_smooth = dot >= auto_smooth
+            else:
+                use_smooth = f.smooth
+
+            if use_smooth:
                 normal = v.normal
             else:
                 normal = f.normal
@@ -158,13 +166,15 @@ def _export_bmesh_by_material(registry: SceneRegistry, me: bpy.types.Mesh, name:
     # Solidify if necessary
     #_solidify_bmesh(bm)
 
+    auto_smooth = 1
     if me.use_auto_smooth:
-        warn("'Auto Smooth' not supported!")
+        warn("'Auto Smooth' not properly supported!")
+        auto_smooth = math.cos(me.auto_smooth_angle / 2)
     
     bm.normal_update()
 
     filepath = os.path.join(registry.meshpath, f"{name}.ply")
-    ply_save(filepath, bm)
+    ply_save(filepath, bm, auto_smooth)
 
     bm.free()
 
