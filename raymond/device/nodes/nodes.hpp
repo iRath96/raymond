@@ -1788,6 +1788,28 @@ struct BsdfVelvet {
     }
 };
 
+struct BsdfHair {
+    float4 color;
+    float offset;
+    float roughnessu;
+    float roughnessv;
+    float3 tangent;
+    float weight;
+    
+    UberShader bsdf;
+    
+    void compute(device Context &ctx, ShadingContext shading) {
+        bsdf.diffuse = (Diffuse){
+            .diffuseWeight = color.xyz,
+            .sheenWeight = 0,
+            .roughness = 0
+        };
+        
+        bsdf.normal = tangent;
+        bsdf.lobeProbabilities[0] = 1;
+    }
+};
+
 struct BsdfTranslucent {
     float4 color;
     float3 normal;

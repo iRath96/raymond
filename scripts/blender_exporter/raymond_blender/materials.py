@@ -468,6 +468,10 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             result_node["parameters"] = {
                 "distribution": node.distribution
             }
+        elif isinstance(node, bpy.types.ShaderNodeBsdfHair):
+            result_node["parameters"] = {
+                "component": node.component
+            }
         elif isinstance(node, bpy.types.ShaderNodeBump):
             result_node["parameters"] = {
                 "invert": node.invert
@@ -504,7 +508,6 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             bpy.types.ShaderNodeBsdfTranslucent,
             bpy.types.ShaderNodeAddShader,
             bpy.types.ShaderNodeMixShader,
-            bpy.types.ShaderNodeSeparateColor,
             bpy.types.ShaderNodeHueSaturation,
             bpy.types.ShaderNodeLightPath,
             bpy.types.ShaderNodeEmission,
@@ -523,12 +526,13 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             bpy.types.ShaderNodeLayerWeight,
             bpy.types.ShaderNodeVolumeScatter,
             bpy.types.ShaderNodeObjectInfo,
-            bpy.types.ShaderNodeNormal
+            bpy.types.ShaderNodeNormal,
+            bpy.types.ShaderNodeSeparateXYZ
         )):
             # no parameters
             pass
         else:
-            warn(f"Node type not supported: {node.bl_idname}")
+            warn(f"Node type not supported: {node.bl_idname} in material '{material.name_full}'")
         
         for input in node.inputs.values():
             result_node["inputs"][input.identifier] = result_input = {

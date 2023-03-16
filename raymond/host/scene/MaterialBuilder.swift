@@ -105,6 +105,18 @@ struct Codegen {
         }
         
         @discardableResult
+        mutating func assign(key: String, type: String, value: Node.Value) -> Self {
+            switch value {
+            case .scalar(let v):
+                inputs[key] = "\(type)(\(v))"
+            case .vector(let v):
+                inputs[key] = "\(type)({ \(v.map { String($0) }.joined(separator: ", ")) })"
+            }
+            
+            return self
+        }
+        
+        @discardableResult
         mutating func assign(key: String, link: Node.Link, type: String) -> Self {
             let node = Codegen.makeIdentifier(from: link.node)
             let property = Codegen.makeIdentifier(from: link.property)
@@ -522,6 +534,9 @@ struct Codegen {
         case is BsdfVelvetKernel:
             log.warn("BsdfVelvet: unsupported")
             return .init(kernel: "BsdfVelvet")
+        case is BsdfHairKernel:
+            log.warn("BsdfHair: unsupported")
+            return .init(kernel: "BsdfHair")
         case is BsdfTranslucentKernel:
             log.warn("BsdfTranslucent: not implemented")
             return .init(kernel: "BsdfTranslucent")
@@ -783,7 +798,7 @@ struct Codegen {
         for (key, value) in node.inputs.sorted(by: { $0.0 < $1.0 }) {
             if value.links == nil || value.links!.isEmpty {
                 if let v = value.value {
-                    invocation.assign(key: key, value: v)
+                    invocation.assign(key: key, type: value.type, value: v)
                 }
             } else if value.links!.count == 1 {
                 let link = value.links![0]
