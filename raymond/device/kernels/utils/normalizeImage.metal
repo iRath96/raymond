@@ -8,14 +8,23 @@
 #include <metal_stdlib>
 using namespace metal;
 
-float3 tonemapHable(float3 x) {
-    const float hA = 0.15;
-    const float hB = 0.50;
-    const float hC = 0.10;
-    const float hD = 0.20;
-    const float hE = 0.02;
-    const float hF = 0.30;
+float3 tonemapHablePartial(float3 x) {
+    const float hA = 0.15f;
+    const float hB = 0.50f;
+    const float hC = 0.10f;
+    const float hD = 0.20f;
+    const float hE = 0.02f;
+    const float hF = 0.30f;
     return ((x*(hA*x+hC*hB)+hD*hE) / (x*(hA*x+hB)+hD*hF)) - hE/hF;
+}
+
+float3 tonemapHable(float3 x) {
+    const float exposureBias = 2.0f;
+    const float3 curr = tonemapHablePartial(x * exposureBias);
+
+    const float3 W = 11.2f;
+    const float3 whiteScale = 1 / tonemapHablePartial(W);
+    return curr * whiteScale;
 }
 
 float3 tonemapAces(float3 x) {
