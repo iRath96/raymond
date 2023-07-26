@@ -53,8 +53,8 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "/Users/alex/Desktop/raymond-scenes/bmw27/scene.json"
-            isEnabled = "NO">
+            argument = "/Users/rath/Desktop/scenes/uncompressed/bmw27/scene.json"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/scenes/Cosy\ Living\ Room/Cosy\ Living\ Room.json"
@@ -62,7 +62,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/scenes/AI48_002/AI48_002.json"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/alex/Desktop/raymond-tests/auto-smooth.json"

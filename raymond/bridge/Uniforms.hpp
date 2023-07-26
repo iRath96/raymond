@@ -3,20 +3,34 @@
 #include "common.hpp"
 
 typedef NS_ENUM(uint32_t, SamplingMode) {
-    SamplingModeBsdf,
+    SamplingModeBsdf = 0,
     SamplingModeNee,
     SamplingModeMis,
 };
 
 typedef NS_ENUM(uint32_t, Tonemapping) {
-    TonemappingLinear,
+    TonemappingLinear = 0,
     TonemappingHable,
     TonemappingAces,
 };
 
+typedef NS_ENUM(uint32_t, OutputChannel) {
+    OutputChannelImage = 0,
+    OutputChannelAlbedo,
+    OutputChannelRoughness,
+};
+
+typedef NS_ENUM(uint32_t, RussianRoulette) {
+    RussianRouletteNone = 0,
+    RussianRouletteThroughput,
+};
+
+
 DEVICE_STRUCT(Uniforms) {
     uint32_t numLensSurfaces;
     uint32_t frameIndex;
+    uint32_t randomSeed;
+    bool accumulate;
     bool lensSpectral;
     float sensorScale;
     float cameraScale;
@@ -27,4 +41,7 @@ DEVICE_STRUCT(Uniforms) {
     int numApertureBlades;
     SamplingMode samplingMode;
     Tonemapping tonemapping;
+    RussianRoulette rr;
+    int rrDepth;
+    OutputChannel outputChannel;
 };

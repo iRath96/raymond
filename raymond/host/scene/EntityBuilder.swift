@@ -16,6 +16,8 @@ fileprivate extension simd_float4x4 {
 class EntityBuilder {
     struct Result {
         let accelerationStructure: MPSInstanceAccelerationStructure
+        let boundsMin: float3
+        let boundsMax: float3
     }
     
     private struct Instance {
@@ -73,9 +75,19 @@ class EntityBuilder {
     ) throws -> Result {
         try library.values.forEach(add)
         
-        var (indexBuffer, indices) = device.makeBufferAndPointer(type: InstanceIndex.self, count: instances.count)
-        var (transformBuffer, transforms) = device.makeBufferAndPointer(type: float4x4.self, count: instances.count)
-        var (instanceBuffer, instanceData) = device.makeBufferAndPointer(type: DevicePerInstanceData.self, count: instances.count)
+        var (indexBuffer, indices) = device.makeBufferAndPointer(
+            type: InstanceIndex.self, count: instances.count, name: "Instance Index Buffer")
+        var (transformBuffer, transforms) = device.makeBufferAndPointer(
+            type: float4x4.self, count: instances.count, name: "Instance Transform Buffer")
+        var (instanceBuffer, instanceData) = device.makeBufferAndPointer(
+            type: DevicePerInstanceData.self, count: instances.count, name: "Instance Data Buffer")
+        
+        var boundsMin = float3(repeating: +Float.infinity)
+        var boundsMax = float3(repeating: -Float.infinity)
+        func extendBounds(by point: float3) {
+            boundsMin = simd_min(boundsMin, point)
+            boundsMax = simd_max(boundsMax, point)
+        }
         
         for instance in instances {
             let normalTransform = instance.transform.inner3x3.inverse.transpose
@@ -114,7 +126,25 @@ class EntityBuilder {
             indices = indices.advanced(by: 1)
             transforms = transforms.advanced(by: 1)
             instanceData = instanceData.advanced(by: 1)
+
+            for i in 0..<8 {
+                var localPoint = instance.shapeInfo.boundsMin
+                for dim in 0..<3 {
+                    if i & (1 << dim) != 0 {
+                        localPoint[dim] = instance.shapeInfo.boundsMax[dim]
+                    }
+                }
+                let globalPoint = simd_mul(instance.transform, simd_float4(localPoint, 1))
+                extendBounds(by: .init(globalPoint.x, globalPoint.y, globalPoint.z) / globalPoint.w)
+            }
         }
+
+        try indexBuffer.saveBinary(at: URL.desktopDirectory.appending(path: "instances.bin"))
+        try transformBuffer.saveBinary(at: URL.desktopDirectory.appending(path: "transforms.bin"))
+        
+        let triangleCount = instances.reduce(0) { $0 + $1.shapeInfo.faceCount }
+        print("#instances: \(instances.count)")
+        print("#triangles: \(triangleCount)")
         
         assert(InstanceIndex.bitWidth == 32)
         let accelerationStructure = MPSInstanceAccelerationStructure(group: shapes.accelerationGroup)
@@ -129,7 +159,9 @@ class EntityBuilder {
         resources.append(instanceBuffer)
         
         return .init(
-            accelerationStructure: accelerationStructure
+            accelerationStructure: accelerationStructure,
+            boundsMin: boundsMin,
+            boundsMax: boundsMax
         )
     }
 }

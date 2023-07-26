@@ -99,6 +99,8 @@ struct Codegen {
                 inputs[key] = "\(v)"
             case .vector(let v):
                 inputs[key] = "{ \(v.map { String($0) }.joined(separator: ", ")) }"
+            case .string:
+                log.warn("string properties are not supported")
             }
             
             return self
@@ -111,6 +113,8 @@ struct Codegen {
                 inputs[key] = "\(type)(\(v))"
             case .vector(let v):
                 inputs[key] = "\(type)({ \(v.map { String($0) }.joined(separator: ", ")) })"
+            case .string:
+                log.warn("string properties are not supported")
             }
             
             return self
@@ -494,6 +498,12 @@ struct Codegen {
         case is VolumeScatterKernel:
             log.warn("VolumeScatter: unsupported")
             return .init(kernel: "VolumeScatter")
+        case is VolumeAbsorptionKernel:
+            log.warn("VolumeAbsorption: unsupported")
+            return .init(kernel: "VolumeAbsorption")
+        case is PrincipledVolumeKernel:
+            log.warn("PrincipledVolume: unsupported")
+            return .init(kernel: "PrincipledVolume")
         case let kernel as MappingKernel:
             return .init(kernel: "Mapping", parameters: [
                 .enum("TYPE", kernel.type)

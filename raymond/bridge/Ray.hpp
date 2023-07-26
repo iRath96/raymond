@@ -23,6 +23,7 @@ DEVICE_STRUCT(Ray) {
     DEVICE_STRUCT(PrngState) prng;
     simd_float3 weight;
     uint16_t x, y;
+    uint16_t depth;
     RayFlags flags;
     float bsdfPdf;
 };

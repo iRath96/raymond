@@ -113,7 +113,7 @@ device char *dump_arguments(device char *addr, T t, Args... args) {
 struct printf_buffer {
 private:
     uint32_t size;
-    metal::atomic<uint32_t> index;
+    atomic<uint32_t> index;
     char data;
     
 public:
@@ -125,11 +125,16 @@ public:
         if (atomic_load_explicit(&index, memory_order_relaxed) >= size)
             return 0;
         
-        const int packetIndex = atomic_fetch_add_explicit(&index, (int)packetSize, metal::memory_order_relaxed);
-        if (packetIndex + packetSize > (unsigned long)size)
-            return 0;
-        
+        const int packetIndex = atomic_fetch_add_explicit(&index, (int)packetSize, memory_order_relaxed);
         device char *addr = &data + packetIndex;
+        
+        if (packetIndex + packetSize > (unsigned long)size) {
+            // we are the last thread to write to the buffer, our responsibility is to mark the overflow
+            // note: due to this encoding, we do not support calling printf with an empty format string.
+            *addr = 0;
+            return 0;
+        }
+        
         addr = strcpy(addr, fmt);
         addr = write(addr, nargs);
         dump_arguments(addr, args...);

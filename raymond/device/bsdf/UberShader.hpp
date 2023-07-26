@@ -5,6 +5,7 @@
 #include "lobes/Specular.hpp"
 #include "lobes/Transmission.hpp"
 #include "lobes/Clearcoat.hpp"
+#include <device/printf.hpp>
 
 struct UberShader {
     float3 normal;
@@ -21,6 +22,23 @@ struct UberShader {
     float3 emission = 0;
     
     float weight = 1;
+
+    bool isDelta() const {
+        if (alpha < 0.5f) return true;
+        if (specular.weight > 0.5f && (specular.alphaX < 0.1f || specular.alphaY < 0.1f)) return true;
+        if (transmission.weight > 0.5f && (transmission.reflectionAlpha < 0.1f || transmission.transmissionAlpha < 0.1f)) return true;
+        return false;
+    }
+    
+    float3 albedo() const {
+        float3 value = 0;
+        if (lobeProbabilities[0] > 0) value += diffuse.diffuseWeight + diffuse.sheenWeight;
+        if (lobeProbabilities[1] > 0) value += specular.weight * (specular.Cspec0 + 1) / 2;
+        if (lobeProbabilities[2] > 0) value += transmission.weight * (transmission.Cspec0 + transmission.baseColor + 2) / 4;
+        if (lobeProbabilities[3] > 0) value += clearcoat.weight / 4;
+        value = alpha * value + (1 - alpha) * alphaWeight;
+        return value + 1e-3;
+    }
     
     template<bool IsLocal = false>
     float3 evaluate(float3 wo, float3 wi, float3 shNormal, float3 geoNormal, thread float &pdf) {
@@ -71,8 +89,9 @@ struct UberShader {
             BsdfSample sample;
             sample.weight = alphaWeight * weight;
             sample.wi = -wo;
-            sample.pdf = INFINITY; /// @todo hack
-            sample.flags = previousFlags; /// null scattering does not alter ray flags
+            sample.pdf = 1; /// @todo hack
+            sample.flags = RayFlags(previousFlags | RayFlagsSingular); /// null scattering does not alter ray flags
+
             return sample;
         }
         

@@ -26,9 +26,12 @@ typedef packed_float3 MPSPackedFloat3;
 /// Use Metal names for SIMD Types
 typedef simd_float2 float2;
 typedef simd_float3 float3;
+typedef simd_float4 float4;
 typedef simd_float3x3 float3x3;
 typedef simd_float3x4 float3x4;
 typedef simd_float4x4 float4x4;
+
+typedef uint32_t atomic_uint;
 
 /// Support half type on the host using clang extensions
 typedef __fp16 half;

@@ -38,6 +38,7 @@ struct Specular {
             anisotropicSmithG1(wo, wh, alphaX, alphaY);
         const float3 D = anisotropicGGX(wh, alphaX, alphaY);
         return F * D * G / abs(4 * ShadingFrame::cosTheta(wo));
+        /// @todo why is this not multiplied by weight here?
     }
     
     BsdfSample sample(float2 rnd, float3 wo) {

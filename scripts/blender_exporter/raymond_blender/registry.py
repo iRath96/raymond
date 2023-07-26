@@ -1,5 +1,6 @@
 import bpy
 import os
+import re
 
 from .utils import find_unique_name
 
@@ -10,6 +11,7 @@ class ObjectRegistry(object):
         self.internal_names: dict[str, str] = {}
     
     def _make_unique_name(self, name: str):
+        name = re.sub("[^a-zA-Z0-9_\\- ]", "_", name)
         return find_unique_name(self.converted, name)
 
     def internal_export(self, name: str, export_fn):

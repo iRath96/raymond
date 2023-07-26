@@ -9,6 +9,7 @@ struct PrintfBuffer {
     init(on device: MTLDevice, sized size: Int) {
         let headerSize = 8
         buffer = device.makeBuffer(length: headerSize + size)!
+        buffer.label = "printf Buffer"
         
         let p = buffer.contents().assumingMemoryBound(to: UInt32.self)
         p.pointee = UInt32(size)

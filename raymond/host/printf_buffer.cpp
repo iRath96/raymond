@@ -22,6 +22,11 @@ void execute_printf_buffer(const char *data, uint32_t index) {
     const char *end = data + index;
     while (data < end) {
         const char *format = data;
+        if (*format == 0) {
+            logger_log(logger, LogLevelWarn, "printf: buffer overflow");
+            break;
+        }
+
         while (*data++); // skip format string
         auto nargs = read<int>(data);
         
@@ -39,7 +44,7 @@ void execute_printf_buffer(const char *data, uint32_t index) {
                 break;
             }
             default:
-                printf("unexpected tag: %d\n", tag);
+                logger_log(logger, LogLevelWarn, "printf: unexpected tag");
             }
             p += 8;
         }

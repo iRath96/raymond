@@ -83,10 +83,43 @@ struct VolumeScatter {
 };
 
 /**
- * @todo not properly supported!
+ * @todo not supported!
+ */
+struct VolumeAbsorption {
+    float4 color;
+    float density;
+    float weight;
+    
+    UberShader volume;
+    
+    void compute(device Context &ctx, ShadingContext shading) {}
+};
+
+/**
+ * @todo not supported!
+ */
+struct PrincipledVolume {
+    float4 absorptionColor;
+    float anisotropy;
+    float blackbodyIntensity;
+    float4 blackbodyTint;
+    float4 color;
+    float density;
+    float4 emissionColor;
+    float emissionStrength;
+    float temperature;
+    float weight;
+    
+    UberShader volume;
+    
+    void compute(device Context &ctx, ShadingContext shading) {}
+};
+
+/**
+ * @todo not supported!
  */
 struct ParticleInfo {
-    float random; /// @todo unsupported
+    float random;
 
     void compute(device Context &ctx, ShadingContext shading) {}
 };
@@ -333,7 +366,10 @@ struct Mapping {
 struct kTexGradient {
     enum Type {
         TYPE_LINEAR,
-        TYPE_SPHERICAL
+        TYPE_SPHERICAL,
+        TYPE_EASING,
+        TYPE_QUADRATIC,
+        TYPE_QUADRATIC_SPHERE,
     };
 };
 
@@ -343,6 +379,7 @@ template<
 struct TexGradient {
     float3 vector;
     float4 color;
+    float fac;
     
     void compute(device Context &ctx, ShadingContext shading) {
         switch (Type) {
@@ -353,7 +390,17 @@ struct TexGradient {
         case kTexGradient::TYPE_SPHERICAL:
             color = saturate(length(vector));
             break;
+
+        case kTexGradient::TYPE_EASING:
+        case kTexGradient::TYPE_QUADRATIC:
+        case kTexGradient::TYPE_QUADRATIC_SPHERE:
+            /// @todo not supported
+            color = saturate(vector.x);
+            break;
         }
+
+        /// @todo not supported
+        fac = color.x;
     }
 };
 
@@ -363,7 +410,8 @@ struct kTexWave {
     };
     
     enum Direction {
-        DIRECTION_DIAGONAL
+        DIRECTION_DIAGONAL,
+        DIRECTION_X,
     };
     
     enum Profile {
@@ -1183,7 +1231,8 @@ struct SeparateColor {
 
 struct kCombineColor {
     enum Mode {
-        MODE_RGB
+        MODE_RGB,
+        MODE_HSV,
     };
 };
 
@@ -1196,7 +1245,16 @@ struct CombineColor {
     float4 color;
     
     void compute(device Context &ctx, ShadingContext shading) {
-        color = float4(red, green, blue, 1);
+        switch (Mode) {
+        case kCombineColor::MODE_RGB:
+            color = float4(red, green, blue, 1);
+            break;
+        
+        case kCombineColor::MODE_HSV:
+            /// @todo not supported
+            color = float4(red, green, blue, 1);
+            break;
+        }
     }
 };
 
@@ -1839,12 +1897,14 @@ struct AddShader {
     UberShader shader_001;
     
     void compute(device Context &ctx, thread ShadingContext &shading) {
+        const float3 emission = shader_001.emission + shader.emission;
         if (shading.rnd.x < 0.5f) {
             shading.rnd.x /= 0.5f;
             shader = shader_001;
         } else {
             shading.rnd.x = 2 * (shading.rnd.x - 0.5f);
         }
+        shader.emission = emission;
         
         shader.weight *= 2;
     }
@@ -1859,12 +1919,14 @@ struct MixShader {
     UberShader shader_001;
     
     void compute(device Context &ctx, thread ShadingContext &shading) {
+        const float3 emission = fac * shader_001.emission + (1 - fac) * shader.emission;
         if (shading.rnd.x < fac) {
             shading.rnd.x /= fac;
             shader = shader_001;
         } else {
             shading.rnd.x = (shading.rnd.x - fac) / (1 - fac);
         }
+        shader.emission = emission;
     }
 };
 

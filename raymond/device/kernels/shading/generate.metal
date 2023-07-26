@@ -68,17 +68,18 @@ struct CustomTrace {
 };
 
 kernel void generateRays(
-    device Ray *rays                 [[buffer(GeneratorBufferRays)]],
-    device atomic_uint *rayCount     [[buffer(GeneratorBufferRayCount)]],
-    constant Uniforms &uniforms      [[buffer(GeneratorBufferUniforms)]],
-    device Context &ctx              [[buffer(GeneratorBufferContext)]],
-    device lore::Surface<> *surfaces [[buffer(GeneratorBufferLens)]],
-    uint2 coordinates                [[thread_position_in_grid]],
-    uint2 imageSize                  [[threads_per_grid]],
-    uint2 threadIndex                [[thread_position_in_threadgroup]],
-    uint2 warpIndex                  [[threadgroup_position_in_grid]],
-    uint2 actualWarpSize             [[threads_per_threadgroup]],
-    uint2 warpSize                   [[dispatch_threads_per_threadgroup]]
+    device Ray *rays             [[buffer(GeneratorBufferRays)]],
+    device atomic_uint *rayCount [[buffer(GeneratorBufferRayCount)]],
+    texture2d<float, access::write> image [[texture(0)]],
+    constant Uniforms &uniforms  [[buffer(GeneratorBufferUniforms)]],
+    const device Context &ctx    [[buffer(GeneratorBufferContext)]],
+    const device lore::Surface<> *surfaces [[buffer(GeneratorBufferLens)]],
+    const uint2 coordinates      [[thread_position_in_grid]],
+    const uint2 imageSize        [[threads_per_grid]],
+    const uint2 threadIndex      [[thread_position_in_threadgroup]],
+    const uint2 warpIndex        [[threadgroup_position_in_grid]],
+    const uint2 actualWarpSize   [[threads_per_threadgroup]],
+    const uint2 warpSize         [[dispatch_threads_per_threadgroup]]
 ) {
     /// gain a few percents of performance by using block linear indexing for improved coherency
     const int rayIndex = threadIndex.x + threadIndex.y * actualWarpSize.x +
@@ -86,13 +87,19 @@ kernel void generateRays(
         warpIndex.y * warpSize.y * imageSize.x;
     
     Ray ray;
-    ray.prng = PrngState(uniforms.frameIndex, rayIndex);
+    ray.prng = PrngState(uniforms.randomSeed, rayIndex);
     ray.minDistance = ctx.camera.nearClip;
     ray.maxDistance = ctx.camera.farClip;
     ray.flags = RayFlagsCamera;
+    ray.depth = 0;
     ray.bsdfPdf = INFINITY;
     ray.x = coordinates.x;
     ray.y = coordinates.y;
+
+    if (!uniforms.accumulate) {
+        // clear image if accumulation is not desired
+        image.write(float4(0, 0, 0, 0), coordinates);
+    }
     
     const float2 jitteredCoordinates = float2(coordinates) + ray.prng.sample2d();
     const float2 uv = float2(+1, -1) * ((jitteredCoordinates / float2(imageSize) + ctx.camera.shift) * 2.0f - 1.0f);
@@ -113,7 +120,7 @@ kernel void generateRays(
     
     lore::Lens<> lens;
     lens.surfaces.m_size = uniforms.numLensSurfaces;
-    lens.surfaces.m_data = surfaces;
+    lens.surfaces.m_data = const_cast<device lore::Surface<> *>(surfaces);
     
     const float wavelength = lerp(0.38f, 0.78f, ray.prng.sample());
     const float wavelength_ipdf_nm = 400;

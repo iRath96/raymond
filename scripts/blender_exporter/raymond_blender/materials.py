@@ -36,7 +36,7 @@ class RMNode(object):
             
             if hasattr(input, "default_value"):
                 value = input.default_value
-                if not isinstance(value, (int, float)):
+                if not isinstance(value, (int, float, str)):
                     value = list(value)
                 self.values[input.identifier] = value
 
@@ -525,6 +525,8 @@ def export_material(registry: SceneRegistry, material: bpy.types.Material):
             bpy.types.ShaderNodeRGBToBW,
             bpy.types.ShaderNodeLayerWeight,
             bpy.types.ShaderNodeVolumeScatter,
+            bpy.types.ShaderNodeVolumeAbsorption,
+            bpy.types.ShaderNodeVolumePrincipled,
             bpy.types.ShaderNodeObjectInfo,
             bpy.types.ShaderNodeNormal,
             bpy.types.ShaderNodeSeparateXYZ

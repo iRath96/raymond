@@ -6,18 +6,18 @@
 kernel void handleShadowRays(
     texture2d<float, access::read_write> image [[texture(0)]],
     
-    constant Intersection *intersections [[buffer(ShadowBufferIntersections)]],
-    device ShadowRay *shadowRays [[buffer(ShadowBufferShadowRays)]],
+    device const Intersection *intersections [[buffer(ShadowBufferIntersections)]],
+    device const ShadowRay *shadowRays [[buffer(ShadowBufferShadowRays)]],
     device const uint &rayCount [[buffer(ShadowBufferRayCount)]],
     
-    uint rayIndex [[thread_position_in_grid]]
+    const uint rayIndex [[thread_position_in_grid]]
 ) {
     if (rayIndex >= rayCount)
         return;
     
-    device ShadowRay &shadowRay = shadowRays[rayIndex];
+    device const ShadowRay &shadowRay = shadowRays[rayIndex];
     
-    constant Intersection &isect = intersections[rayIndex];
+    device const Intersection &isect = intersections[rayIndex];
     if (isect.distance < 0.0f)
     {
         uint2 coordinates = uint2(shadowRay.x, shadowRay.y);

@@ -290,7 +290,9 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
         ImGui::PopStyleVar();
         
         if (ImGui::IsItemHovered()) {
-            ui_inspect_image(mouse.x, mouse.y, _renderer.normalizedImage);
+            if (ImGui::IsKeyDown(ImGuiKey_Space)) {
+                ui_inspect_image(mouse.x, mouse.y, _renderer.normalizedImage);
+            }
             _viewportHovered = true;
         }
     }
@@ -300,8 +302,6 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
     {
         ImGui::Begin("Statistics");
         
-        ImGui::Text("yolo: %d\n", _viewportHovered);
-        
         static float exposure = 0;
         bool uniformsChanged = false;
         
@@ -310,6 +310,32 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
         ImGui::Text("Resolution: %d x %d", int(_renderer.outputImageSize.width), int(_renderer.outputImageSize.height));
         ImGui::DragFloat("Speed", &_gestureSpeed, _gestureSpeed / 1000, 0, 100);
         ImGui::DragFloat("EV", &exposure, 0.01f, -20, 20);
+
+        uniformsChanged |= ImGui::Checkbox("Accumulate", &_renderer.uniforms->accumulate);
+        
+        static const char *channels[] = { "Image", "Albedo", "Roughness" };
+        uniformsChanged |= ImGui::Combo("Channel", (int *)&_renderer.uniforms->outputChannel, channels, sizeof(channels) / sizeof(*channels));
+        
+        static const char *samplingNames[] = { "BSDF", "NEE", "MIS" };
+        uniformsChanged |= ImGui::Combo("Sampling", (int *)&_renderer.uniforms->samplingMode,
+            samplingNames, sizeof(samplingNames) / sizeof(*samplingNames));
+            
+        static const char *rrNames[] = { "Disabled", "Throughput" };
+        uniformsChanged |= ImGui::Combo("RR", (int *)&_renderer.uniforms->rr,
+            rrNames, sizeof(rrNames) / sizeof(*rrNames));
+        uniformsChanged |= ImGui::DragInt("RR depth", &_renderer.uniforms->rrDepth, 0.1f, 0, 16);
+        
+        static bool shouldSave = false;
+        
+        ImGui::BeginDisabled(shouldSave);
+        shouldSave |= ImGui::Button("Save Frame");
+        shouldSave |= ImGui::IsKeyDown(ImGuiKey_ModSuper) && ImGui::IsKeyPressed(ImGuiKey_S);
+        ImGui::EndDisabled();
+        
+        if (shouldSave && (_renderer.uniforms->frameIndex % 50 == 0)) {
+            [_renderer saveFrame];
+            shouldSave = false;
+        }
         
         float cameraScale = 1000 * _renderer.uniforms->cameraScale;
         uniformsChanged |= ImGui::DragFloat("Camera scale", &cameraScale, cameraScale / 1000, 0, 100);
@@ -379,26 +405,9 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
             ImGui::Text("Lens exposure: %+.2f EV", log2(lensEVCorrection));
         }
         
-        static std::map<Tonemapping, const char *> tonemappingNames = {
-            { TonemappingLinear, "Linear" },
-            { TonemappingHable, "Hable" },
-            { TonemappingAces, "ACES" },
-        };
-        
-        auto &tonemapping = _renderer.uniforms->tonemapping;
-        if (ImGui::BeginCombo("Tonemapping", tonemappingNames[tonemapping])) {
-            for (const auto &option : tonemappingNames) {
-                if (ImGui::Selectable(option.second, tonemapping == option.first)) {
-                    tonemapping = option.first;
-                }
-
-                if (tonemapping == option.first) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            
-            ImGui::EndCombo();
-        }
+        static const char *tonemappingNames[] = { "Linear", "Hable", "ACES" };
+        ImGui::Combo("Tonemapping", (int *)&_renderer.uniforms->tonemapping,
+            tonemappingNames, sizeof(tonemappingNames) / sizeof(*tonemappingNames));
 
         _renderer.uniforms->exposure = pow(2, exposure) * lensEVCorrection;
         
@@ -407,6 +416,25 @@ static void drawAperture(float relstop, int numBlades, float scale = 100) {
         }
         
         ImGui::End();
+    }
+
+    if (_viewportHovered && !ImGui::IsKeyDown(ImGuiKey_ModSuper)) {
+        int moveW = ImGui::IsKeyDown(ImGuiKey_W) ? 1 : 0;
+        int moveS = ImGui::IsKeyDown(ImGuiKey_S) ? 1 : 0;
+        int moveA = ImGui::IsKeyDown(ImGuiKey_A) ? 1 : 0;
+        int moveD = ImGui::IsKeyDown(ImGuiKey_D) ? 1 : 0;
+        int moveQ = ImGui::IsKeyDown(ImGuiKey_Q) ? 1 : 0;
+        int moveE = ImGui::IsKeyDown(ImGuiKey_E) ? 1 : 0;
+        
+        if (moveW || moveS || moveA || moveD || moveQ || moveE) {
+            const simd_float4x4 zoom {{
+                { 1, 0, 0, 30 * _gestureSpeed * (moveD - moveA) },
+                { 0, 1, 0, 30 * _gestureSpeed * (moveQ - moveE) },
+                { 0, 0, 1, 30 * _gestureSpeed * (moveS - moveW) },
+                { 0, 0, 0, 1 }
+            }};
+            [_renderer updateProjectionBy:zoom];
+        }
     }
 
     // Rendering

@@ -42,7 +42,8 @@ kernel void normalizeImage(
     texture2d<float, access::write> output [[texture(1)]],
     uint2 coordinates [[thread_position_in_grid]]
 ) {
-    float3 color = uniforms.exposure * input.read(coordinates).xyz / (uniforms.frameIndex + 1);
+    float3 color = uniforms.exposure * input.read(coordinates).xyz;
+    if (uniforms.accumulate) color /= uniforms.frameIndex + 1;
     
     switch (uniforms.tonemapping) {
     case TonemappingLinear: break;

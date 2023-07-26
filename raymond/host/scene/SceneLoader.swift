@@ -12,6 +12,9 @@ struct Scene {
     var resourcesRead: [MTLResource]
     var contextBuffer: MTLBuffer
     var argumentEncoder: MTLArgumentEncoder
+
+    var boundsMin: float3
+    var boundsMax: float3
     
     var camera: DeviceCamera {
         get {
@@ -77,6 +80,7 @@ struct SceneLoader {
         let contextBuffer = device.makeBuffer(
             length: argumentEncoder.encodedLength,
             options: .storageModeShared)!
+        contextBuffer.label = "Context Buffer"
         argumentEncoder.setArgumentBuffer(contextBuffer, offset: 0)
         
         var resourcesRead: [MTLResource] = []
@@ -116,7 +120,9 @@ struct SceneLoader {
             
             resourcesRead: resourcesRead,
             contextBuffer: contextBuffer,
-            argumentEncoder: argumentEncoder
+            argumentEncoder: argumentEncoder,
+            boundsMin: entities.boundsMin,
+            boundsMax: entities.boundsMax
         )
         
         var camera = makeDefaultCamera()
@@ -128,6 +134,8 @@ struct SceneLoader {
             
             let focalLength = cameraDesc.focalLength ?? 50
             camera.focalLength = focalLength / (cameraDesc.film.width / 2)
+
+            print(camera)
         }
         scene.camera = camera
         

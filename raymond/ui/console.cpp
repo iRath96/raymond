@@ -22,7 +22,7 @@ struct Console {
     
     std::vector<ImVec4> logColors;
     ImGuiTextFilter filter;
-    std::vector<Item> items;
+    std::vector<std::shared_ptr<Item>> items;
     ImFont *monospaceFont = nullptr;
     bool isOpen = true;
     bool autoScroll = true;
@@ -47,7 +47,7 @@ struct Console {
     void log(LogLevel level, const char *subsystem, const char *text) {
         std::stringstream ss;
         ss << "[" << "DIWE"[level] << "] " << std::setw(8) << subsystem << ": " << text;
-        items.push_back(Item(level, ss.str()));
+        items.push_back(std::make_shared<Item>(level, ss.str()));
     }
     
     void draw() {
@@ -86,9 +86,9 @@ struct Console {
             ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
             for (const auto &item : items) {
-                const char *text = item.text.c_str();
+                const char *text = item->text.c_str();
                 if (!filter.IsActive() || filter.PassFilter(text)) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, logColors[item.level]);
+                    ImGui::PushStyleColor(ImGuiCol_Text, logColors[item->level]);
                     ImGui::TextUnformatted(text);
                     ImGui::PopStyleColor();
                 }

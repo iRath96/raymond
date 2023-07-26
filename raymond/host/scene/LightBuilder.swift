@@ -52,7 +52,7 @@ class LightBuilder {
     ) throws -> LightCollection {
         let lights = library.values.lazy.filter { $0.kernel is Kernel }
         let count = lights.count
-        var (buffer, ptr) = device.makeBufferAndPointer(type: Output.self, count: count)
+        var (buffer, ptr) = device.makeBufferAndPointer(type: Output.self, count: count, name: "\(Kernel.id) Buffer")
         
         for light in lights {
             let kernel = light.kernel as! Kernel
@@ -70,7 +70,7 @@ class LightBuilder {
         closure: (Input) -> Output
     ) -> LightCollection {
         let count = collection.count
-        var (buffer, ptr) = device.makeBufferAndPointer(type: Output.self, count: count)
+        var (buffer, ptr) = device.makeBufferAndPointer(type: Output.self, count: count, name: "Light Collection Buffer")
         
         for light in collection {
             ptr.initialize(to: closure(light))
@@ -222,8 +222,8 @@ class LightBuilder {
                 color: kernel.color * kernel.power)
         }
         
-        let (lightFaceBuffer, lightFaces) = device.makeBufferAndPointer(type: Float.self, count: Int(lightFaceOffset))
-        lightFaceBuffer.label = "Light face buffer"
+        let (lightFaceBuffer, lightFaces) = device.makeBufferAndPointer(
+            type: Float.self, count: Int(lightFaceOffset), name: "Light Face Buffer")
         
         let emissiveFlags = materialBuilder.getShaderNames(.surface).map(materialBuilder.hasMaterialEmission)
         let shapeLights = emissiveFlags.withUnsafeBufferPointer { emissiveFlagsPtr in

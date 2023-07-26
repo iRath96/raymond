@@ -19,19 +19,18 @@ float computeMisWeight(float pdf, float other) {
     return pdf / (pdf + other);
 }
 
-constant bool isMaxDepth [[function_constant(0)]];
 kernel void handleIntersections(
     texture2d<float, access::read_write> image [[texture(0)]],
     
     // ray buffers
-    constant Intersection *intersections [[buffer(ShadingBufferIntersections)]],
-    device Ray *rays [[buffer(ShadingBufferRays)]],
-    device Ray *nextRays [[buffer(ShadingBufferNextRays)]],
+    const device Intersection *intersections [[buffer(ShadingBufferIntersections)]],
+    device Ray *rays             [[buffer(ShadingBufferRays)]],
+    device Ray *nextRays         [[buffer(ShadingBufferNextRays)]],
     device ShadowRay *shadowRays [[buffer(ShadingBufferShadowRays)]],
     
     // ray counters
-    device const uint &currentRayCount [[buffer(ShadingBufferCurrentRayCount)]],
-    device atomic_uint &nextRayCount [[buffer(ShadingBufferNextRayCount)]],
+    constant uint &currentRayCount     [[buffer(ShadingBufferCurrentRayCount)]],
+    device atomic_uint &nextRayCount   [[buffer(ShadingBufferNextRayCount)]],
     device atomic_uint &shadowRayCount [[buffer(ShadingBufferShadowRayCount)]],
     
     // scene buffers
@@ -71,7 +70,7 @@ kernel void handleIntersections(
     shading.rnd = prng.sample3d();
     shading.wo = -ray.direction;
     
-    constant Intersection &isect = intersections[rayIndex];
+    device const Intersection &isect = intersections[rayIndex];
     if (isect.distance <= 0.0f) {
         // miss
         if (needsToCollectEmission) {
@@ -90,6 +89,8 @@ kernel void handleIntersections(
         return;
     }
     
+    // MARK: Evaluate shading graph
+
     const device PerInstanceData &instance = ctx.perInstanceData[isect.instanceIndex];
     
     MaterialIndex shaderIndex;
@@ -194,6 +195,7 @@ kernel void handleIntersections(
 #endif
         nextRay.origin = shading.position;
         nextRay.flags = sample.flags;
+        nextRay.depth = ray.depth + 1;
         nextRay.direction = sample.wi;
         nextRay.minDistance = eps;
         nextRay.maxDistance = INFINITY;

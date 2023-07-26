@@ -15,18 +15,27 @@ extension MTLArgumentEncoder {
 }
 
 extension MTLDevice {
-    func makeBuffer<T>(type: T.Type, count: Int, options: MTLResourceOptions = []) -> MTLBuffer? {
-        return makeBuffer(length: max(count, 1) * MemoryLayout<T>.stride, options: options)
+    func makeBuffer<T>(type: T.Type, count: Int = 1, options: MTLResourceOptions = [], name: String? = nil) -> MTLBuffer? {
+        let buffer = makeBuffer(length: max(count, 1) * MemoryLayout<T>.stride, options: options)
+        buffer?.label = name
+        return buffer
     }
     
-    func makeBufferAndPointer<T>(type: T.Type, count: Int, options: MTLResourceOptions = []) -> (MTLBuffer, UnsafeMutablePointer<T>) {
+    func makeBufferAndPointer<T>(type: T.Type, count: Int, options: MTLResourceOptions = [], name: String? = nil) -> (MTLBuffer, UnsafeMutablePointer<T>) {
         let buffer = makeBuffer(length: max(count, 1) * MemoryLayout<T>.stride, options: options)!
+        buffer.label = name
         let pointer = buffer.contents().assumingMemoryBound(to: type)
         return (buffer, pointer)
     }
 }
 
 extension MTLBuffer {
+    func toArray<T>(type: T.Type) -> Array<T> {
+        let elementCount = self.length / MemoryLayout<T>.stride
+        let data = self.contents().bindMemory(to: type, capacity: elementCount)
+        return (0..<elementCount).map { data[$0] }
+    }
+
     func saveBinary(at url: URL) throws {
         let data = Data(bytesNoCopy: contents(), count: length, deallocator: .none)
         try data.write(to: url)
@@ -90,16 +99,6 @@ extension MTLTexture {
             buffer[numComponents*i + 1] *= norm
             buffer[numComponents*i + 2] *= norm
             buffer[numComponents*i + 3] = 1
-        }
-        
-        for y in 0..<(height / 2) {
-            let y2 = height - (y + 1)
-            let elementsPerRow = numComponents * width
-            for i in 0..<elementsPerRow {
-                let tmp = buffer[y * elementsPerRow + i]
-                buffer[y * elementsPerRow + i] = buffer[y2 * elementsPerRow + i]
-                buffer[y2 * elementsPerRow + i] = tmp
-            }
         }
         
         // write data out
