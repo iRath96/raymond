@@ -297,19 +297,6 @@ class ShapeBuilder {
             shapeHandles[index] = shapeHandle
         }
 
-        try vertexBuffer.saveBinary(at: URL.desktopDirectory.appending(path: "vertex.bin"))
-        try indexBuffer.saveBinary(at: URL.desktopDirectory.appending(path: "index.bin"))
-        do {
-            let url = URL.desktopDirectory.appending(path: "shapes.bin")
-            var data = [UInt32]()
-            for shapeHandle in shapeHandles {
-                data.append(contentsOf: [ shapeHandle.faceCount, shapeHandle.vertexOffset, shapeHandle.faceOffset ])
-            }
-            try data.withUnsafeMutableBytes {
-                try Data(bytesNoCopy: $0.baseAddress!, count: $0.count, deallocator: .none).write(to: url)
-            }
-        }
-        
         // MARK: build acceleration structure
         
         let accelerationStructures = shapeHandles.map { shapeHandle in

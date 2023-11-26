@@ -165,7 +165,6 @@ class EntityBuilder {
         let accelerationStructure = newAccelerationStructureWithDescriptor(asDescriptor, on: device)
         resources.append(contentsOf: shapes.accelerationStructures)
 
-        
         return .init(
             accelerationStructure: accelerationStructure,
             boundsMin: boundsMin,
