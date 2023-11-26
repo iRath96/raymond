@@ -11,11 +11,20 @@ fileprivate extension simd_float4x4 {
             SIMD3(self[2, 0], self[2, 1], self[2, 2])
         )
     }
+    
+    var packed4x3: MTLPackedFloat4x3 {
+        .init(columns: (
+            .init(.init(elements: (self[0, 0], self[0, 1], self[0, 2]))),
+            .init(.init(elements: (self[1, 0], self[1, 1], self[1, 2]))),
+            .init(.init(elements: (self[2, 0], self[2, 1], self[2, 2]))),
+            .init(.init(elements: (self[3, 0], self[3, 1], self[3, 2])))
+        ))
+    }
 }
 
 class EntityBuilder {
     struct Result {
-        let accelerationStructure: MPSInstanceAccelerationStructure
+        let accelerationStructure: MTLAccelerationStructure
         let boundsMin: float3
         let boundsMax: float3
     }
@@ -75,10 +84,6 @@ class EntityBuilder {
     ) throws -> Result {
         try library.values.forEach(add)
         
-        var (indexBuffer, indices) = device.makeBufferAndPointer(
-            type: InstanceIndex.self, count: instances.count, name: "Instance Index Buffer")
-        var (transformBuffer, transforms) = device.makeBufferAndPointer(
-            type: float4x4.self, count: instances.count, name: "Instance Transform Buffer")
         var (instanceBuffer, instanceData) = device.makeBufferAndPointer(
             type: DevicePerInstanceData.self, count: instances.count, name: "Instance Data Buffer")
         
@@ -108,8 +113,6 @@ class EntityBuilder {
                 lightFaceCount = light.faceCount
             }
             
-            indices.pointee = instance.shapeIndex
-            transforms.pointee = instance.transform
             instanceData.pointee = .init(
                 vertexOffset: instance.shapeInfo.vertexOffset,
                 faceOffset: instance.shapeInfo.faceOffset,
@@ -123,8 +126,6 @@ class EntityBuilder {
                 normalTransform: normalTransform,
                 visibility: instance.visibility)
             
-            indices = indices.advanced(by: 1)
-            transforms = transforms.advanced(by: 1)
             instanceData = instanceData.advanced(by: 1)
 
             for i in 0..<8 {
@@ -139,24 +140,31 @@ class EntityBuilder {
             }
         }
 
-        try indexBuffer.saveBinary(at: URL.desktopDirectory.appending(path: "instances.bin"))
-        try transformBuffer.saveBinary(at: URL.desktopDirectory.appending(path: "transforms.bin"))
-        
-        let triangleCount = instances.reduce(0) { $0 + $1.shapeInfo.faceCount }
-        print("#instances: \(instances.count)")
-        print("#triangles: \(triangleCount)")
-        
-        assert(InstanceIndex.bitWidth == 32)
-        let accelerationStructure = MPSInstanceAccelerationStructure(group: shapes.accelerationGroup)
-        accelerationStructure.accelerationStructures = shapes.accelerationStructures
-        accelerationStructure.instanceCount = instances.count
-        accelerationStructure.instanceBuffer = indexBuffer
-        accelerationStructure.transformType = .float4x4
-        accelerationStructure.transformBuffer = transformBuffer
-        accelerationStructure.rebuild()
-        
         encoder.setBuffer(instanceBuffer, offset: 0, index: ContextBufferIndex.perInstanceData.rawValue)
         resources.append(instanceBuffer)
+        
+        // MARK: - Metal acceleration structure
+        
+        var (instanceDescriptorBuffer, instanceDescriptors) = device.makeBufferAndPointer(
+            type: MTLAccelerationStructureInstanceDescriptor.self,
+            count: instances.count)
+        
+        for instance in instances {
+            instanceDescriptors.pointee.accelerationStructureIndex = instance.shapeIndex
+            instanceDescriptors.pointee.options = .opaque
+            instanceDescriptors.pointee.intersectionFunctionTableOffset = 0
+            instanceDescriptors.pointee.mask = 0xff
+            instanceDescriptors.pointee.transformationMatrix = instance.transform.packed4x3
+            instanceDescriptors = instanceDescriptors.advanced(by: 1)
+        }
+        
+        let asDescriptor = MTLInstanceAccelerationStructureDescriptor()
+        asDescriptor.instancedAccelerationStructures = shapes.accelerationStructures
+        asDescriptor.instanceCount = instances.count
+        asDescriptor.instanceDescriptorBuffer = instanceDescriptorBuffer
+        let accelerationStructure = newAccelerationStructureWithDescriptor(asDescriptor, on: device)
+        resources.append(contentsOf: shapes.accelerationStructures)
+
         
         return .init(
             accelerationStructure: accelerationStructure,

@@ -1,9 +1,98 @@
 import Foundation
 import Metal
-import MetalPerformanceShaders
 import Rayjay
 
 fileprivate let log = SwiftLogger(named: "mesh")
+
+func newAccelerationStructureWithDescriptor(
+    _ descriptor: MTLAccelerationStructureDescriptor,
+    on device: MTLDevice
+) -> MTLAccelerationStructure {
+    // Query for the sizes needed to store and build the acceleration structure.
+    let accelSize = device.accelerationStructureSizes(descriptor: descriptor)
+    
+    // Allocate an acceleration structure large enough for this descriptor. This method
+    // doesn't actually build the acceleration structure, but rather allocates memory.
+    let accelerationStructure = device.makeAccelerationStructure(size: accelSize.accelerationStructureSize)!
+    
+    // Allocate scratch space Metal uses to build the acceleration structure.
+    // Use MTLResourceStorageModePrivate for the best performance because the sample
+    // doesn't need access to buffer's contents.
+    let scratchBuffer = device.makeBuffer(length: accelSize.buildScratchBufferSize, options: .storageModePrivate)!
+    
+    // Create a command buffer that performs the acceleration structure build.
+    let queue = device.makeCommandQueue()!
+    var commandBuffer = queue.makeCommandBuffer()!
+    
+    // Create an acceleration structure command encoder.
+    var commandEncoder = commandBuffer.makeAccelerationStructureCommandEncoder()!
+    
+    // Allocate a buffer for Metal to write the compacted accelerated structure's size into.
+    let compactedSizeBuffer = device.makeBuffer(length: MemoryLayout<UInt32>.size, options: .storageModeShared)!
+    
+    // Schedule the actual acceleration structure build.
+    commandEncoder.build(
+        accelerationStructure: accelerationStructure,
+        descriptor: descriptor,
+        scratchBuffer: scratchBuffer,
+        scratchBufferOffset: 0)
+    
+    // Compute and write the compacted acceleration structure size into the buffer. You
+    // must already have a built acceleration structure because Metal determines the compacted
+    // size based on the final size of the acceleration structure. Compacting an acceleration
+    // structure can potentially reclaim significant amounts of memory because Metal must
+    // create the initial structure using a conservative approach.
+    
+    commandEncoder.writeCompactedSize(
+        accelerationStructure: accelerationStructure,
+        buffer: compactedSizeBuffer,
+        offset: 0)
+    
+    // End encoding, and commit the command buffer so the GPU can start building the
+    // acceleration structure.
+    commandEncoder.endEncoding()
+    
+    commandBuffer.commit()
+    
+    // The sample waits for Metal to finish executing the command buffer so that it can
+    // read back the compacted size.
+
+    // Note: Don't wait for Metal to finish executing the command buffer if you aren't compacting
+    // the acceleration structure, as doing so requires CPU/GPU synchronization. You don't have
+    // to compact acceleration structures, but do so when creating large static acceleration
+    // structures, such as static scene geometry. Avoid compacting acceleration structures that
+    // you rebuild every frame, as the synchronization cost may be significant.
+    
+    commandBuffer.waitUntilCompleted()
+    
+    let compactedSize = compactedSizeBuffer.contents().assumingMemoryBound(to: UInt32.self).pointee
+    
+    // Allocate a smaller acceleration structure based on the returned size.
+    let compactedAccelerationStructure = device.makeAccelerationStructure(size: Int(compactedSize))!
+    
+    // Create another command buffer and encoder.
+    commandBuffer = queue.makeCommandBuffer()!
+    
+    commandEncoder = commandBuffer.makeAccelerationStructureCommandEncoder()!
+    
+    // Encode the command to copy and compact the acceleration structure into the
+    // smaller acceleration structure.
+    commandEncoder.copyAndCompact(
+        sourceAccelerationStructure: accelerationStructure,
+        destinationAccelerationStructure: compactedAccelerationStructure)
+    
+    // End encoding and commit the command buffer. You don't need to wait for Metal to finish
+    // executing this command buffer as long as you synchronize any ray-intersection work
+    // to run after this command buffer completes. The sample relies on Metal's default
+    // dependency tracking on resources to automatically synchronize access to the new
+    commandEncoder.endEncoding()
+    commandBuffer.commit()
+    
+    commandBuffer.waitUntilCompleted()
+    
+    return compactedAccelerationStructure
+}
+
 
 class ShapeBuilder {
     struct Result {
@@ -11,8 +100,7 @@ class ShapeBuilder {
         let vertices: UnsafeMutablePointer<Vertex>
         let materials: UnsafeMutablePointer<MaterialIndex>
         
-        let accelerationGroup: MPSAccelerationStructureGroup
-        let accelerationStructures: [MPSTriangleAccelerationStructure]
+        let accelerationStructures: [MTLAccelerationStructure]
     }
 
     struct ShapeInfo {
@@ -224,25 +312,23 @@ class ShapeBuilder {
         
         // MARK: build acceleration structure
         
-        let group = MPSAccelerationStructureGroup(device: device)
-        
         let accelerationStructures = shapeHandles.map { shapeHandle in
             log.debug("accelerating \(shapeHandle.path)")
             
-            let triAccel = MPSTriangleAccelerationStructure(group: group)
-            triAccel.vertexBuffer = vertexBuffer
-            triAccel.vertexStride = MemoryLayout<Vertex>.stride
-            triAccel.vertexBufferOffset = triAccel.vertexStride * Int(shapeHandle.vertexOffset)
+            let mtlGeom = MTLAccelerationStructureTriangleGeometryDescriptor()
+            mtlGeom.vertexBuffer = vertexBuffer
+            mtlGeom.vertexStride = MemoryLayout<Vertex>.stride
+            mtlGeom.vertexBufferOffset = mtlGeom.vertexStride * Int(shapeHandle.vertexOffset)
+            mtlGeom.indexBuffer = indexBuffer
+            mtlGeom.indexType = .uint32
+            mtlGeom.indexBufferOffset = MemoryLayout<IndexTriplet>.stride * Int(shapeHandle.faceOffset)
+            mtlGeom.triangleCount = Int(shapeHandle.faceCount)
+            mtlGeom.opaque = true
             
-            assert(VertexIndex.bitWidth == 32)
-            triAccel.indexBuffer = indexBuffer
-            triAccel.indexType = .uInt32
-            triAccel.indexBufferOffset = MemoryLayout<IndexTriplet>.stride * Int(shapeHandle.faceOffset)
+            let mtlAccel = MTLPrimitiveAccelerationStructureDescriptor()
+            mtlAccel.geometryDescriptors = [ mtlGeom ]
             
-            triAccel.triangleCount = Int(shapeHandle.faceCount)
-            triAccel.rebuild()
-            
-            return triAccel
+            return newAccelerationStructureWithDescriptor(mtlAccel, on: device)
         }
         
         encoder.setBuffer(vertexBuffer, offset: 0, index: ContextBufferIndex.vertices.rawValue)
@@ -262,7 +348,6 @@ class ShapeBuilder {
             vertices: vertices,
             materials: materials,
             
-            accelerationGroup: group,
             accelerationStructures: accelerationStructures
         )
     }

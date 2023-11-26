@@ -45,14 +45,15 @@ kernel void handleIntersections(
     device Ray &ray = rays[rayIndex];
     const bool needsToCollectEmission = isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee;
     
-    /*{
+    device const Intersection &isect = intersections[rayIndex];
+    {
         uint2 coordinates = uint2(ray.x, ray.y);
         image.write(
-            image.read(coordinates) + float4(1, 1, 1, 1),
+            image.read(coordinates) + float4(float3(isect.distance) / 1000, 1),
             coordinates
         );
         return;
-    }*/
+    }
     
 #define DO_COMPACTION
 #ifndef DO_COMPACTION
@@ -70,7 +71,6 @@ kernel void handleIntersections(
     shading.rnd = prng.sample3d();
     shading.wo = -ray.direction;
     
-    device const Intersection &isect = intersections[rayIndex];
     if (isect.distance <= 0.0f) {
         // miss
         if (needsToCollectEmission) {

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -20,6 +20,7 @@
 		FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = FA5779122883EC7F003C10E7 /* ArgumentParser */; };
 		FA5779182885FF86003C10E7 /* SkyLoader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FA5779172885FF86003C10E7 /* SkyLoader.mm */; };
 		FA57791C2885FFE6003C10E7 /* sky_nishita.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FA57791A2885FFE6003C10E7 /* sky_nishita.cpp */; };
+		FA59D5A42B13A0BB005A2BC0 /* MetalUtils in Frameworks */ = {isa = PBXBuildFile; productRef = FA59D5A32B13A0BB005A2BC0 /* MetalUtils */; };
 		FA7D5D5628E77B5B00912878 /* entry.metal in Sources */ = {isa = PBXBuildFile; fileRef = FA2BA2D028E6F0C50083F61C /* entry.metal */; };
 		FA7D5D5928E780F500912878 /* URL.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D5828E780F500912878 /* URL.swift */; };
 		FA7D5D5C28E7813800912878 /* shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7D5D5B28E7813800912878 /* shell.swift */; };
@@ -434,6 +435,7 @@
 		FAC3AB002875D4D900C0B0D0 /* raymond.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = raymond.entitlements; sourceTree = "<group>"; };
 		FAC3AB1C2876D26700C0B0D0 /* MaterialBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaterialBuilder.swift; sourceTree = "<group>"; };
 		FADBFA9228817A9900727183 /* noise.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = noise.hpp; sourceTree = "<group>"; };
+		FAF3A3902B1404A7001B8736 /* raytrace.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = raytrace.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -444,6 +446,7 @@
 				FA7D5D6528E9850800912878 /* Rayjay in Frameworks */,
 				FA5779132883EC7F003C10E7 /* ArgumentParser in Frameworks */,
 				FA8616DD293BE64000550A57 /* GameController.framework in Frameworks */,
+				FA59D5A42B13A0BB005A2BC0 /* MetalUtils in Frameworks */,
 				FA100A8D28780BA900884319 /* libz.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -615,6 +618,7 @@
 				FA2BA2C228E6E17F0083F61C /* generate.metal */,
 				FA2BA2BF28E6E0660083F61C /* intersection.metal */,
 				FA2BA2BD28E6E0490083F61C /* shadow.metal */,
+				FAF3A3902B1404A7001B8736 /* raytrace.metal */,
 			);
 			path = shading;
 			sourceTree = "<group>";
@@ -1640,6 +1644,7 @@
 			packageProductDependencies = (
 				FA5779122883EC7F003C10E7 /* ArgumentParser */,
 				FA7D5D6428E9850800912878 /* Rayjay */,
+				FA59D5A32B13A0BB005A2BC0 /* MetalUtils */,
 			);
 			productName = raymond;
 			productReference = FAC3AAEF2875D4D800C0B0D0 /* raymond.app */;
@@ -1671,6 +1676,7 @@
 			mainGroup = FAC3AAE62875D4D800C0B0D0;
 			packageReferences = (
 				FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+				FA59D5A22B13A0BB005A2BC0 /* XCLocalSwiftPackageReference "dependencies/MetalUtils" */,
 			);
 			productRefGroup = FAC3AAF02875D4D800C0B0D0 /* Products */;
 			projectDirPath = "";
@@ -1941,6 +1947,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					$SRCROOT/raymond/,
@@ -2032,6 +2039,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		FA59D5A22B13A0BB005A2BC0 /* XCLocalSwiftPackageReference "dependencies/MetalUtils" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = dependencies/MetalUtils;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -2048,6 +2062,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = FA5779112883EC7F003C10E7 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
 			productName = ArgumentParser;
+		};
+		FA59D5A32B13A0BB005A2BC0 /* MetalUtils */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MetalUtils;
 		};
 		FA7D5D6428E9850800912878 /* Rayjay */ = {
 			isa = XCSwiftPackageProductDependency;

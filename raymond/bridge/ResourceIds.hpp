@@ -8,6 +8,8 @@ typedef NS_ENUM(NSInteger, GeneratorBufferIndex) {
     GeneratorBufferUniforms = 2,
     GeneratorBufferContext  = 3,
     GeneratorBufferLens     = 4,
+    GeneratorBufferAccelerationStructure = 5,
+    GeneratorBufferIntersections = 6,
 };
 
 typedef NS_ENUM(NSInteger, ContextBufferIndex) {

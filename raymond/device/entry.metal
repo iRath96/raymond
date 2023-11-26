@@ -13,6 +13,7 @@
 #include "kernels/shading/generate.metal"
 #include "kernels/shading/intersection.metal"
 #include "kernels/shading/shadow.metal"
+#include "kernels/shading/raytrace.metal"
 #include "kernels/envmap/build.metal"
 #include "kernels/envmap/normalize.metal"
 #include "kernels/envmap/reduce.metal"

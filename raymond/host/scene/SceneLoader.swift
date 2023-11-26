@@ -4,7 +4,7 @@ import MetalPerformanceShaders
 import Rayjay
 
 struct Scene {
-    var accelerationStructure: MPSInstanceAccelerationStructure
+    var accelerationStructure: MTLAccelerationStructure
     var intersectionHandler: MTLComputePipelineState
     var shadowRayHandler: MTLComputePipelineState
     var library: MTLLibrary

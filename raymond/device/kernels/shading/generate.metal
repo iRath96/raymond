@@ -11,6 +11,8 @@
 #include <lore/rt/GeometricalIntersector.h>
 #include <lore/rt/SequentialTrace.h>
 
+using namespace metal::raytracing;
+
 template<typename Float>
 struct CustomTrace {
     Float wavelength;
@@ -73,7 +75,9 @@ kernel void generateRays(
     texture2d<float, access::write> image [[texture(0)]],
     constant Uniforms &uniforms  [[buffer(GeneratorBufferUniforms)]],
     const device Context &ctx    [[buffer(GeneratorBufferContext)]],
+    device Intersection *intersections [[buffer(GeneratorBufferIntersections)]],
     const device lore::Surface<> *surfaces [[buffer(GeneratorBufferLens)]],
+    instance_acceleration_structure accel [[buffer(GeneratorBufferAccelerationStructure)]],
     const uint2 coordinates      [[thread_position_in_grid]],
     const uint2 imageSize        [[threads_per_grid]],
     const uint2 threadIndex      [[thread_position_in_threadgroup]],
@@ -82,7 +86,7 @@ kernel void generateRays(
     const uint2 warpSize         [[dispatch_threads_per_threadgroup]]
 ) {
     /// gain a few percents of performance by using block linear indexing for improved coherency
-    const int rayIndex = threadIndex.x + threadIndex.y * actualWarpSize.x +
+    int rayIndex = threadIndex.x + threadIndex.y * actualWarpSize.x +
         warpIndex.x * warpSize.x * actualWarpSize.y +
         warpIndex.y * warpSize.y * imageSize.x;
     
@@ -115,47 +119,74 @@ kernel void generateRays(
         ray.weight = 1;
         
         rays[rayIndex] = ray;
-        return;
-    }
-    
-    lore::Lens<> lens;
-    lens.surfaces.m_size = uniforms.numLensSurfaces;
-    lens.surfaces.m_data = const_cast<device lore::Surface<> *>(surfaces);
-    
-    const float wavelength = lerp(0.38f, 0.78f, ray.prng.sample());
-    const float wavelength_ipdf_nm = 400;
-    
-    lore::rt::GeometricalIntersector<float> isect;
-    CustomTrace<float> trace(wavelength, uniforms);
-
-    device auto &lastSurface = lens.surfaces[lens.surfaces.size() - 2];
-    const float3 sensorPos = float3(-uv * uniforms.sensorScale * float2(36, 36 * aspect) / 2, uniforms.focus);
-    const float3 sensorAim = float3(lastSurface.aperture * warp::uniformSquareToDisk(ray.prng.sample2d()), -lastSurface.thickness);
-    const float3 sensorDirU = sensorAim - sensorPos;
-    const float sensorDirInvDistSqr = 1 / length_squared(sensorDirU);
-    const float3 sensorDir = sensorDirU * sqrt(sensorDirInvDistSqr);
-    const float sensorDirInvPdf = abs(sensorDir.z) * sensorDirInvDistSqr * (M_PI_F * sqr(lastSurface.aperture));
-    
-    lore::rt::Ray<float> lensRay;
-    lensRay.origin = { sensorPos.x, sensorPos.y, sensorPos.z };
-    lensRay.direction = { sensorDir.x, sensorDir.y, sensorDir.z };
-    
-    if (!trace(lensRay, lens, isect)) {
-        // do not commit ray
-        return;
-    }
-
-    const float3 origin = uniforms.cameraScale * float3(lensRay.origin.x(), lensRay.origin.y(), lensRay.origin.z());
-    ray.origin = (ctx.camera.transform * float4(origin, 1)).xyz;
-    ray.direction = normalize((ctx.camera.transform * float4(lensRay.direction.x(), lensRay.direction.y(), lensRay.direction.z(), 0)).xyz);
-    
-    const float sensorW = abs(sensorDir.z);
-    if (uniforms.lensSpectral) {
-        ray.weight = sensorW * sensorDirInvPdf * xyz_to_rgb(wavelength_to_xyz(1000 * wavelength)) * cie_integral_norm_rgb * wavelength_ipdf_nm;
     } else {
-        ray.weight = sensorW * sensorDirInvPdf;
+        lore::Lens<> lens;
+        lens.surfaces.m_size = uniforms.numLensSurfaces;
+        lens.surfaces.m_data = const_cast<device lore::Surface<> *>(surfaces);
+        
+        const float wavelength = lerp(0.38f, 0.78f, ray.prng.sample());
+        const float wavelength_ipdf_nm = 400;
+        
+        lore::rt::GeometricalIntersector<float> isect;
+        CustomTrace<float> trace(wavelength, uniforms);
+
+        device auto &lastSurface = lens.surfaces[lens.surfaces.size() - 2];
+        const float3 sensorPos = float3(-uv * uniforms.sensorScale * float2(36, 36 * aspect) / 2, uniforms.focus);
+        const float3 sensorAim = float3(lastSurface.aperture * warp::uniformSquareToDisk(ray.prng.sample2d()), -lastSurface.thickness);
+        const float3 sensorDirU = sensorAim - sensorPos;
+        const float sensorDirInvDistSqr = 1 / length_squared(sensorDirU);
+        const float3 sensorDir = sensorDirU * sqrt(sensorDirInvDistSqr);
+        const float sensorDirInvPdf = abs(sensorDir.z) * sensorDirInvDistSqr * (M_PI_F * sqr(lastSurface.aperture));
+        
+        lore::rt::Ray<float> lensRay;
+        lensRay.origin = { sensorPos.x, sensorPos.y, sensorPos.z };
+        lensRay.direction = { sensorDir.x, sensorDir.y, sensorDir.z };
+        
+        if (!trace(lensRay, lens, isect)) {
+            // do not commit ray
+            return;
+        }
+
+        const float3 origin = uniforms.cameraScale * float3(lensRay.origin.x(), lensRay.origin.y(), lensRay.origin.z());
+        ray.origin = (ctx.camera.transform * float4(origin, 1)).xyz;
+        ray.direction = normalize((ctx.camera.transform * float4(lensRay.direction.x(), lensRay.direction.y(), lensRay.direction.z(), 0)).xyz);
+        
+        const float sensorW = abs(sensorDir.z);
+        if (uniforms.lensSpectral) {
+            ray.weight = sensorW * sensorDirInvPdf * xyz_to_rgb(wavelength_to_xyz(1000 * wavelength)) * cie_integral_norm_rgb * wavelength_ipdf_nm;
+        } else {
+            ray.weight = sensorW * sensorDirInvPdf;
+        }
+        
+        rayIndex = atomic_fetch_add_explicit(rayCount, 1, memory_order_relaxed);
+        rays[rayIndex] = ray;
     }
     
-    const uint compactedRayIndex = atomic_fetch_add_explicit(rayCount, 1, memory_order_relaxed);
-    rays[compactedRayIndex] = ray;
+    // Create an intersector to test for intersection between the ray and the geometry in the scene.
+    intersector<triangle_data, instancing> i;
+    bool useIntersectionFunctions = false;
+    
+    // If the sample isn't using intersection functions, provide some hints to Metal for
+    // better performance.
+    if (!useIntersectionFunctions) {
+        i.assume_geometry_type(geometry_type::triangle);
+        i.force_opacity(forced_opacity::opaque);
+    }
+
+    i.accept_any_intersection(false);
+    
+    metal::raytracing::ray mtlRay;
+    mtlRay.origin = ray.origin;
+    mtlRay.direction = ray.direction;
+    mtlRay.min_distance = ray.minDistance;
+    mtlRay.max_distance = ray.maxDistance;
+    
+    auto mtlIsect = i.intersect(mtlRay, accel);
+    intersections[rayIndex].distance = mtlIsect.distance;
+    intersections[rayIndex].coordinates = float2(
+        1 - mtlIsect.triangle_barycentric_coord.x - mtlIsect.triangle_barycentric_coord.y,
+        mtlIsect.triangle_barycentric_coord.x
+    );
+    intersections[rayIndex].instanceIndex = mtlIsect.instance_id;
+    intersections[rayIndex].primitiveIndex = mtlIsect.primitive_id;
 }

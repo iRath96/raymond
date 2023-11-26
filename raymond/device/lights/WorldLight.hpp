@@ -4,7 +4,7 @@
 #include <device/utils/math.hpp>
 #include <device/utils/warp.hpp>
 
-typedef struct {
+typedef struct WorldLight {
     MaterialIndex shaderIndex [[ id(0) ]];
     
     int resolution [[ id(1) ]]; // must be a power of two

@@ -280,8 +280,8 @@ class RendererCounters {
     let imageNormalizer: MTLComputePipelineState
     let makeIndirectDispatch: MTLComputePipelineState
     
-    let rayIntersector: MPSRayIntersector
-    let shadowRayIntersector: MPSRayIntersector
+    let raytrace: MTLComputePipelineState
+    let raytraceAny: MTLComputePipelineState
     
     let inFlightSemaphore = DispatchSemaphore(value: 1)
     @objc var uniforms: UnsafeMutablePointer<DeviceUniforms>
@@ -366,10 +366,15 @@ class RendererCounters {
         imageNormalizer      = buildPipeline("normalizeImage")
         makeIndirectDispatch = buildPipeline("makeIndirectDispatchArguments")
         
+        raytrace = Renderer.buildComputePipelineWithDevice(
+            library: scene.library,
+            name: "raytrace")!
+        raytraceAny = Renderer.buildComputePipelineWithDevice(
+            library: scene.library,
+            name: "raytraceAny")!
+        
         blitPipeline = Renderer.buildBlitPipelineWithDevice(library: scene.library)!
-        rayIntersector = .init(device: device)
-        shadowRayIntersector = .init(device: device)
-
+        
         let depthStateDescriptor = MTLDepthStencilDescriptor()
         depthStateDescriptor.depthCompareFunction = MTLCompareFunction.less
         depthStateDescriptor.isDepthWriteEnabled = true
@@ -383,20 +388,6 @@ class RendererCounters {
         self.counters = try! .init(on: device, withMaxDepth: maxDepth)
         
         super.init()
-        
-        self.setupRayIntersectors()
-    }
-    
-    private func setupRayIntersectors() {
-        rayIntersector.rayDataType = .originMinDistanceDirectionMaxDistance
-        rayIntersector.rayStride = MemoryLayout<DeviceRay>.stride
-        rayIntersector.intersectionDataType = .distancePrimitiveIndexInstanceIndexCoordinates
-        rayIntersector.intersectionStride = MemoryLayout<DeviceIntersection>.stride
-        
-        shadowRayIntersector.rayDataType = .originMinDistanceDirectionMaxDistance
-        shadowRayIntersector.rayStride = MemoryLayout<DeviceShadowRay>.stride
-        shadowRayIntersector.intersectionDataType = .distance
-        shadowRayIntersector.intersectionStride = MemoryLayout<DeviceIntersection>.stride
     }
     
     class func buildComputePipelineWithDevice(
@@ -452,6 +443,41 @@ class RendererCounters {
         frameIndex += 1
     }
     
+    private func encodeIntersection(
+        commandBuffer: MTLCommandBuffer,
+        intersectionType: MPSIntersectionType,
+        rayBuffer: MTLBuffer,
+        rayBufferOffset: Int,
+        intersectionBuffer: MTLBuffer,
+        intersectionBufferOffset: Int,
+        rayCountBuffer: MTLBuffer,
+        rayCountBufferOffset: Int
+    ) {
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.label = "Ordinary Indirect Dispatch"
+            computeEncoder.setComputePipelineState(makeIndirectDispatch)
+            computeEncoder.setBuffer(rayCountBuffer, offset: rayCountBufferOffset, index: 0)
+            computeEncoder.setBuffer(indirectDispatchBuffer, offset: 0, index: 1)
+            computeEncoder.dispatchThreads(MTLSizeMake(1, 1, 1), threadsPerThreadgroup: MTLSizeMake(1, 1, 1))
+            computeEncoder.endEncoding()
+        }
+        
+        if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
+            computeEncoder.setComputePipelineState(intersectionType == .nearest ? raytrace : raytraceAny)
+            computeEncoder.setBuffer(rayBuffer, offset: rayBufferOffset, index: GeneratorBufferIndex.rays.rawValue)
+            computeEncoder.setBuffer(rayCountBuffer, offset: rayCountBufferOffset, index: GeneratorBufferIndex.rayCount.rawValue)
+            computeEncoder.setAccelerationStructure(scene.accelerationStructure, bufferIndex: GeneratorBufferIndex.accelerationStructure.rawValue)
+            computeEncoder.setBuffer(intersectionBuffer, offset: intersectionBufferOffset, index: GeneratorBufferIndex.intersections.rawValue)
+            computeEncoder.useResources(scene.resourcesRead, usage: .read)
+            computeEncoder.dispatchThreadgroups(
+                indirectBuffer: indirectDispatchBuffer,
+                indirectBufferOffset: 0,
+                threadsPerThreadgroup: MTLSizeMake(64, 1, 1))
+            computeEncoder.endEncoding()
+        }
+    }
+
+    
     @objc func execute(in commandBuffer: MTLCommandBuffer) {
         let semaphore = inFlightSemaphore
         _ = semaphore.wait(timeout: DispatchTime.distantFuture)
@@ -500,6 +526,13 @@ class RendererCounters {
             computeEncoder.setBuffer(
                 lensBuffer, offset: 0,
                 index: GeneratorBufferIndex.lens.rawValue)
+            computeEncoder.setAccelerationStructure(
+                scene.accelerationStructure,
+                bufferIndex: GeneratorBufferIndex.accelerationStructure.rawValue)
+            computeEncoder.setBuffer(
+                intersectionBuffer,
+                offset: 0,
+                index: GeneratorBufferIndex.intersections.rawValue)
             computeEncoder.useResource(printfBuffer.buffer, usage: [ .read, .write ])
             computeEncoder.dispatchThreads(
                 outputImageSize,
@@ -514,16 +547,17 @@ class RendererCounters {
             let rayCountBufferOffset = depth * MemoryLayout<UInt32>.stride
             let isMaxDepth = (depth + 1 == maxDepth)
             
-            rayIntersector.encodeIntersection(
-                commandBuffer: commandBuffer,
-                intersectionType: .nearest,
-                rayBuffer: rayBuffer,
-                rayBufferOffset: currentRayBufferOffset,
-                intersectionBuffer: intersectionBuffer,
-                intersectionBufferOffset: 0,
-                rayCountBuffer: rayCountBuffer,
-                rayCountBufferOffset: rayCountBufferOffset,
-                accelerationStructure: scene.accelerationStructure)
+            if depth > 0 {
+                encodeIntersection(
+                    commandBuffer: commandBuffer,
+                    intersectionType: .nearest,
+                    rayBuffer: rayBuffer,
+                    rayBufferOffset: currentRayBufferOffset,
+                    intersectionBuffer: intersectionBuffer,
+                    intersectionBufferOffset: 0,
+                    rayCountBuffer: rayCountBuffer,
+                    rayCountBufferOffset: rayCountBufferOffset)
+            }
             
             if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
                 computeEncoder.label = "Ordinary Indirect Dispatch"
@@ -587,7 +621,7 @@ class RendererCounters {
                 break
             }
             
-            shadowRayIntersector.encodeIntersection(
+            encodeIntersection(
                 commandBuffer: commandBuffer,
                 intersectionType: .any,
                 rayBuffer: shadowRayBuffer,
@@ -595,8 +629,7 @@ class RendererCounters {
                 intersectionBuffer: intersectionBuffer,
                 intersectionBufferOffset: 0,
                 rayCountBuffer: shadowRayCountBuffer,
-                rayCountBufferOffset: depth * MemoryLayout<UInt32>.stride,
-                accelerationStructure: scene.accelerationStructure)
+                rayCountBufferOffset: depth * MemoryLayout<UInt32>.stride)
             
             if let computeEncoder = commandBuffer.makeComputeCommandEncoder() {
                 computeEncoder.label = "Shadow Indirect Dispatch"
