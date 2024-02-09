@@ -1,12 +1,12 @@
 [submodule "dependencies/Rayjay"]
 	path = dependencies/Rayjay
-	url = ssh://git@69co.de:2222/research/rayjay.git
+	url = https://github.com/iRath96/rayjay.git
 [submodule "dependencies/lore"]
 	path = dependencies/lore
-	url = ssh://git@69co.de:2222/research/lore.git
+	url = https://github.com/iRath96/lore.git
 [submodule "dependencies/MetalUtils"]
 	path = dependencies/MetalUtils
-	url = ssh://git@69co.de:2222/research/metalutils.git
+	url = https://github.com/iRath96/metalutils.git
 [submodule "dependencies/imgui"]
 	path = dependencies/imgui
 	url = https://github.com/ocornut/imgui.git
