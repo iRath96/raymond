@@ -122,7 +122,6 @@ class RendererCounters {
     private var reportAccumulator = ReportAccumulator()
     
     private static func sampleCount(maxDepth: Int) -> Int {
-        let radianceCacheSteps = 3
         return 2 * (
             1 +              // ray generation
             maxDepth +       // intersections
@@ -572,6 +571,10 @@ class RendererCounters {
                 computeEncoder.label = "Shade Rays and Secondary Ray Generation"
                 computeEncoder.setTexture(outputImage, index: 0)
                 computeEncoder.setComputePipelineState(scene.intersectionHandler)
+                
+                computeEncoder.setAccelerationStructure(
+                    scene.accelerationStructure,
+                    bufferIndex: 10)
                 
                 /// ray buffers
                 computeEncoder.setBuffer(

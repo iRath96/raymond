@@ -21,9 +21,10 @@ float computeMisWeight(float pdf, float other) {
 
 kernel void handleIntersections(
     texture2d<float, access::read_write> image [[texture(0)]],
+    instance_acceleration_structure accel [[buffer(10)]],
     
     // ray buffers
-    const device Intersection *intersections [[buffer(ShadingBufferIntersections)]],
+    device Intersection *intersections [[buffer(ShadingBufferIntersections)]],
     device Ray *rays             [[buffer(ShadingBufferRays)]],
     device Ray *nextRays         [[buffer(ShadingBufferNextRays)]],
     device ShadowRay *shadowRays [[buffer(ShadingBufferShadowRays)]],
@@ -46,14 +47,14 @@ kernel void handleIntersections(
     const bool needsToCollectEmission = isinf(ray.bsdfPdf) || uniforms.samplingMode != SamplingModeNee;
     
     device const Intersection &isect = intersections[rayIndex];
-    {
+    /*{
         uint2 coordinates = uint2(ray.x, ray.y);
         image.write(
             image.read(coordinates) + float4(float3(isect.distance) / 1000, 1),
             coordinates
         );
         return;
-    }
+    }*/
     
 #define DO_COMPACTION
 #ifndef DO_COMPACTION

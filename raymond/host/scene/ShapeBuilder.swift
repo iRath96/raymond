@@ -267,8 +267,8 @@ class ShapeBuilder {
         let (materialBuffer, materials) = device.makeBufferAndPointer(
             type: MaterialIndex.self, count: totalFaceCount, name: "Material Buffer")
         
-        DispatchQueue.concurrentPerform(iterations: shapeHandles.count) { index in
-        //for index in 0..<shapeHandles.count {
+        //DispatchQueue.concurrentPerform(iterations: shapeHandles.count) { index in
+        for index in 0..<shapeHandles.count {
             var shapeHandle = shapeHandles[index]
             log.debug("parsing shape \(shapeHandle.path)")
             
